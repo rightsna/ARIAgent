@@ -1,0 +1,3 @@
+[submodule "ARIWeb"]
+	path = ARIWeb
+	url = https://github.com/rightsna/ARIWeb.git

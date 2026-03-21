@@ -1,0 +1,192 @@
+import 'dart:io';
+import 'dart:async';
+import 'package:path/path.dart' as p;
+
+import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:system_tray/system_tray.dart';
+
+import 'providers/avatar_provider.dart';
+import 'screens/home_screen.dart';
+import 'repositories/config_repository.dart';
+import 'providers/config_provider.dart';
+import 'providers/server_provider.dart';
+import 'providers/task_provider.dart';
+import 'repositories/log_repository.dart';
+import 'package:ari_plugin/ari_plugin.dart';
+import 'providers/chat_provider.dart';
+import 'package:flutter/gestures.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Hive 저장 경로 설정 (~/.ari-agent/hive)
+  final String home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '';
+  final hivePath = p.join(home, '.ari-agent', 'hive');
+  final hiveDir = Directory(hivePath);
+  if (!hiveDir.existsSync()) {
+    hiveDir.createSync(recursive: true);
+  }
+  Hive.init(hivePath);
+
+  await LogRepository().init();
+
+  // PackageInfo 초기화
+  final packageInfo = await PackageInfo.fromPlatform();
+  final version = packageInfo.version;
+
+  // Repository 초기화
+  final configRepo = ConfigRepository();
+  await configRepo.init();
+
+  // Provider 초기화
+  await ConfigProvider().init();
+  await AvatarProvider().init();
+  await TaskProvider().init();
+
+  // WsManager 초기화 (Repository에서 URL 가져옴)
+  WsManager.init(url: configRepo.wsUrl);
+
+  // 에이전트 시작 (비동기)
+  unawaited(ServerProvider().start(version: version));
+
+  // window_manager 초기화
+  await windowManager.ensureInitialized();
+
+  const windowSize = Size(450, 720);
+
+  WindowOptions windowOptions = const WindowOptions(
+    size: windowSize,
+    minimumSize: Size(300, 400),
+    backgroundColor: Colors.transparent,
+    skipTaskbar: false,
+    titleBarStyle: TitleBarStyle.hidden,
+    windowButtonVisibility: true,
+  );
+
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setAlwaysOnTop(ConfigProvider().isPinned);
+    await windowManager.setHasShadow(false);
+    await windowManager.setResizable(true);
+    await windowManager.setMaximumSize(const Size(1200, 2000));
+    await windowManager.setPosition(const Offset(20, 100));
+    await windowManager.setPreventClose(true);
+    await windowManager.show();
+    await windowManager.focus();
+  });
+
+  runApp(const ARIApp());
+}
+
+class AppScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+  };
+}
+
+class ARIApp extends StatefulWidget {
+  const ARIApp({super.key});
+
+  @override
+  State<ARIApp> createState() => _ARIAppState();
+}
+
+class _ARIAppState extends State<ARIApp> with WindowListener {
+  final SystemTray _systemTray = SystemTray();
+  final Menu _menu = Menu();
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _initSystemTray();
+    windowManager.setPreventClose(true);
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  Future<void> _initSystemTray() async {
+    String iconPath = Platform.isWindows
+        ? 'assets/images/app_icon.ico'
+        : 'assets/images/logo_tray.png';
+    await _systemTray.initSystemTray(iconPath: iconPath);
+
+    await _menu.buildFrom([
+      MenuItemLabel(
+        label: 'ARI 열기',
+        onClicked: (menuItem) => windowManager.show(),
+      ),
+      MenuItemLabel(
+        label: 'ARI 숨기기',
+        onClicked: (menuItem) => windowManager.hide(),
+      ),
+      MenuSeparator(),
+      MenuItemLabel(
+        label: '종료',
+        onClicked: (menuItem) async {
+          await ServerProvider().stop();
+          exit(0);
+        },
+      ),
+    ]);
+
+    await _systemTray.setContextMenu(_menu);
+
+    _systemTray.registerSystemTrayEventHandler((eventName) {
+      if (eventName == kSystemTrayEventClick) {
+        Platform.isMacOS
+            ? _systemTray.popUpContextMenu()
+            : windowManager.show();
+      } else if (eventName == kSystemTrayEventRightClick) {
+        Platform.isMacOS
+            ? windowManager.show()
+            : _systemTray.popUpContextMenu();
+      }
+    });
+  }
+
+  @override
+  void onWindowClose() async {
+    await windowManager.hide();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ConfigProvider>.value(value: ConfigProvider()),
+        ChangeNotifierProvider<AvatarProvider>.value(value: AvatarProvider()),
+        ChangeNotifierProvider<ServerProvider>.value(value: ServerProvider()),
+        ChangeNotifierProvider<TaskProvider>.value(value: TaskProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ],
+      child: MaterialApp(
+        title: 'ARI Agent',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          fontFamily: 'SF Pro Display',
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFF6C63FF),
+            secondary: Color(0xFF9D4EDD),
+            surface: Color(0xFF12122A),
+          ),
+          scaffoldBackgroundColor: Colors.transparent,
+        ),
+        scrollBehavior: AppScrollBehavior(),
+        home: const HomeScreen(),
+      ),
+    );
+  }
+}

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environmental variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Runtime data & Results
+data/
+logs/
+*.log
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# IDE & OS files
+.DS_Store
+.vscode/
+.idea/
+
+# Tool specific
+.eslintcache
+.npm/
+.yarn/
+.pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

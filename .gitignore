@@ -1,0 +1,71 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+/temp/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code related
+.vscode/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Flutter/Dart/Pub common
+**/doc/api/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/build/
+**/coverage/
+app.*.symbols
+app.*.map.json
+
+# Android Studio artifacts
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+
+# Component specifics: ari-app
+/ari-app/macos/Flutter/GeneratedPluginRegistrant.swift
+/ari-app/windows/flutter/generated_plugin_registrant.cc
+/ari-app/windows/flutter/generated_plugin_registrant.h
+/ari-app/windows/flutter/generated_plugins.cmake
+
+# Component specifics: ari-launcher
+/ari-launcher/macos/Flutter/GeneratedPluginRegistrant.swift
+/ari-launcher/windows/flutter/generated_plugin_registrant.cc
+/ari-launcher/windows/flutter/generated_plugin_registrant.h
+/ari-launcher/windows/flutter/generated_plugins.cmake
+
+# Component specifics: ari-server
+/ari-server/dist
+/ari-server/node_modules
+/ari-server/build
+/ari-server/data/
+/ari-server/logs/
+
+# Submodules (Contents are ignored by their own .gitignores usually)
+# But we can explicitly ignore their artifacts here if needed.
+# /ARIWeb/ari-web/dist
+# /ARIWeb/ari-web/node_modules
+/ARIWeb/ari-web/public/downloads

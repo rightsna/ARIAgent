@@ -1,0 +1,21 @@
+name: ari_plugin
+description: Shared ARI bridge package for Flutter desktop apps.
+version: 0.1.4
+publish_to: "none"
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  connectivity_plus: ^7.0.0
+  web_socket_channel: ^3.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:

@@ -1,0 +1,469 @@
+import { AgentTool } from "@mariozechner/pi-agent-core";
+import { Type } from "@mariozechner/pi-ai";
+import { exec, spawn } from "child_process";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { appStateService } from "../services/app_state_service";
+import { UserSocketHandler } from "../system/ws";
+import { logger } from "../infra/logger";
+import { getBundleRoots, getWorkspaceRoot } from "../infra/runtime_paths";
+import { DATA_DIR } from "../infra/data";
+import { loadAllSkills } from "../skills";
+import { execPromise } from "./bash";
+
+function resolveAppExecutable(appName: string): string {
+  const workspaceRoot = getWorkspaceRoot();
+  const bundleRoots = getBundleRoots();
+
+  const candidates: string[] = [];
+
+  if (process.platform === "darwin") {
+    for (const bundleRoot of bundleRoots) {
+      candidates.push(
+        path.join(bundleRoot, appName, "Contents", "MacOS", appName),
+        path.join(
+          bundleRoot,
+          appName,
+          `${appName}.app`,
+          "Contents",
+          "MacOS",
+          appName,
+        ),
+      );
+    }
+  }
+
+  if (process.platform === "win32") {
+    for (const bundleRoot of bundleRoots) {
+      candidates.push(
+        path.join(bundleRoot, appName, `${appName}.exe`),
+        path.join(bundleRoot, `${appName}.exe`),
+      );
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  throw new Error(`로컬 ${appName} 실행 파일을 찾지 못했습니다.`);
+}
+
+/**
+ * read_app_state
+ * 특정 앱의 현재 상태를 읽어오는 범용 도구
+ */
+export const readAppStateTool: AgentTool = {
+  name: "read_app_state",
+  label: "앱 상태 읽기",
+  description:
+    "특정 앱(ID 기반)의 현재 상태를 동기화하여 읽어옵니다. 사용자가 앱에서 수정한 내용을 확인할 때 사용합니다.",
+  parameters: Type.Object({
+    appId: Type.String({
+      description: "읽어올 앱의 식별자 (예: notepad, youtube_player)",
+    }),
+  }),
+  execute: async (_id, params) => {
+    const { appId } = params as { appId: string };
+
+    try {
+      // Pull 방식: 앱에게 직접 질의하여 최신 상태를 가져옴
+      const result = await UserSocketHandler.queryApp(appId, "GET_STATE");
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ '${appId}' 앱의 실시간 상태:\n${JSON.stringify(result, null, 2)}`,
+          },
+        ],
+        details: { state: result },
+      };
+    } catch (error: any) {
+      logger.warn(
+        `[read_app_state] Failed to query '${appId}': ${error.message}. Falling back to cache.`,
+      );
+
+      // 실패 시 캐시된 상태라도 반환 (Fallback)
+      const state = appStateService.getState(appId);
+      if (!state) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ '${appId}' 앱과의 실시간 동기화에 실패했으며 캐시된 정보도 없습니다: ${error.message}`,
+            },
+          ],
+          details: { appId, success: false, error: error.message },
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `⚠️ '${appId}' 앱 실시간 조회 실패(캐시 데이터 반환):\n${JSON.stringify(state.state, null, 2)}`,
+          },
+        ],
+        details: { state: state.state, cached: true },
+      };
+    }
+  },
+};
+
+/**
+ * send_app_command
+ * 특정 앱에 명령을 보내는 범용 원격 제어 도구
+ */
+export const sendAppCommandTool: AgentTool = {
+  name: "send_app_command",
+  label: "앱 명령 전송",
+  description:
+    "실행 중인 특정 앱에 제어 명령을 보냅니다. 반드시 'discover_app_commands'를 통해 지원되는 명령어 목록을 먼저 확인하는 것이 좋습니다.",
+  parameters: Type.Object({
+    appId: Type.String({
+      description: "명령을 받을 앱의 식별자 (예: youtube_player, notepad)",
+    }),
+    command: Type.String({
+      description: "실행할 명령어 (예: UPDATE, PLAY, PAUSE 등)",
+    }),
+    params: Type.Optional(
+      Type.Any({ description: "명령어에 필요한 파라미터 객체" }),
+    ),
+  }),
+  execute: async (_id, params) => {
+    const {
+      appId,
+      command,
+      params: cmdParams,
+    } = params as { appId: string; command: string; params?: any };
+
+    try {
+      const result = await UserSocketHandler.commandApp(appId, command, cmdParams || {});
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `🚀 '${appId}' 앱의 '${command}' 실행 결과:\n${JSON.stringify(result, null, 2)}`,
+          },
+        ],
+        details: { appId, command, params: cmdParams, result, success: true },
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ '${appId}' 앱으로 명령 전송 또는 실행 실패: ${error.message}`,
+          },
+        ],
+        details: { appId, command, success: false, error: error.message },
+      };
+    }
+  },
+};
+
+export const launchAppTool: AgentTool = {
+  name: "launch_app",
+  label: "앱 실행",
+  description:
+    "지정된 앱(예: youtubeplayer, notepad)을 실행합니다. 환경변수와 명령행 인자를 전달할 수 있습니다.",
+  parameters: Type.Object({
+    appName: Type.String({
+      description: "실행할 앱의 이름 (번들 폴더명, 예: youtubeplayer, notepad)",
+    }),
+    env: Type.Optional(
+      Type.Record(Type.String(), Type.String(), {
+        description: "앱에 전달할 환경변수 (선택)",
+      }),
+    ),
+    args: Type.Optional(
+      Type.Array(Type.String(), {
+        description: "앱에 전달할 명령행 인자 (선택)",
+      }),
+    ),
+  }),
+  execute: async (_id, params) => {
+    const { appName, env, args } = params as {
+      appName: string;
+      env?: Record<string, string>;
+      args?: string[];
+    };
+
+    if (UserSocketHandler.isAppConnected(appName)) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `⚠️ '${appName}' 앱이 이미 실행 중이며 서버에 연결되어 있습니다. 새로운 작업을 수행하려면 'send_app_command'를 사용하세요.`,
+          },
+        ],
+        details: { appName, success: false, alreadyRunning: true },
+      };
+    }
+
+    logger.info(`[AppLifecycle] Launching app: ${appName}`);
+    const executable = resolveAppExecutable(appName);
+
+    const child = spawn(executable, args || [], {
+      detached: true,
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        HOME: process.env.HOME ?? os.homedir(),
+        USERPROFILE: process.env.USERPROFILE ?? os.homedir(),
+        ...env,
+      },
+    });
+
+    child.on("error", (error: any) => {
+      logger.error(`[AppLifecycle] ${appName} 실행 실패: ${error.message}`);
+    });
+    child.unref();
+
+    return {
+      content: [{ type: "text", text: `✅ '${appName}' 앱을 실행했습니다.` }],
+      details: { appName, success: true },
+    };
+  },
+};
+
+export const terminateAppTool: AgentTool = {
+  name: "terminate_app",
+  label: "앱 종료",
+  description:
+    "실행 중인 지정된 앱(예: youtubeplayer, notepad)을 강제 종료합니다.",
+  parameters: Type.Object({
+    appName: Type.String({
+      description: "종료할 앱의 이름 (예: youtubeplayer, notepad)",
+    }),
+  }),
+  execute: async (_id, params) => {
+    const { appName } = params as { appName: string };
+
+    logger.info(`[AppLifecycle] Terminating app: ${appName}`);
+
+    await new Promise<void>((resolve) => {
+      let child;
+      if (process.platform === "darwin") {
+        child = spawn("pkill", ["-x", appName], { stdio: "ignore" });
+      } else if (process.platform === "win32") {
+        child = spawn("taskkill", ["/IM", `${appName}.exe`, "/F"], {
+          stdio: "ignore",
+          windowsHide: true,
+        });
+      } else {
+        resolve();
+        return;
+      }
+      child.on("error", () => resolve());
+      child.on("exit", () => resolve());
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    return {
+      content: [{ type: "text", text: `✅ '${appName}' 앱을 종료했습니다.` }],
+      details: { appName, success: true },
+    };
+  },
+};
+
+/**
+ * discover_app_commands
+ * 특정 앱이 지원하는 명령어 목록과 설명을 조회합니다.
+ */
+export const discoverAppCommandsTool: AgentTool = {
+  name: "discover_app_commands",
+  label: "앱 명령어 조회",
+  description:
+    "특정 앱(ID 기반)이 지원하는 제어 명령어 목록과 각 명령어의 설명을 조회합니다. 앱을 처음 제어하거나 사용 가능한 기능을 확인할 때 사용합니다.",
+  parameters: Type.Object({
+    appId: Type.String({
+      description: "명령어를 조회할 앱의 식별자 (예: youtube_player)",
+    }),
+  }),
+  execute: async (_id, params) => {
+    const { appId } = params as { appId: string };
+
+    try {
+      const result = await UserSocketHandler.queryApp(appId, "GET_COMMANDS");
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `💡 '${appId}' 앱 지원 명령어 목록:\n${JSON.stringify(result, null, 2)}`,
+          },
+        ],
+        details: { appId, commands: result },
+      };
+    } catch (error: any) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ '${appId}' 앱의 명령어 목록을 가져오는 데 실패했습니다: ${error.message}`,
+          },
+        ],
+        details: { appId, success: false, error: error.message },
+      };
+    }
+  },
+};
+
+/**
+ * install_app
+ * 외부 URL(.zip)로부터 ARI 앱을 다운로드하여 설치하거나 업데이트합니다.
+ */
+export const installAppTool: AgentTool = {
+  name: "install_app",
+  label: "앱 설치 및 업데이트",
+  description:
+    "외부 URL(.zip)로부터 ARI 앱을 다운로드하여 설치하거나 기존 앱을 업데이트합니다.",
+  parameters: Type.Object({
+    url: Type.String({ description: "설치할 앱의 .zip 다운로드 주소" }),
+    appId: Type.Optional(
+      Type.String({ description: "앱의 식별자 (생략 시 파일명에서 추출)" }),
+    ),
+    force: Type.Optional(
+      Type.Boolean({ description: "버전이 같거나 낮아도 강제로 설치합니다." }),
+    ),
+  }),
+  execute: async (_id, params) => {
+    const {
+      url,
+      appId: providedAppId,
+      force,
+    } = params as { url: string; appId?: string; force?: boolean };
+
+    // 1. appId 추출
+    let appId = providedAppId;
+    if (!appId) {
+      const urlParts = url.split("/");
+      const fileName = urlParts[urlParts.length - 1];
+      appId = fileName.split("-")[0].replace(".zip", "");
+    }
+
+    logger.info(`[AppInstall] Starting installation for ${appId} from ${url}`);
+
+    const tempDir = path.join(DATA_DIR, "tmp_install", appId);
+    const skillsDir = path.join(DATA_DIR, "skills", appId);
+
+    try {
+      // 2. 준비
+      if (fs.existsSync(tempDir))
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      fs.mkdirSync(tempDir, { recursive: true });
+
+      // 3. 다운로드
+      const zipPath = path.join(tempDir, "app.zip");
+      logger.info(`[AppInstall] Downloading to ${zipPath}`);
+      await execPromise(`curl -L "${url}" -o "${zipPath}"`);
+
+      // 4. 압축 해제
+      const extractDir = path.join(tempDir, "extracted");
+      fs.mkdirSync(extractDir, { recursive: true });
+      logger.info(`[AppInstall] Extracting to ${extractDir}`);
+      await execPromise(`unzip -o "${zipPath}" -d "${extractDir}"`);
+
+      // 5. 설치물 찾기 (중첩 폴더 및 __MACOSX 대응)
+      let sourceDir = extractDir;
+      const items = fs
+        .readdirSync(extractDir)
+        .filter((f) => !f.startsWith(".") && f !== "__MACOSX");
+
+      if (
+        items.length === 1 &&
+        fs.statSync(path.join(extractDir, items[0])).isDirectory()
+      ) {
+        // 유효한 폴더가 하나만 있다면 그 안으로 들어감
+        sourceDir = path.join(extractDir, items[0]);
+      }
+
+      // 6. 버전 확인 로직
+      const newInfoPath = path.join(sourceDir, "app_info.json");
+      const oldInfoPath = path.join(skillsDir, "app_info.json");
+
+      if (fs.existsSync(newInfoPath) && fs.existsSync(oldInfoPath)) {
+        try {
+          const newInfo = JSON.parse(fs.readFileSync(newInfoPath, "utf-8"));
+          const oldInfo = JSON.parse(fs.readFileSync(oldInfoPath, "utf-8"));
+
+          const newVer = newInfo.version_code ?? newInfo.version;
+          const oldVer = oldInfo.version_code ?? oldInfo.version;
+
+          if (newVer <= oldVer && !force) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `ℹ️ 이미 최신 버전(${oldInfo.version})이 설치되어 있습니다. (새로 설치하려는 버전: ${newInfo.version})\n강제로 설치하려면 '강제 설치' 옵션을 사용하세요.`,
+                },
+              ],
+              details: {
+                appId,
+                success: true,
+                updated: false,
+                currentVersion: oldInfo.version,
+              },
+            };
+          }
+        } catch (err: any) {
+          logger.warn(
+            `[AppInstall] Version check comparison failed: ${err.message}`,
+          );
+        }
+      }
+
+      // 7. 실제 설치
+      if (fs.existsSync(skillsDir)) {
+        logger.info(`[AppInstall] Removing existing app at ${skillsDir}`);
+        fs.rmSync(skillsDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(path.dirname(skillsDir), { recursive: true });
+
+      logger.info(`[AppInstall] Moving ${sourceDir} to ${skillsDir}`);
+      fs.renameSync(sourceDir, skillsDir);
+
+      // 8. 스킬 리로드
+      await loadAllSkills();
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `✅ '${appId}' 앱이 성공적으로 설치(업데이트)되었습니다.`,
+          },
+        ],
+        details: { appId, success: true },
+      };
+    } catch (error: any) {
+      logger.error(`[AppInstall] Failed to install ${appId}: ${error.message}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ '${appId}' 앱 설치 중 오류 발생: ${error.message}`,
+          },
+        ],
+        details: { appId, success: false, error: error.message },
+      };
+    } finally {
+      // 8. 정리
+      if (fs.existsSync(tempDir))
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  },
+};
+
+export const TOOLS = [
+  readAppStateTool,
+  sendAppCommandTool,
+  discoverAppCommandsTool,
+  launchAppTool,
+  terminateAppTool,
+  installAppTool,
+];
