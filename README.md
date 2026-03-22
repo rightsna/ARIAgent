@@ -1,5 +1,7 @@
 # ARI 에이전트 프로젝트 가이드
 
+- **웹 사이트 및 개발 가이드**: [https://ariwith.me](https://ariwith.me)
+
 ## 개요
 
 ARI 에이전트는 로컬 우선(local-first) 데스크톱 AI 비서입니다.
