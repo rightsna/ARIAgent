@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="ari-app/assets/images/logo.png" width="120" alt="ARI Agent Logo">
+</p>
+
 # ARI 에이전트 프로젝트 가이드
 
 - **웹 사이트 및 개발 가이드**: [https://ariwith.me](https://ariwith.me)
