@@ -1,9 +1,9 @@
-# Distribution Guide (AI Only)
+# Installation & Testing Guide (AI Only)
 
 > [!IMPORTANT]
-> 이 문서는 AI(코딩 에이전트)를 위한 배포 가이드라인입니다.
+> 이 문서는 AI(코딩 에이전트)를 위한 설치 및 테스트 가이드라인입니다.
 
-### 1. 로컬에서 배포
+### 1. 로컬에서 설치 및 테스트
 
 코딩 에이전트는 아래 순서로 진행합니다.
 
@@ -28,13 +28,13 @@ ARIAgent를 재실행해줘.
 2. 프로젝트를 빌드합니다.
 3. 빌드 산출물에서 실행 가능한 바이너리와 `SKILL.md`를 준비합니다.
 4. 결과물을 `~/.ari-agent/skills/<app_id>` 아래에 복사합니다.
-5. ARIAgent를 재실행해서 새 앱과 `SKILL.md`를 다시 읽게 합니다.
+5. ARIAgent를 재실행해서 새 앱과 `SKILL.md`를 다시 읽고 테스트합니다.
 
 **요청 예시:**
 ```text
 https://github.com/owner/repo 저장소를 받아서 빌드하고,
 바이너리와 SKILL.md를 ~/.ari-agent/skills/notepad 아래에 복사한 뒤,
-ARIAgent를 재실행해줘.
+ARIAgent를 재실행해서 설치 및 테스트해줘.
 ```
 
 ---

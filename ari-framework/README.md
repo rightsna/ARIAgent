@@ -8,7 +8,7 @@
 
 기존의 환경 설정과 플러그인 연동 과정이 하나로 통합되어, 이제 아래의 **2단계 워크플로우**를 따라 진행됩니다.
 
-**개발 환경 구성 및 기능 연동** → **설치 및 배포**
+**개발 환경 구성 및 기능 연동** → **설치 및 테스트**
 
 ---
 
@@ -25,7 +25,7 @@
 https://github.com/rightsna/ARIAgent/blob/main/ari-framework/setup/README.md 파일을 읽고 프로젝트 환경 설정과 아리 에이전트 연동을 시작해줘.
 ```
 
-### Step 2. 설치 및 배포 (데스크탑앱 전용)
+### Step 2. 설치 및 테스트 (데스크탑앱 전용)
 
 모든 기능 개발과 연동이 완료되면, AI에게 아래 배포 문서를 확인하여 최종 설치 프로세스를 진행하도록 요청하세요.
 
@@ -34,7 +34,7 @@ https://github.com/rightsna/ARIAgent/blob/main/ari-framework/setup/README.md 파
 **🤖 요청 예제:**
 
 ```text
-https://github.com/rightsna/ARIAgent/blob/main/ari-framework/distribution/README.md 파일을 읽고, 현재 개발된 앱을 빌드해서 로컬에 배포해줘.
+https://github.com/rightsna/ARIAgent/blob/main/ari-framework/distribution/README.md 파일을 읽고, 현재 개발된 앱을 빌드해서 로컬에 설치 및 테스트해줘.
 ```
 
 ---
