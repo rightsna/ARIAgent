@@ -124,6 +124,14 @@ ARIAgent/
 └── ari-framework/               # 앱 연동 규격 및 개발 프레임워크/가이드 (flutter)
 ```
 
+## 🚀 예제 연동 앱 (Sample Apps)
+
+ARI 프레임워크를 활용하여 개발된 예제 프로젝트들입니다. 에이전트 연동 및 구현의 참고 자료로 활용하세요.
+
+- [ARIStock (주식 분석)](https://github.com/rightsna/ARIStock)
+- [ARINotePad (스마트 메모장)](https://github.com/rightsna/ARINotePad)
+- [ARIYoutubePlayer (유튜브 플레이어)](https://github.com/rightsna/ARIYoutubePlayer)
+
 ## 개발 규칙
 
 1. **앱 단위로 생각하기**: 기능은 이상적으로 표준화된 인터페이스를 가진 '앱'으로 캡슐화되어야 합니다.
