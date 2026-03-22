@@ -367,7 +367,12 @@ export const installAppTool: AgentTool = {
       const extractDir = path.join(tempDir, "extracted");
       fs.mkdirSync(extractDir, { recursive: true });
       logger.info(`[AppInstall] Extracting to ${extractDir}`);
-      await execPromise(`unzip -o "${zipPath}" -d "${extractDir}"`);
+      
+      if (process.platform === "win32") {
+        await execPromise(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`);
+      } else {
+        await execPromise(`unzip -o "${zipPath}" -d "${extractDir}"`);
+      }
 
       // 5. 설치물 찾기 (중첩 폴더 및 __MACOSX 대응)
       let sourceDir = extractDir;

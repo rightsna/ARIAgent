@@ -255,8 +255,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
     await sink.close();
 
     setState(() {
-      _statusMessage = 'Extracting the update...';
       _isDownloading = false;
+    });
+
+    await _killRunningApp();
+
+    setState(() {
+      _statusMessage = 'Extracting the update...';
     });
 
     final latestDirectory = Directory(latestDir);
@@ -397,6 +402,24 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
     await _createWindowsShortcut(shortcutPath: startMenuShortcut, targetPath: launcherPath);
     await _createWindowsShortcut(shortcutPath: desktopShortcut, targetPath: launcherPath);
+  }
+
+  Future<void> _killRunningApp() async {
+    setState(() {
+      _statusMessage = 'Stopping existing processes...';
+    });
+    try {
+      if (Platform.isWindows) {
+        // /T option kills child processes (e.g. ari-server node instance)
+        await Process.run('taskkill', ['/F', '/IM', 'AriAgent.exe', '/T']);
+      } else {
+        await Process.run('pkill', ['-f', 'AriAgent']);
+      }
+      // Wait momentarily for the OS to release file locks
+      await Future.delayed(const Duration(milliseconds: 1500));
+    } catch (_) {
+      // Ignore errors if the process is not running
+    }
   }
 
   Future<void> _createWindowsShortcut({
