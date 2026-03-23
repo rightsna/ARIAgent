@@ -13,6 +13,7 @@
     "@mariozechner/pi-agent-core": "latest",
     "@mariozechner/pi-ai": "latest",
     "@sinclair/typebox": "^0.34.0",
+    "@tuya/tuya-connector-nodejs": "^2.1.2",
     "handlebars": "^4.7.8",
     "luxon": "^3.7.1",
     "moment": "^2.30.1",

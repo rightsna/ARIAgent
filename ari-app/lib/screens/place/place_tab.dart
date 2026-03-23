@@ -1,13 +1,17 @@
-import 'dart:io';
 import 'dart:math';
 
-import 'package:ari_agent/models/agent_profile.dart';
-import 'package:ari_agent/models/scheduled_task.dart';
 import 'package:ari_agent/providers/avatar_provider.dart';
 import 'package:ari_agent/providers/chat_provider.dart';
 import 'package:ari_agent/providers/task_provider.dart';
+import 'package:ari_agent/providers/config_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import 'models/place_avatar.dart';
+import 'models/ha_device_item.dart';
+import 'widgets/agent_avatar.dart';
+import 'widgets/ha_device_icon.dart';
+import 'widgets/ha_registration_sheet.dart';
 
 class PlaceTab extends StatefulWidget {
   const PlaceTab({super.key});
@@ -19,60 +23,97 @@ class PlaceTab extends StatefulWidget {
 class _PlaceTabState extends State<PlaceTab> {
   final Random _random = Random();
   final Map<String, Offset> _avatarPositions = {};
+  final Map<String, Offset> _devicePositions = {};
+  List<Map<String, dynamic>> _haDevices = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHADevices();
+  }
+
+  Future<void> _loadHADevices() async {
+    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+    final devices = await configProvider.getHADevices();
+    if (devices != null && mounted) {
+      setState(() {
+        _haDevices = devices;
+        for (final device in _haDevices) {
+          _devicePositions.putIfAbsent(device['id'] as String, () => _randomDevicePosition());
+        }
+      });
+    }
+  }
+
+  Offset _randomDevicePosition() => Offset(0.05 + _random.nextDouble() * 0.9, 0.15 + _random.nextDouble() * 0.45);
+  Offset _randomPosition() => Offset(0.12 + _random.nextDouble() * 0.76, 0.6 + _random.nextDouble() * 0.22);
 
   @override
   Widget build(BuildContext context) {
     final avatarProvider = context.watch<AvatarProvider>();
-    final avatars = avatarProvider.allAvatars;
+    final allProfiles = avatarProvider.allAvatars;
     final currentAvatarId = avatarProvider.currentAvatarId;
     final isWorking = context.watch<ChatProvider>().isLoading;
-    final scheduledWorkingIds = _scheduledWorkingAvatarIds(context);
-    _syncAvatarPositions(avatars);
+    final taskProvider = context.watch<TaskProvider>();
+
+    // 로직 호출을 모델 클래스에서 직접 수행
+    final scheduledIds = PlaceAvatar.getScheduledWorkingIds(taskProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final avatarWidgets = <Widget>[];
-
-        for (final avatar in avatars) {
-          final ratio = _avatarPositions[avatar.id] ?? const Offset(0.5, 0.72);
-          final xPos = constraints.maxWidth * ratio.dx;
-          final yPos = constraints.maxHeight * ratio.dy;
-
-          avatarWidgets.add(
-            Positioned(
-              left: xPos - 48,
-              top: yPos - 62,
-              child: _buildAvatar(
-                avatar,
-                _statusForAvatar(
-                  avatarId: avatar.id,
-                  currentAvatarId: currentAvatarId,
-                  isWorking: isWorking,
-                  scheduledWorkingIds: scheduledWorkingIds,
-                ),
-              ),
+        final avatars = allProfiles.map((profile) {
+          _avatarPositions.putIfAbsent(profile.id, () => _seededPosition(_avatarPositions.length, allProfiles.length));
+          return PlaceAvatar(
+            profile: profile,
+            position: _avatarPositions[profile.id]!,
+            status: PlaceAvatar.calculateStatus(
+              avatarId: profile.id,
+              currentAvatarId: currentAvatarId,
+              isWorking: isWorking,
+              scheduledWorkingIds: scheduledIds,
             ),
           );
-        }
+        }).toList();
+
+        final devices = _haDevices.map((d) => HADeviceItem(
+          rawData: d,
+          position: _devicePositions[d['id']] ?? const Offset(0.5, 0.3),
+        )).toList();
 
         return Stack(
           children: [
-            Positioned.fill(
-              child: Image.asset('assets/images/room.png', fit: BoxFit.cover),
-            ),
-            ...avatarWidgets,
+            Positioned.fill(child: Image.asset('assets/images/room.png', fit: BoxFit.cover)),
+            ...devices.map((device) => Positioned(
+              left: constraints.maxWidth * device.position.dx - 20,
+              top: constraints.maxHeight * device.position.dy - 20,
+              child: HADeviceIcon(item: device),
+            )),
+            ...avatars.map((avatar) => Positioned(
+              left: constraints.maxWidth * avatar.position.dx - 48,
+              top: constraints.maxHeight * avatar.position.dy - 62,
+              child: AgentAvatar(item: avatar),
+            )),
             Positioned(
               right: 16,
               bottom: 16,
               child: FloatingActionButton(
                 mini: true,
-                backgroundColor: const Color(0xFF6C63FF).withValues(alpha: 0.8),
-                onPressed: () {
-                  setState(() {
-                    _randomizeAvatarPositions(avatars);
-                  });
-                },
+                backgroundColor: const Color(0xFF6C63FF).withOpacity(0.8),
+                onPressed: () => setState(() {
+                  for (final id in _avatarPositions.keys) _avatarPositions[id] = _randomPosition();
+                  for (final id in _devicePositions.keys) _devicePositions[id] = _randomDevicePosition();
+                }),
                 child: const Icon(Icons.refresh, color: Colors.white),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              bottom: 16,
+              child: FloatingActionButton(
+                heroTag: 'ha_connect',
+                backgroundColor: const Color(0xFFFF5722).withOpacity(0.8),
+                onPressed: () => _startHAConnection(context).then((_) => _loadHADevices()),
+                child: const Icon(Icons.home_filled, color: Colors.white),
               ),
             ),
           ],
@@ -81,193 +122,41 @@ class _PlaceTabState extends State<PlaceTab> {
     );
   }
 
-  void _syncAvatarPositions(List<AgentProfile> avatars) {
-    final activeIds = avatars.map((avatar) => avatar.id).toSet();
-    _avatarPositions.removeWhere((id, _) => !activeIds.contains(id));
-
-    for (var i = 0; i < avatars.length; i++) {
-      final avatar = avatars[i];
-      _avatarPositions.putIfAbsent(
-        avatar.id,
-        () => _seededPosition(i, avatars.length),
-      );
-    }
-  }
-
-  void _randomizeAvatarPositions(List<AgentProfile> avatars) {
-    for (final avatar in avatars) {
-      _avatarPositions[avatar.id] = _randomPosition();
-    }
-  }
-
   Offset _seededPosition(int index, int total) {
-    if (total <= 1) {
-      return const Offset(0.5, 0.72);
-    }
-
-    final spacing = 0.7 / (total - 1);
-    final x = 0.15 + (spacing * index);
-    final y = 0.66 + ((index % 2) * 0.08);
-    return Offset(x.clamp(0.15, 0.85), y.clamp(0.6, 0.82));
-  }
-
-  Offset _randomPosition() {
-    final x = 0.12 + _random.nextDouble() * 0.76;
-    final y = 0.6 + _random.nextDouble() * 0.22;
+    if (total <= 1) return const Offset(0.5, 0.72);
+    final x = (0.15 + (0.7 / (total - 1) * index)).clamp(0.15, 0.85);
+    final y = (0.66 + ((index % 2) * 0.08)).clamp(0.6, 0.82);
     return Offset(x, y);
   }
 
-  String _statusForAvatar({
-    required String avatarId,
-    required String currentAvatarId,
-    required bool isWorking,
-    required Set<String> scheduledWorkingIds,
-  }) {
-    if (scheduledWorkingIds.contains(avatarId)) {
-      return '작업중';
-    }
-    if (avatarId == currentAvatarId) {
-      return isWorking ? '작업중' : '대기중';
-    }
-    return '쉬는중';
-  }
-
-  Set<String> _scheduledWorkingAvatarIds(BuildContext context) {
-    final taskProvider = context.watch<TaskProvider>();
-    if (!taskProvider.isInitialized) {
-      return const <String>{};
-    }
-
-    final now = DateTime.now();
-    return taskProvider.tasks
-        .where((task) => task.enabled)
-        .where((task) => !_isCompletedOneOffTask(task, now))
-        .map(
-          (task) => (task.agentId == null || task.agentId!.trim().isEmpty)
-              ? 'default'
-              : task.agentId!.trim(),
-        )
-        .toSet();
-  }
-
-  bool _isCompletedOneOffTask(ScheduledTask task, DateTime now) {
-    if (task.isOneOff != true) {
-      return false;
-    }
-
-    final scheduledAt = _parseOneOffDateTime(task.cron);
-    if (scheduledAt == null) {
-      return false;
-    }
-
-    if (task.lastRunAt != null) {
-      return true;
-    }
-
-    return scheduledAt.isBefore(now);
-  }
-
-  DateTime? _parseOneOffDateTime(String cron) {
-    final parts = cron.split(' ');
-    if (parts.length < 5) {
-      return null;
-    }
-
-    final minute = int.tryParse(parts[0]);
-    final hour = int.tryParse(parts[1]);
-    final day = int.tryParse(parts[2]);
-    final month = int.tryParse(parts[3]);
-
-    if (minute == null || hour == null || day == null || month == null) {
-      return null;
-    }
-
-    final year = DateTime.now().year;
-    try {
-      return DateTime(year, month, day, hour, minute);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Widget _buildAvatar(AgentProfile avatar, String statusText) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF13132B),
-            border: Border.all(color: const Color(0xFF6C63FF), width: 3),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: ClipOval(child: _buildAvatarImage(avatar)),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          constraints: const BoxConstraints(minWidth: 76, maxWidth: 116),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xCC13132B),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: const Color(0xFF6C63FF).withValues(alpha: 0.35),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                avatar.name.trim().isEmpty ? 'ARI' : avatar.name.trim(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                statusText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.68),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+  Future<void> _startHAConnection(BuildContext context) async {
+    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+    final existing = await configProvider.getHACredentials();
+    if (!context.mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => HARegistrationSheet(
+        existing: existing,
+        onSubmit: (url, token) {
+          Navigator.pop(context);
+          _submitHARegistration(context, url, token);
+        },
+      ),
     );
   }
 
-  Widget _buildAvatarImage(AgentProfile avatar) {
-    if (avatar.imagePath.isNotEmpty) {
-      final file = File(avatar.imagePath);
-      if (file.existsSync()) {
-        return Image.file(file, width: 96, height: 96, fit: BoxFit.cover);
-      }
+  Future<void> _submitHARegistration(BuildContext context, String url, String token) async {
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.orange)));
+    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+    final result = await configProvider.saveHACredentials(url, token);
+    if (!context.mounted) return;
+    Navigator.pop(context);
+    if (result['ok'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ Home Assistant 서버 연동에 성공했습니다.'), backgroundColor: Colors.green));
+    } else {
+      showDialog(context: context, builder: (context) => AlertDialog(title: const Text('연동 실패'), content: Text(result['error'] ?? '알 수 없는 오류가 발생했습니다.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('확인'))]));
     }
-
-    return Image.asset(
-      'assets/images/avatar.png',
-      width: 96,
-      height: 96,
-      fit: BoxFit.cover,
-    );
   }
 }

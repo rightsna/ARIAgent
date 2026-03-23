@@ -17,6 +17,7 @@ import "./routers/task";
 import "./routers/memory";
 import "./routers/oauth";
 import "./routers/app_sync";
+import "./routers/homeassistant";
 import { logger } from "./infra/logger";
 import { runScheduledTask } from "./jobs/run_task";
 

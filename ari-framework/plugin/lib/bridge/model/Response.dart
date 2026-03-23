@@ -7,7 +7,7 @@ class Response {
 
   Response.fromJson(Map<String, dynamic> json)
     : r = _safeBool(json['ok']),
-      m = _safeString(json['message']),
+      m = _safeString(json['message'] ?? json['error']),
       d = json['data'] ?? {};
 
   static bool _safeBool(dynamic value) {

@@ -215,4 +215,42 @@ class ConfigProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<Map<String, dynamic>?> getHACredentials() async {
+    try {
+      final res = await WsManager.call('/GET_HA_CREDENTIALS');
+      return res;
+    } catch (e) {
+      debugPrint('[ConfigProvider] getHACredentials failed: $e');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>?> getHADevices() async {
+    try {
+      final res = await WsManager.call('/GET_HA_DEVICES');
+      final devices = res['devices'];
+      if (devices is List) {
+        return devices.map((item) => Map<String, dynamic>.from(item)).toList();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('[ConfigProvider] getHADevices failed: $e');
+      return null;
+    }
+  }
+
+  /// Home Assistant 자격증명 저장
+  Future<Map<String, dynamic>> saveHACredentials(String url, String token) async {
+    try {
+      final res = await WsManager.call('/SET_HA_CREDENTIALS', {
+        'url': url,
+        'token': token,
+      });
+      return {'ok': true, 'data': res};
+    } catch (e) {
+      debugPrint('[ConfigProvider] saveHACredentials failed: $e');
+      return {'ok': false, 'error': e.toString()};
+    }
+  }
 }
