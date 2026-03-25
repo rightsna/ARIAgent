@@ -45,21 +45,16 @@ app.*.map.json
 **/android/app/profile
 **/android/app/release
 
-# Component specifics: ari-app
-/ari-app/macos/Flutter/GeneratedPluginRegistrant.swift
-/ari-app/windows/flutter/generated_plugin_registrant.cc
-/ari-app/windows/flutter/generated_plugin_registrant.h
-/ari-app/windows/flutter/generated_plugins.cmake
+# Generated Flutter/Windows/macOS files
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/windows/flutter/generated_plugin_registrant.*
+**/windows/flutter/generated_plugins.*
 
-# Component specifics: ari-launcher
-/ari-launcher/macos/Flutter/GeneratedPluginRegistrant.swift
-/ari-launcher/windows/flutter/generated_plugin_registrant.cc
-/ari-launcher/windows/flutter/generated_plugin_registrant.h
-/ari-launcher/windows/flutter/generated_plugins.cmake
+# Node dependencies
+**/node_modules/
 
 # Component specifics: ari-server
 /ari-server/dist
-/ari-server/node_modules
 /ari-server/build
 /ari-server/data/
 /ari-server/logs/

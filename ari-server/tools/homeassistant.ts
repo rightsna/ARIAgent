@@ -130,20 +130,17 @@ export const listHADevicesTool: AgentTool = {
         content: [{ type: "text", text: JSON.stringify(devices, null, 2) }],
         details: { ok: true, deviceCount: devices.length }
       };
-    } catch (error) {
-      if (error instanceof Error) {
-         if (axios.isAxiosError(error) && error.response) {
-            return {
-              content: [{ type: "text", text: `Failed to fetch devices from HA: ${error.response.statusText}` }],
-              details: { ok: false, error: error.response.statusText }
-            };
-         }
-         return {
-          content: [{ type: "text", text: `Error: ${error.message}` }],
-          details: { ok: false, error: error.message }
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response) {
+        return {
+          content: [{ type: "text", text: `Failed to fetch devices from HA: ${error.response.statusText}` }],
+          details: { ok: false, error: error.response.statusText }
         };
       }
-      return { content: [{ type: "text", text: "Unknown error" }], details: { ok: false } };
+      return {
+        content: [{ type: "text", text: `Error: ${error.message || String(error)}` }],
+        details: { ok: false, error: String(error) }
+      };
     }
   },
 };

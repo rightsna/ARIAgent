@@ -15,7 +15,7 @@ packages:
       path: "../ari-framework/plugin"
       relative: true
     source: path
-    version: "0.1.4"
+    version: "0.1.5"
   async:
     dependency: transitive
     description:
