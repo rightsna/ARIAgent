@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'model/model_settings.dart';
 import 'server/server_settings.dart';
 import 'appearance/appearance_settings.dart';
 import 'about/about_settings.dart';
 import '../../../providers/server_provider.dart';
+import '../../../providers/config_provider.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -26,7 +28,7 @@ class _SettingsCategoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ServerProvider(),
+      listenable: Listenable.merge([ServerProvider(), context.watch<ConfigProvider>()]),
       builder: (context, _) {
         final isServerRunning = ServerProvider().isRunning;
 
@@ -88,7 +90,7 @@ class _SettingsCategoryList extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
         ),
         child: ListTile(
           leading: Icon(icon, color: const Color(0xFF6C63FF)),
@@ -102,13 +104,13 @@ class _SettingsCategoryList extends StatelessWidget {
           subtitle: Text(
             subtitle,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: Colors.white.withOpacity(0.5),
               fontSize: 12,
             ),
           ),
-          trailing: Icon(
+          trailing: const Icon(
             Icons.chevron_right,
-            color: Colors.white.withValues(alpha: 0.3),
+            color: Colors.white12,
           ),
           onTap: isEnabled
               ? () {

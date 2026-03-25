@@ -195,6 +195,7 @@ async function runInference(
         session.activeSkillToolNames = collectSkillToolNames(session.activeSkills);
         const nextTools = buildSessionToolsSync(session.activeSkillToolNames);
         session.runtimeTools.splice(0, session.runtimeTools.length, ...nextTools);
+        agent.setTools(session.runtimeTools);
         onProgress?.("스킬 지침을 반영하는 중...");
       }
     });

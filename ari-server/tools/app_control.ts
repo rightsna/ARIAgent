@@ -21,6 +21,8 @@ function resolveAppExecutable(appName: string): string {
   if (process.platform === "darwin") {
     for (const bundleRoot of bundleRoots) {
       candidates.push(
+        path.join(bundleRoot, appName, "app.app", "Contents", "MacOS", "app"),
+        path.join(bundleRoot, appName, "Contents", "MacOS", "app"),
         path.join(bundleRoot, appName, "Contents", "MacOS", appName),
         path.join(
           bundleRoot,
@@ -37,6 +39,7 @@ function resolveAppExecutable(appName: string): string {
   if (process.platform === "win32") {
     for (const bundleRoot of bundleRoots) {
       candidates.push(
+        path.join(bundleRoot, appName, "app.exe"),
         path.join(bundleRoot, appName, `${appName}.exe`),
         path.join(bundleRoot, `${appName}.exe`),
       );
@@ -140,7 +143,11 @@ export const sendAppCommandTool: AgentTool = {
     } = params as { appId: string; command: string; params?: any };
 
     try {
-      const result = await UserSocketHandler.commandApp(appId, command, cmdParams || {});
+      const result = await UserSocketHandler.commandApp(
+        appId,
+        command,
+        cmdParams || {},
+      );
 
       return {
         content: [
@@ -169,10 +176,10 @@ export const launchAppTool: AgentTool = {
   name: "launch_app",
   label: "앱 실행",
   description:
-    "지정된 앱(예: youtubeplayer, notepad)을 실행합니다. 환경변수와 명령행 인자를 전달할 수 있습니다.",
+    "지정된 앱을 실행합니다. 환경변수와 명령행 인자를 전달할 수 있습니다.",
   parameters: Type.Object({
     appName: Type.String({
-      description: "실행할 앱의 이름 (번들 폴더명, 예: youtubeplayer, notepad)",
+      description: "실행할 앱의 이름",
     }),
     env: Type.Optional(
       Type.Record(Type.String(), Type.String(), {
@@ -204,8 +211,8 @@ export const launchAppTool: AgentTool = {
       };
     }
 
-    logger.info(`[AppLifecycle] Launching app: ${appName}`);
     const executable = resolveAppExecutable(appName);
+    logger.info(`[AppLifecycle] Launching app '${appName}' via: ${executable} (args: ${JSON.stringify(args || [])})`);
 
     const child = spawn(executable, args || [], {
       detached: true,
@@ -233,11 +240,10 @@ export const launchAppTool: AgentTool = {
 export const terminateAppTool: AgentTool = {
   name: "terminate_app",
   label: "앱 종료",
-  description:
-    "실행 중인 지정된 앱(예: youtubeplayer, notepad)을 강제 종료합니다.",
+  description: "실행 중인 지정된 앱을 강제 종료합니다.",
   parameters: Type.Object({
     appName: Type.String({
-      description: "종료할 앱의 이름 (예: youtubeplayer, notepad)",
+      description: "종료할 앱의 이름",
     }),
   }),
   execute: async (_id, params) => {
@@ -367,9 +373,11 @@ export const installAppTool: AgentTool = {
       const extractDir = path.join(tempDir, "extracted");
       fs.mkdirSync(extractDir, { recursive: true });
       logger.info(`[AppInstall] Extracting to ${extractDir}`);
-      
+
       if (process.platform === "win32") {
-        await execPromise(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`);
+        await execPromise(
+          `powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`,
+        );
       } else {
         await execPromise(`unzip -o "${zipPath}" -d "${extractDir}"`);
       }
@@ -464,7 +472,51 @@ export const installAppTool: AgentTool = {
   },
 };
 
+/**
+ * list_apps
+ * 연결된 앱과 설치된 앱의 목록을 조회합니다.
+ */
+export const listAppsTool: AgentTool = {
+  name: "list_apps",
+  label: "앱 목록 조회",
+  description: "현재 서버에 연결된 실시간 앱 ID 목록과 설치된 번들 앱 목록을 조회합니다. 명령을 내릴 앱의 식별자를 찾을 때 사용합니다.",
+  parameters: Type.Object({}),
+  execute: async () => {
+    // 1. 실시간 연결된 앱 ID 가져오기
+    const connectedIds = UserSocketHandler.getConnectedAppIds();
+
+    // 2. 설치된 앱 목록 가져오기 (폴더 기준)
+    const bundleRoots = getBundleRoots();
+    const installedApps: string[] = [];
+    
+    for (const root of bundleRoots) {
+      if (fs.existsSync(root)) {
+        const items = fs.readdirSync(root).filter(dir => {
+          const stats = fs.statSync(path.join(root, dir));
+          return stats.isDirectory() && !dir.startsWith(".") && dir !== "__MACOSX";
+        });
+        installedApps.push(...items);
+      }
+    }
+
+    const uniqueInstalled = Array.from(new Set(installedApps));
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `📱 ARI 앱 목록:\n\n` +
+                `🟢 연결됨 (Connected):\n${connectedIds.length > 0 ? connectedIds.map(id => `- ${id}`).join("\n") : "(없음)"}\n\n` +
+                `📦 설치됨 (Installed):\n${uniqueInstalled.length > 0 ? uniqueInstalled.map(id => `- ${id}`).join("\n") : "(없음)"}`
+        }
+      ],
+      details: { connected: connectedIds, installed: uniqueInstalled }
+    };
+  }
+};
+
 export const TOOLS = [
+  listAppsTool,
   readAppStateTool,
   sendAppCommandTool,
   discoverAppCommandsTool,

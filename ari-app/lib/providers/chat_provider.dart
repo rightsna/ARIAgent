@@ -120,7 +120,40 @@ class ChatProvider extends ChangeNotifier {
       _upsertProgressMessage(progressMessage, requestId);
       notifyListeners();
     });
+
+    _agentPushSub = WsManager.on('/AGENT.PUSH', (data) {
+      final payload = data['data'] is Map<String, dynamic>
+          ? data['data'] as Map<String, dynamic>
+          : data;
+      final response = payload['response']?.toString() ?? '';
+      final requestId = payload['requestId']?.toString() ?? '';
+
+      if (response.isEmpty) return;
+
+      // 만약 진행 중인 메시지가 있다면 제거
+      if (requestId.isNotEmpty) {
+        _removeProgressMessage(requestId);
+      }
+
+      // 채팅창에 에이전트의 응답으로 표시
+      _messages.add(
+        ChatMessage(text: response, isUser: false),
+      );
+      notifyListeners();
+
+      // 로그 저장 (선택 사항)
+      try {
+        LogRepository().addChatLog(
+          agentId: AvatarProvider().currentAvatarId,
+          message: response,
+          isUser: false,
+        );
+      } catch (_) {}
+    });
   }
+
+  StreamSubscription? _agentPushSub;
+
 
   /// 에이전트에게 메시지 송신 (기존 AgentService 통합)
   Future<void> sendMessage(String text, String agentId) async {
@@ -201,11 +234,14 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _upsertProgressMessage(String text, String requestId) {
-    if (_activeRequestId != null &&
-        requestId.isNotEmpty &&
-        requestId != _activeRequestId) {
+    final isMyRequest =
+        _activeRequestId != null && requestId == _activeRequestId;
+    final isBackgroundRequest = requestId.startsWith('report-');
+
+    if (!isMyRequest && !isBackgroundRequest) {
       return;
     }
+
     final idx = _messages.lastIndexWhere(
       (m) => m.isSystem && m.requestId == requestId,
     );
@@ -231,6 +267,7 @@ class ChatProvider extends ChangeNotifier {
   void dispose() {
     _taskResultSub?.cancel();
     _progressSub?.cancel();
+    _agentPushSub?.cancel();
     AvatarProvider().removeListener(_onAvatarChanged);
     super.dispose();
   }

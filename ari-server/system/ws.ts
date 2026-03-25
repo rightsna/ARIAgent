@@ -61,9 +61,6 @@ export namespace UserSocketHandler {
       if (typeof arg1 === "string" && arg2 !== undefined) {
         const result_str = `${arg1} ${JSON.stringify(arg2)}`;
         rawSend(result_str);
-        if (arg1 !== "/APP.REGISTER") {
-          logger.info(`send: ${result_str}`);
-        }
       } else {
         rawSend(arg1, arg2);
       }
@@ -203,5 +200,11 @@ export namespace UserSocketHandler {
           c.appId?.replace("_", "") === appId.replace("_", "")) &&
         c.readyState === WebSocket.OPEN,
     );
+  };
+
+  export const getConnectedAppIds = (): string[] => {
+    return clients
+      .filter((c) => c && c.readyState === 1 && c.appId) // 1 === WebSocket.OPEN
+      .map((c) => c.appId!);
   };
 }

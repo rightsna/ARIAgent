@@ -21,8 +21,27 @@ class ConfigProvider extends ChangeNotifier {
   bool _hasApiKey = true;
   bool get hasApiKey => _hasApiKey;
 
+  String? _mode;
+  String? get mode => _mode;
+  bool get isDevelopment => _mode == 'development';
+
   Future<void> init() async {
     await _repository.init();
+
+    // 서버 환경 상태 수신
+    WsManager.on('/GREETING', (data) {
+      _mode = data['mode'];
+      debugPrint('[SERVER] Running in ${data['mode']} mode');
+      notifyListeners();
+    });
+
+    // 서버 로그 수신 시 디버그 콘솔에 출력
+    WsManager.on('/SERVER.LOG', (data) {
+      debugPrint(
+        '[SERVER-LOG] [${data['level']}] [${data['label']}] ${data['message']}',
+      );
+    });
+
     notifyListeners();
   }
 
@@ -241,7 +260,10 @@ class ConfigProvider extends ChangeNotifier {
   }
 
   /// Home Assistant 자격증명 저장
-  Future<Map<String, dynamic>> saveHACredentials(String url, String token) async {
+  Future<Map<String, dynamic>> saveHACredentials(
+    String url,
+    String token,
+  ) async {
     try {
       final res = await WsManager.call('/SET_HA_CREDENTIALS', {
         'url': url,
@@ -251,6 +273,25 @@ class ConfigProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[ConfigProvider] saveHACredentials failed: $e');
       return {'ok': false, 'error': e.toString()};
+    }
+  }
+
+  /// Home Assistant 기기 제어
+  Future<bool> controlHADevice(
+    String entityId,
+    String service, {
+    String? domain,
+  }) async {
+    try {
+      final res = await WsManager.call('/CONTROL_HA_DEVICE', {
+        'entity_id': entityId,
+        'service': service,
+        if (domain != null) 'domain': domain,
+      });
+      return res['success'] == true;
+    } catch (e) {
+      debugPrint('[ConfigProvider] controlHADevice failed: $e');
+      return false;
     }
   }
 }

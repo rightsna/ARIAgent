@@ -17,12 +17,16 @@ function parseSkillTools(content: string): string[] {
   const lines = content.split(/\r?\n/);
   for (const rawLine of lines) {
     const line = rawLine.trim();
-    const match = line.match(/^(?:사용 도구|Tools)\s*:\s*(.+)$/i);
+    // Remove markdown bold formatting, but DO NOT remove underscores because tool names use them!
+    const plainLine = line.replace(/\*/g, "");
+    
+    // Match variations like "사용 도구:", "Tools:", "사용 도구 (Tools):"
+    const match = plainLine.match(/^(?:사용\s*도구|Tools).*?:\s*(.+)$/i);
     if (!match?.[1]) continue;
 
     return match[1]
       .split(",")
-      .map((value) => value.trim())
+      .map((value) => value.replace(/`/g, "").trim())
       .filter((value) => value.length > 0);
   }
 

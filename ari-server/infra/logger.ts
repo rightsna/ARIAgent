@@ -4,6 +4,9 @@ import winstonDaily from "winston-daily-rotate-file";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { EventEmitter } from "events";
+
+export const logEventEmitter = new EventEmitter();
 
 const { combine, timestamp, label, printf, colorize, errors } = winston.format;
 
@@ -87,6 +90,11 @@ function createLoggerOptions(logDir: string) {
 
 // winston 로거 생성
 export const logger: Logger = winston.createLogger(createLoggerOptions(currentLogDir));
+
+// 로거 이벤트를 EventEmitter로 브로드캐스트
+logger.on("data", (info) => {
+  logEventEmitter.emit("log", info);
+});
 
 export function setupPath(logDir: string = path.join(os.homedir(), ".ari-agent", "logs")): void {
   currentLogDir = logDir;

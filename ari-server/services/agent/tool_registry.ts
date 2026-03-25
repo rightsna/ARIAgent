@@ -3,18 +3,11 @@ import { loadAllTools } from "../../tools";
 
 const MAIN_TOOL_NAMES = new Set<string>([
   "execute_bash",
-  "register_schedule",
-  "register_one_off_schedule",
   "update_core_memory",
   "append_daily_memory",
   "read_skill",
-  "set_credential",
-  "get_credential",
-  "delete_credential",
   "web_browse",
   "web_fetch",
-  "read_app_state",
-  "send_app_command",
 ]);
 
 let cachedAllTools: AgentTool[] = [];
@@ -33,7 +26,11 @@ async function loadCachedTools(): Promise<AgentTool[]> {
   return allTools;
 }
 
-function buildMergedTools(mainTools: AgentTool[], allTools: AgentTool[], extraToolNames: Iterable<string>): AgentTool[] {
+function buildMergedTools(
+  mainTools: AgentTool[],
+  allTools: AgentTool[],
+  extraToolNames: Iterable<string>,
+): AgentTool[] {
   const merged = new Map<string, AgentTool>();
 
   for (const tool of mainTools) {
@@ -50,13 +47,17 @@ function buildMergedTools(mainTools: AgentTool[], allTools: AgentTool[], extraTo
   return [...merged.values()];
 }
 
-export async function buildSessionTools(extraToolNames: Iterable<string>): Promise<AgentTool[]> {
+export async function buildSessionTools(
+  extraToolNames: Iterable<string>,
+): Promise<AgentTool[]> {
   const allTools = await loadCachedTools();
   const mainTools = await loadMainTools();
   return buildMergedTools(mainTools, allTools, extraToolNames);
 }
 
-export function buildSessionToolsSync(extraToolNames: Iterable<string>): AgentTool[] {
+export function buildSessionToolsSync(
+  extraToolNames: Iterable<string>,
+): AgentTool[] {
   // 런타임 중(inference phase)에는 최신 상태가 캐시에 이미 로드되어 있어야 합니다.
   return buildMergedTools(cachedMainTools, cachedAllTools, extraToolNames);
 }

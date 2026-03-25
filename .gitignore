@@ -66,6 +66,3 @@ app.*.map.json
 
 # Submodules (Contents are ignored by their own .gitignores usually)
 # But we can explicitly ignore their artifacts here if needed.
-# /ARIWeb/ari-web/dist
-# /ARIWeb/ari-web/node_modules
-/ARIWeb/ari-web/public/downloads

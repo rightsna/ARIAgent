@@ -3,11 +3,19 @@ import '../models/ha_device_item.dart';
 
 class HADeviceIcon extends StatelessWidget {
   final HADeviceItem item;
+  final VoidCallback? onTap;
 
-  const HADeviceIcon({super.key, required this.item});
+  const HADeviceIcon({super.key, required this.item, this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final name = item.name;
     final type = item.type;
     final state = item.state;

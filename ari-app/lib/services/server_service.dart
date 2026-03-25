@@ -345,7 +345,9 @@ class ServerService {
 
     try {
       final root = findProjectRoot();
-      final bundledServerExecutable = _findBundledServerExecutable(root);
+      final bundledServerExecutable = kDebugMode
+          ? null
+          : _findBundledServerExecutable(root);
       final serverDir = bundledServerExecutable != null
           ? File(bundledServerExecutable).parent.path
           : '$root${Platform.pathSeparator}$_serverFolder';
@@ -379,7 +381,10 @@ class ServerService {
       }
 
       if (bundledServerExecutable == null &&
-          (!Directory('$serverDir${Platform.pathSeparator}dist').existsSync() ||
+          (kDebugMode ||
+              !Directory(
+                '$serverDir${Platform.pathSeparator}dist',
+              ).existsSync() ||
               !File(
                 '$serverDir${Platform.pathSeparator}dist${Platform.pathSeparator}index.js',
               ).existsSync())) {
@@ -423,7 +428,7 @@ class ServerService {
 
         _process = await Process.start(
           _nodeExecutable,
-          ['--experimental-require-module', 'dist/index.js'],
+          ['dist/index.js'],
           workingDirectory: serverDir,
           environment: {
             'PORT': ConfigRepository().port.toString(),

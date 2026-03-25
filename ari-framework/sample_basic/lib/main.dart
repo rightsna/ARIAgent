@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ari_plugin/ari_plugin.dart';
+import 'protocol_config.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AriFramework Sample',
+      title: 'AriFramework Basic',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
@@ -38,14 +39,7 @@ class _SampleHomeState extends State<SampleHome> {
   @override
   void initState() {
     super.initState();
-    protocolHandler = AppProtocolHandler(
-      appId: 'sample_app',
-      onCommand: (command, params) {
-        debugPrint('Received command: $command with params: $params');
-      },
-      onGetState: () => {'connected': WsManager.isConnected},
-      onGetCommands: () => {'PING': 'Returns app availability'},
-    );
+    protocolHandler = ProtocolConfig.createHandler();
     protocolHandler.start();
   }
 

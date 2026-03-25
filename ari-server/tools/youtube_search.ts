@@ -27,7 +27,8 @@ function fetchText(url: string): Promise<string> {
       url,
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
           "Accept-Language": "ko,en-US;q=0.9,en;q=0.8",
         },
       },
@@ -59,7 +60,11 @@ function fetchText(url: string): Promise<string> {
 }
 
 function extractInitialData(html: string): unknown {
-  const patterns = [/var ytInitialData = (.*?);<\/script>/s, /window\["ytInitialData"\] = (.*?);<\/script>/s, /ytInitialData"\] = (.*?);<\/script>/s];
+  const patterns = [
+    /var ytInitialData = (.*?);<\/script>/s,
+    /window\["ytInitialData"\] = (.*?);<\/script>/s,
+    /ytInitialData"\] = (.*?);<\/script>/s,
+  ];
 
   for (const pattern of patterns) {
     const match = html.match(pattern);
@@ -104,7 +109,9 @@ function getTextFromRuns(value: unknown): string {
 
   if (Array.isArray(value.runs)) {
     return value.runs
-      .map((run) => (isRecord(run) && typeof run.text === "string" ? run.text : ""))
+      .map((run) =>
+        isRecord(run) && typeof run.text === "string" ? run.text : "",
+      )
       .join("")
       .trim();
   }
@@ -127,9 +134,17 @@ function collectVideoRenderers(node: unknown, acc: YoutubeVideoItem[]): void {
   const videoRenderer = node.videoRenderer;
   if (isRecord(videoRenderer) && typeof videoRenderer.videoId === "string") {
     const videoId = videoRenderer.videoId;
-    const thumbnails = isRecord(videoRenderer.thumbnail) && Array.isArray(videoRenderer.thumbnail.thumbnails) ? videoRenderer.thumbnail.thumbnails : [];
-    const lastThumbnail = thumbnails.length > 0 ? thumbnails[thumbnails.length - 1] : undefined;
-    const thumbnailUrl = isRecord(lastThumbnail) && typeof lastThumbnail.url === "string" ? lastThumbnail.url : undefined;
+    const thumbnails =
+      isRecord(videoRenderer.thumbnail) &&
+      Array.isArray(videoRenderer.thumbnail.thumbnails)
+        ? videoRenderer.thumbnail.thumbnails
+        : [];
+    const lastThumbnail =
+      thumbnails.length > 0 ? thumbnails[thumbnails.length - 1] : undefined;
+    const thumbnailUrl =
+      isRecord(lastThumbnail) && typeof lastThumbnail.url === "string"
+        ? lastThumbnail.url
+        : undefined;
 
     acc.push({
       title: getTextFromRuns(videoRenderer.title),
@@ -146,7 +161,10 @@ function collectVideoRenderers(node: unknown, acc: YoutubeVideoItem[]): void {
   }
 }
 
-async function searchYoutubeVideos(query: string, limit: number): Promise<YoutubeVideoItem[]> {
+async function searchYoutubeVideos(
+  query: string,
+  limit: number,
+): Promise<YoutubeVideoItem[]> {
   const trimmed = query.trim();
   if (!trimmed) {
     throw new Error("검색어가 필요합니다.");
@@ -158,7 +176,12 @@ async function searchYoutubeVideos(query: string, limit: number): Promise<Youtub
   const items: YoutubeVideoItem[] = [];
   collectVideoRenderers(initialData, items);
 
-  const uniqueItems = items.filter((item, index) => !!item.title && items.findIndex((candidate) => candidate.videoId === item.videoId) === index);
+  const uniqueItems = items.filter(
+    (item, index) =>
+      !!item.title &&
+      items.findIndex((candidate) => candidate.videoId === item.videoId) ===
+        index,
+  );
 
   return uniqueItems.slice(0, limit);
 }
@@ -210,12 +233,25 @@ function getTimeMoodKeyword(now = new Date()): string {
 function buildPlaylistQueryVariants(query: string): string[] {
   const trimmed = query.trim();
   const timeMood = getTimeMoodKeyword();
-  const variants = [trimmed, `${timeMood} ${trimmed}`, `${trimmed} 플레이리스트`, `${timeMood} 듣기 좋은 ${trimmed} 플레이리스트`, `${trimmed} 믹스`, `${trimmed} 모음`];
+  const variants = [
+    trimmed,
+    `${timeMood} ${trimmed}`,
+    `${trimmed} 플레이리스트`,
+    `${timeMood} 듣기 좋은 ${trimmed} 플레이리스트`,
+    `${trimmed} 믹스`,
+    `${trimmed} 모음`,
+  ];
 
-  return variants.filter((value, index) => value && variants.indexOf(value) === index);
+  return variants.filter(
+    (value, index) => value && variants.indexOf(value) === index,
+  );
 }
 
-async function searchExpandedPlaylistCandidates(query: string, perQueryLimit: number, maxItems: number): Promise<YoutubeVideoItem[]> {
+async function searchExpandedPlaylistCandidates(
+  query: string,
+  perQueryLimit: number,
+  maxItems: number,
+): Promise<YoutubeVideoItem[]> {
   const variants = buildPlaylistQueryVariants(query);
   const merged: YoutubeVideoItem[] = [];
   const seenVideoIds = new Set<string>();
@@ -240,10 +276,12 @@ async function searchExpandedPlaylistCandidates(query: string, perQueryLimit: nu
 export const youtubePlayPlaylistTool: AgentTool = {
   name: "youtube_play_playlist",
   label: "YouTube 플레이리스트 재생",
-  description: "분위기/장르 검색어를 받아 로컬 YouTube 플레이어에서 바로 재생한다.",
+  description:
+    "분위기/장르 검색어를 받아 로컬 YouTube 플레이어에서 바로 재생한다.",
   parameters: Type.Object({
     query: Type.String({
-      description: "플레이리스트를 찾기 위한 검색어 (예: '감성적인 음악', '집중용 재즈', 'lofi playlist')",
+      description:
+        "플레이리스트를 찾기 위한 검색어 (예: '감성적인 음악', '집중용 재즈', 'lofi playlist')",
     }),
   }),
   execute: async (_toolCallId, params, _signal, _onUpdate) => {
@@ -259,7 +297,11 @@ export const youtubePlayPlaylistTool: AgentTool = {
 
     const normalizedQuery = query.trim();
     logger.info(`▶️ Tool[youtube_play_playlist]: ${normalizedQuery}`);
-    const candidateItems = await searchExpandedPlaylistCandidates(normalizedQuery, 6, 18);
+    const candidateItems = await searchExpandedPlaylistCandidates(
+      normalizedQuery,
+      6,
+      18,
+    );
     const items = pickShuffledItems(filterRecentItems(candidateItems), 5);
 
     if (items.length === 0) {
@@ -281,7 +323,7 @@ export const youtubePlayPlaylistTool: AgentTool = {
       content: [
         {
           type: "text" as const,
-          text: `✅ 시스템 메시지: 재생 준비 완료 (${items.length}곡).\n이제 반드시 'launch_app' 도구를 사용하여 'youtubeplayer' 앱을 실행하시오.\n(파라미터 env: { YOUTUBEPLAYER_PLAYLIST: "${videoIds.join(",")}" })`,
+          text: `✅ 시스템 메시지: 재생 준비 완료 (${items.length}곡).\n이제 반드시 'launch_app' 도구를 사용하여 'youtube_player' 앱을 실행하시오.\n(파라미터 env: { YOUTUBEPLAYER_PLAYLIST: "${videoIds.join(",")}" })`,
         },
       ],
       details: {
@@ -296,7 +338,8 @@ export const youtubePlayPlaylistTool: AgentTool = {
 export const youtubeSearchVideosTool: AgentTool = {
   name: "youtube_search_videos",
   label: "YouTube 영상 검색",
-  description: "검색어를 받아 YouTube 영상 검색 결과를 구조화된 목록으로 반환한다. Flutter 내장 플레이어에 넘길 재생 후보 목록을 만들 때 사용한다.",
+  description:
+    "검색어를 받아 YouTube 영상 검색 결과를 구조화된 목록으로 반환한다. Flutter 내장 플레이어에 넘길 재생 후보 목록을 만들 때 사용한다.",
   parameters: Type.Object({
     query: Type.String({
       description: "검색어 (예: '감성적인 노래', 'lofi hip hop', '집중 음악')",
@@ -311,7 +354,9 @@ export const youtubeSearchVideosTool: AgentTool = {
     const { query, limit } = params as { query: string; limit?: number };
     const normalizedLimit = Math.max(1, Math.min(10, Math.floor(limit ?? 5)));
 
-    logger.info(`🔎 Tool[youtube_search_videos]: ${query} (limit=${normalizedLimit})`);
+    logger.info(
+      `🔎 Tool[youtube_search_videos]: ${query} (limit=${normalizedLimit})`,
+    );
     const items = await searchYoutubeVideos(query, normalizedLimit);
 
     if (items.length === 0) {

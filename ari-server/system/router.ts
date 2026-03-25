@@ -93,6 +93,7 @@ class Router {
       }
 
       if (!handled && cmd.startsWith("/")) {
+        log.warn(`[Router] Unhandled command: ${cmd} from ${ws.uuid} (${ws.appId || "unknown"})`);
         ws.send(cmd, { ok: false, code: 0, message: "no cmd", data: {} });
       }
     }

@@ -86,7 +86,16 @@ class _PlaceTabState extends State<PlaceTab> {
             ...devices.map((device) => Positioned(
               left: constraints.maxWidth * device.position.dx - 20,
               top: constraints.maxHeight * device.position.dy - 20,
-              child: HADeviceIcon(item: device),
+              child: HADeviceIcon(
+                item: device,
+                onTap: () async {
+                  final configProvider = Provider.of<ConfigProvider>(context, listen: false);
+                  final success = await configProvider.controlHADevice(device.id, 'toggle', domain: device.type);
+                  if (success) {
+                    _loadHADevices();
+                  }
+                },
+              ),
             )),
             ...avatars.map((avatar) => Positioned(
               left: constraints.maxWidth * avatar.position.dx - 48,

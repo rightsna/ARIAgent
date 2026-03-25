@@ -61,38 +61,44 @@ dependencies:
 ```
 
 ### 3.2 핵심 구현 (Implementation)
-`main.dart`에서 실행 인자를 수신하고 핸들러를 등록합니다.
+`main.dart`에서 실행 인자를 수신하고 핸들러를 등록합니다. 규격화된 개발을 위해 `protocol_config.dart` 파일을 분리하여 관리하는 것을 권장합니다.
 
 - **실행 인자**: `--port`, `--host` (서버 접속 정보)
 - **App Protocol Handler**: 에이전트의 명령(`COMMAND`)과 상태 조회(`QUERY`)를 처리합니다.
 
+**추가 패턴 (ProtocolConfig)**:
 ```dart
-import 'package:ari_plugin/ari_plugin.dart';
-
-Future<void> main(List<String> args) async {
-  // 1. 실행 인자 분석 (Port, Host)
-  final port = args.firstWhere((a) => a.startsWith('--port='), orElse: () => '').replaceFirst('--port=', '');
-  final host = args.firstWhere((a) => a.startsWith('--host='), orElse: () => '').replaceFirst('--host=', '127.0.0.1');
-
-  // 2. 연결 초기화
-  WsManager.init(host: host, port: int.tryParse(port) ?? WsManager.defaultPort);
-  WsManager.connect();
-
-  // 3. 프로토콜 핸들러 등록
-  final handler = AppProtocolHandler(
-    appId: 'my_app_id', // 프로젝트 폴더명과 동일하게 설정 권장
-    onCommand: (command, params) async {
-      if (command == 'MY_ACTION') {
-        // 로직 수행 후 결과 리턴
-        return {'status': 'success'};
-      }
-      return null;
-    },
+// lib/protocol_config.dart
+class ProtocolConfig {
+  static const String appId = 'my_app_id';
+  static AppProtocolHandler createHandler() => AppProtocolHandler(
+    appId: appId,
+    onCommand: (cmd, params) => handleCommand(cmd, params),
     onGetState: () => { 'status': 'ready' },
     onGetCommands: () => { 'MY_ACTION': '설명' },
   );
 
+  static dynamic handleCommand(String command, Map<String, dynamic> params) {
+    if (command == 'MY_ACTION') return {'status': 'success'};
+    return null;
+  }
+}
+```
+
+```dart
+// lib/main.dart
+import 'package:ari_plugin/ari_plugin.dart';
+import 'protocol_config.dart';
+
+Future<void> main(List<String> args) async {
+  // 1. 연결 초기화 (args 파싱 생략)
+  WsManager.init(host: host, port: port);
+  WsManager.connect();
+
+  // 2. 핸들러 등록 및 시작
+  final handler = ProtocolConfig.createHandler();
   handler.start();
+
   runApp(const MyApp());
 }
 ```
@@ -108,6 +114,11 @@ Future<void> main(List<String> args) async {
 3.  **결과 응답**: `/APP.COMMAND_RESPONSE {"requestId": "...", "result": {...}}`
 4.  **상태 쿼리 (QUERY)**: `/APP.QUERY {"queryType": "GET_STATE"}`
     - 상태 쿼리에 대한 응답은 `/APP.QUERY_RESPONSE`를 통해 전송됩니다.
+5.  **자발적 보고 (REPORT)**: `/APP.REPORT {"appId": "...", "message": "...", "type": "info"}`
+    - 앱이 스스로 서버(에이전트)에게 특정 사건을 보고할 때 사용합니다.
+    - **중요**: 이 명령을 보내면 서버의 에이전트가 내용을 분석하고 사용자에게 **자연스러운 문장**으로 답변을 생성하여 전달합니다. (역방향 소통)
+
+---
 
 ---
 

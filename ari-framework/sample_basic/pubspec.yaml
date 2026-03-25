@@ -1,4 +1,4 @@
-name: sample_app
+name: sample_basic
 description: "A Sample project."
 publish_to: 'none'
 version: 1.0.0+1
@@ -10,11 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   ari_plugin:
-    path: ../plugin
-    # git:
-    #   url: https://github.com/rightsna/ARIAgent.git
-    #   ref: main
-    #   path: plugin
+    git:
+      url: https://github.com/rightsna/ARIAgent.git
+      ref: main
+      path: ari-framework/plugin
   cupertino_icons: ^1.0.8
 
 dev_dependencies:

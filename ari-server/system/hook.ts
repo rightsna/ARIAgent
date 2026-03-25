@@ -1,13 +1,17 @@
 import { log } from "../infra/logger";
 
 export function setupGlobalErrorHandlers() {
-  // 전역 예외 처리: uncaughtException
   process.on("uncaughtException", (error) => {
-    log.error("잡히지 않은 예외:", error);
+    log.error("[Global] Uncaught Exception:", error);
+    // Note: We don't exit(1) here as it's an agent that should try to stay alive, 
+    // but in many node apps, it's recommended to restart.
   });
 
-  // 전역 예외 처리: unhandledRejection
-  process.on("unhandledRejection", (reason: any, promise) => {
-    log.error("처리되지 않은 프로미스 거부:", promise, "이유:", reason);
+  process.on("unhandledRejection", (reason, promise) => {
+    log.error("[Global] Unhandled Rejection at:", promise, "Reason:", reason);
+  });
+
+  process.on("warning", (warning) => {
+    log.warn("[Global] Node Warning:", warning.name, warning.message, warning.stack);
   });
 }
