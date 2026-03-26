@@ -17,6 +17,9 @@ router.on("/APP.REGISTER", (ws, params) => {
   ws.appId = appId;
   logger.info(`[AppSync] App registered: ${appId}`);
 
+  // 연결된 앱 목록 브로드캐스트
+  UserSocketHandler.broadcastConnectedApps();
+
   // 성공 응답
   ws.send("/APP.REGISTER", { ok: true, data: { appId } });
 });

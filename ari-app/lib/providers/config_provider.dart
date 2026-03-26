@@ -25,6 +25,9 @@ class ConfigProvider extends ChangeNotifier {
   String? get mode => _mode;
   bool get isDevelopment => _mode == 'development';
 
+  List<String> _connectedAppIds = [];
+  List<String> get connectedAppIds => _connectedAppIds;
+
   Future<void> init() async {
     await _repository.init();
 
@@ -40,6 +43,16 @@ class ConfigProvider extends ChangeNotifier {
       debugPrint(
         '[SERVER-LOG] [${data['level']}] [${data['label']}] ${data['message']}',
       );
+    });
+
+    // 실시간 연결된 앱 목록 수신
+    WsManager.on('/CONNECTED_APPS_CHANGED', (data) {
+      final ids = data['connectedIds'];
+      if (ids is List) {
+        _connectedAppIds = ids.cast<String>();
+        debugPrint('[ConfigProvider] Connected Apps Changed: $_connectedAppIds');
+        notifyListeners();
+      }
     });
 
     notifyListeners();
@@ -159,6 +172,30 @@ class ConfigProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[ConfigProvider] getPlugins failed: $e');
       return null;
+    }
+  }
+
+  Future<List<String>> getConnectedApps() async {
+    try {
+      final res = await WsManager.call('/GET_CONNECTED_APPS');
+      final connectedIds = res['connectedIds'];
+      if (connectedIds is List) {
+        return connectedIds.cast<String>();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('[ConfigProvider] getConnectedApps failed: $e');
+      return [];
+    }
+  }
+
+  Future<bool> launchApp(String appId) async {
+    try {
+      await WsManager.call('/LAUNCH_APP', {'appId': appId});
+      return true;
+    } catch (e) {
+      debugPrint('[ConfigProvider] launchApp failed: $e');
+      return false;
     }
   }
 

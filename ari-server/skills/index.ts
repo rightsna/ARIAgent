@@ -11,6 +11,7 @@ export interface SkillDefinition {
   content: string;
   filePath: string;
   isCustom?: boolean;
+  icon?: string;
 }
 
 function parseSkillTools(content: string): string[] {
@@ -46,6 +47,17 @@ function parseSkillDescription(content: string): string {
   return "추가 지침을 담고 있는 스킬입니다.";
 }
 
+function parseSkillIcon(content: string): string | undefined {
+  const lines = content.split(/\r?\n/);
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    // Case-insensitive match for "Icon: <name>"
+    const match = line.match(/^Icon\s*:\s*(.+)$/i);
+    if (match?.[1]) return match[1].trim();
+  }
+  return undefined;
+}
+
 function loadSkillsFromDir(dirPath: string): SkillDefinition[] {
   const skills: SkillDefinition[] = [];
   if (!fs.existsSync(dirPath)) return skills;
@@ -73,6 +85,7 @@ function loadSkillsFromDir(dirPath: string): SkillDefinition[] {
       title: entry,
       description: parseSkillDescription(content),
       tools: parseSkillTools(content),
+      icon: parseSkillIcon(content),
       content,
       filePath: skillFilePath,
     });
@@ -112,3 +125,5 @@ export async function loadAllSkills(): Promise<SkillDefinition[]> {
   result.sort((a, b) => a.name.localeCompare(b.name));
   return result;
 }
+
+

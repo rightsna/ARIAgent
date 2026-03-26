@@ -12,6 +12,8 @@ import 'models/ha_device_item.dart';
 import 'widgets/agent_avatar.dart';
 import 'widgets/ha_device_icon.dart';
 import 'widgets/ha_registration_sheet.dart';
+import 'widgets/place_app_bar.dart';
+import '../../repositories/app_repository.dart';
 
 class PlaceTab extends StatefulWidget {
   const PlaceTab({super.key});
@@ -25,11 +27,14 @@ class _PlaceTabState extends State<PlaceTab> {
   final Map<String, Offset> _avatarPositions = {};
   final Map<String, Offset> _devicePositions = {};
   List<Map<String, dynamic>> _haDevices = [];
+  List<Map<String, dynamic>> _installedApps = [];
+  bool _isLoadingApps = true;
 
   @override
   void initState() {
     super.initState();
     _loadHADevices();
+    _loadInstalledApps();
   }
 
   Future<void> _loadHADevices() async {
@@ -45,6 +50,16 @@ class _PlaceTabState extends State<PlaceTab> {
     }
   }
 
+  Future<void> _loadInstalledApps() async {
+    final apps = await AppRepository().getInstalledApps();
+    if (mounted) {
+      setState(() {
+        _installedApps = apps;
+        _isLoadingApps = false;
+      });
+    }
+  }
+
   Offset _randomDevicePosition() => Offset(0.05 + _random.nextDouble() * 0.9, 0.15 + _random.nextDouble() * 0.45);
   Offset _randomPosition() => Offset(0.12 + _random.nextDouble() * 0.76, 0.6 + _random.nextDouble() * 0.22);
 
@@ -55,6 +70,7 @@ class _PlaceTabState extends State<PlaceTab> {
     final currentAvatarId = avatarProvider.currentAvatarId;
     final isWorking = context.watch<ChatProvider>().isLoading;
     final taskProvider = context.watch<TaskProvider>();
+    final configProvider = context.watch<ConfigProvider>();
 
     // 로직 호출을 모델 클래스에서 직접 수행
     final scheduledIds = PlaceAvatar.getScheduledWorkingIds(taskProvider);
@@ -62,7 +78,10 @@ class _PlaceTabState extends State<PlaceTab> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final avatars = allProfiles.map((profile) {
-          _avatarPositions.putIfAbsent(profile.id, () => _seededPosition(_avatarPositions.length, allProfiles.length));
+          _avatarPositions.putIfAbsent(
+              profile.id,
+              () => _seededPosition(
+                  _avatarPositions.length, allProfiles.length));
           return PlaceAvatar(
             profile: profile,
             position: _avatarPositions[profile.id]!,
@@ -75,42 +94,63 @@ class _PlaceTabState extends State<PlaceTab> {
           );
         }).toList();
 
-        final devices = _haDevices.map((d) => HADeviceItem(
-          rawData: d,
-          position: _devicePositions[d['id']] ?? const Offset(0.5, 0.3),
-        )).toList();
+        final devices = _haDevices
+            .map((d) => HADeviceItem(
+                  rawData: d,
+                  position: _devicePositions[d['id']] ?? const Offset(0.5, 0.3),
+                ))
+            .toList();
 
         return Stack(
           children: [
-            Positioned.fill(child: Image.asset('assets/images/room.png', fit: BoxFit.cover)),
+            Positioned.fill(
+                child: Image.asset('assets/images/room.png', fit: BoxFit.cover)),
             ...devices.map((device) => Positioned(
-              left: constraints.maxWidth * device.position.dx - 20,
-              top: constraints.maxHeight * device.position.dy - 20,
-              child: HADeviceIcon(
-                item: device,
-                onTap: () async {
-                  final configProvider = Provider.of<ConfigProvider>(context, listen: false);
-                  final success = await configProvider.controlHADevice(device.id, 'toggle', domain: device.type);
-                  if (success) {
-                    _loadHADevices();
-                  }
-                },
-              ),
-            )),
+                  left: constraints.maxWidth * device.position.dx - 20,
+                  top: constraints.maxHeight * device.position.dy - 20,
+                  child: HADeviceIcon(
+                    item: device,
+                    onTap: () async {
+                      final success = await configProvider.controlHADevice(
+                          device.id, 'toggle',
+                          domain: device.type);
+                      if (success) {
+                        _loadHADevices();
+                      }
+                    },
+                  ),
+                )),
             ...avatars.map((avatar) => Positioned(
-              left: constraints.maxWidth * avatar.position.dx - 48,
-              top: constraints.maxHeight * avatar.position.dy - 62,
-              child: AgentAvatar(item: avatar),
-            )),
+                  left: constraints.maxWidth * avatar.position.dx - 48,
+                  top: constraints.maxHeight * avatar.position.dy - 62,
+                  child: AgentAvatar(item: avatar),
+                )),
+
+            // 아리 스토어 및 설치된 앱 목록 (상단 바)
+            Positioned(
+              left: 16,
+              top: 16,
+              right: 16,
+              child: PlaceAppBar(
+                apps: _installedApps,
+                isLoading: _isLoadingApps,
+                connectedAppIds: configProvider.connectedAppIds,
+              ),
+            ),
+
             Positioned(
               right: 16,
               bottom: 16,
               child: FloatingActionButton(
                 mini: true,
-                backgroundColor: const Color(0xFF6C63FF).withOpacity(0.8),
+                backgroundColor: const Color(0xFF6C63FF).withValues(alpha: 0.8),
                 onPressed: () => setState(() {
-                  for (final id in _avatarPositions.keys) _avatarPositions[id] = _randomPosition();
-                  for (final id in _devicePositions.keys) _devicePositions[id] = _randomDevicePosition();
+                  for (final id in _avatarPositions.keys) {
+                    _avatarPositions[id] = _randomPosition();
+                  }
+                  for (final id in _devicePositions.keys) {
+                    _devicePositions[id] = _randomDevicePosition();
+                  }
                 }),
                 child: const Icon(Icons.refresh, color: Colors.white),
               ),
@@ -120,8 +160,9 @@ class _PlaceTabState extends State<PlaceTab> {
               bottom: 16,
               child: FloatingActionButton(
                 heroTag: 'ha_connect',
-                backgroundColor: const Color(0xFFFF5722).withOpacity(0.8),
-                onPressed: () => _startHAConnection(context).then((_) => _loadHADevices()),
+                backgroundColor: const Color(0xFFFF5722).withValues(alpha: 0.8),
+                onPressed: () => _startHAConnection(context)
+                    .then((_) => _loadHADevices()),
                 child: const Icon(Icons.home_filled, color: Colors.white),
               ),
             ),

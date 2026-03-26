@@ -91,10 +91,17 @@ export namespace UserSocketHandler {
       if (index !== -1) {
         clients.splice(index, 1);
       }
+      // Notify all clients if an app socket was closed
+      if (ws.appId) {
+        broadcastConnectedApps();
+      }
     });
 
     ws.on("error", (err) => {
       logger.error(`error = ${ws.uuid}: ${err.message}`);
+      if (ws.appId) {
+        broadcastConnectedApps();
+      }
     });
 
     ws.isAlive = true;
@@ -116,6 +123,14 @@ export namespace UserSocketHandler {
         ws.send(cmd, data);
       }
     });
+  };
+
+  /**
+   * 실시간 연결된 앱 목록을 모든 클라이언트에게 전송합니다.
+   */
+  export const broadcastConnectedApps = () => {
+    const connectedIds = getConnectedAppIds();
+    broadcast("/CONNECTED_APPS_CHANGED", { connectedIds });
   };
 
   export const sendToApp = (appId: string, cmd: string, data: any) => {

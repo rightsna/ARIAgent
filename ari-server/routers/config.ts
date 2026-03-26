@@ -3,6 +3,20 @@ import { saveSettings } from "../repositories/setting_repository";
 import { initAgent, getPluginsInfo } from "../services/agent";
 import { getCurrentState } from "../services/agent";
 import { logger } from "../infra/logger";
+import { UserSocketHandler } from "../system/ws";
+
+/**
+ * /GET_CONNECTED_APPS
+ * 현재 서버에 활성 상태로 연결된 앱 ID 목록을 반환합니다.
+ */
+router.on("/GET_CONNECTED_APPS", async (ws, params) => {
+  const connectedIds = UserSocketHandler.getConnectedAppIds();
+  ws.send("/GET_CONNECTED_APPS", {
+    id: params.id,
+    ok: true,
+    data: { connectedIds },
+  });
+});
 
 router.on("/HEALTH", async (ws, params) => {
   logger.info(`[Health] Check from ${ws.uuid}`);
@@ -88,6 +102,103 @@ router.on("/PLUGINS", async (ws, params) => {
       skills: plugins.skills,
     },
   });
+});
+
+
+/**
+ * /LAUNCH_APP
+ * 특정 앱을 실행합니다.
+ */
+router.on("/LAUNCH_APP", async (ws, params) => {
+  const { appId } = params as { appId: string };
+  const { UserSocketHandler } = require("../system/ws");
+  logger.info(`[Apps] Launching app: ${appId} from ${ws.uuid}`);
+
+  if (!appId) {
+    return ws.send("/LAUNCH_APP", { ok: false, error: "appId is required" });
+  }
+
+  try {
+    // 1. 이미 연결되어 있는지 확인
+    if (UserSocketHandler.isAppConnected(appId)) {
+      return ws.send("/LAUNCH_APP", { 
+        id: params.id,
+        ok: true, 
+        data: { alreadyRunning: true, message: `'${appId}'가 이미 실행 중입니다.` } 
+      });
+    }
+
+    // 2. 실행 권한 및 경로 확인 후 spawn
+    const { spawn } = require("child_process");
+    const { getBundleRoots } = require("../infra/runtime_paths");
+    const fs = require("fs");
+    const path = require("path");
+    const os = require("os");
+
+    const bundleRoots = getBundleRoots();
+    let executable = "";
+
+    if (process.platform === "darwin") {
+      for (const root of bundleRoots) {
+        const paths = [
+          path.join(root, appId, "app.app", "Contents", "MacOS", "app"),
+          path.join(root, appId, "Contents", "MacOS", "app"),
+          path.join(root, appId, "Contents", "MacOS", appId),
+          path.join(root, appId, `${appId}.app`, "Contents", "MacOS", appId),
+        ];
+        for (const p of paths) {
+          if (fs.existsSync(p)) {
+            executable = p;
+            break;
+          }
+        }
+        if (executable) break;
+      }
+    } else if (process.platform === "win32") {
+      for (const root of bundleRoots) {
+        const paths = [
+          path.join(root, appId, "app.exe"),
+          path.join(root, appId, `${appId}.exe`),
+          path.join(root, `${appId}.exe`),
+        ];
+        for (const p of paths) {
+          if (fs.existsSync(p)) {
+            executable = p;
+            break;
+          }
+        }
+        if (executable) break;
+      }
+    }
+
+    if (!executable) {
+      throw new Error(`실행 파일을 찾을 수 없습니다: ${appId}`);
+    }
+
+    const child = spawn(executable, [], {
+      detached: true,
+      stdio: "ignore",
+      env: {
+        ...process.env,
+        HOME: process.env.HOME ?? os.homedir(),
+        USERPROFILE: process.env.USERPROFILE ?? os.homedir(),
+      },
+    });
+    child.unref();
+
+    ws.send("/LAUNCH_APP", {
+      id: params.id,
+      ok: true,
+      data: { success: true, message: `'${appId}' 앱을 실행했습니다.` },
+    });
+  } catch (error: any) {
+    logger.error(`[Apps] Failed to launch ${appId}: ${error.message}`);
+    ws.send("/LAUNCH_APP", {
+      id: params.id,
+      ok: false,
+      error: error.message,
+    });
+  }
 });
 
 router.on("/DELETE_SKILL", async (ws, params) => {
