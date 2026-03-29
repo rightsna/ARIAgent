@@ -140,11 +140,16 @@ router.on("/LAUNCH_APP", async (ws, params) => {
 
     if (process.platform === "darwin") {
       for (const root of bundleRoots) {
+        const appIdNoUnderscore = appId.replace(/_/g, "");
         const paths = [
+          path.join(root, appId, "app.app", "Contents", "MacOS", appId),
+          path.join(root, appId, "app.app", "Contents", "MacOS", appIdNoUnderscore),
           path.join(root, appId, "app.app", "Contents", "MacOS", "app"),
           path.join(root, appId, "Contents", "MacOS", "app"),
           path.join(root, appId, "Contents", "MacOS", appId),
+          path.join(root, appId, "Contents", "MacOS", appIdNoUnderscore),
           path.join(root, appId, `${appId}.app`, "Contents", "MacOS", appId),
+          path.join(root, appId, `${appIdNoUnderscore}.app`, "Contents", "MacOS", appIdNoUnderscore),
         ];
         for (const p of paths) {
           if (fs.existsSync(p)) {
@@ -156,10 +161,13 @@ router.on("/LAUNCH_APP", async (ws, params) => {
       }
     } else if (process.platform === "win32") {
       for (const root of bundleRoots) {
+        const appIdNoUnderscore = appId.replace(/_/g, "");
         const paths = [
           path.join(root, appId, "app.exe"),
           path.join(root, appId, `${appId}.exe`),
+          path.join(root, appId, `${appIdNoUnderscore}.exe`),
           path.join(root, `${appId}.exe`),
+          path.join(root, `${appIdNoUnderscore}.exe`),
         ];
         for (const p of paths) {
           if (fs.existsSync(p)) {
