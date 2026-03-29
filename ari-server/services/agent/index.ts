@@ -10,7 +10,7 @@ import { buildSystemPrompt, pruneContext } from "./context_builder";
 import { extractFinalResponseText } from "./response_parser";
 import { buildSessionTools, buildSessionToolsSync, clearToolCache, loadMainTools } from "./tool_registry";
 import { getAttemptOrder, resolveModel, resolveApiKey, isOAuthProvider } from "./provider_selector";
-import { AgentSession, clearAgentSession, clearAllAgentSessions, getOrCreateSession } from "./session_manager";
+import { AgentSession, clearAgentSession, clearAllAgentSessions, getOrCreateSession, saveSession } from "./session_manager";
 import { cloneActiveSkills, clearSkillCache, collectSkillToolNames, loadAvailableSkills, mergeActiveSkill } from "./skill_registry";
 
 const _state: AgentState = createDefaultState();
@@ -91,6 +91,9 @@ export async function chatWithAgent(
   });
   const systemPrompt = await buildSystemPrompt(persona, runtimeContext, currentAgentId, currentSkills, session.activeSkills);
   const result = await runInference(session, message, systemPrompt, onProgress);
+
+  // 대화 기록 저장
+  saveSession(currentAgentId);
 
   // 실패 결과를 사용자 응답 형태로 정리합니다.
   if (!result.success) {
@@ -290,4 +293,12 @@ export async function getPluginsInfo(): Promise<PluginInfo> {
 export function clearAgentInstance(agentId: string) {
   clearAgentSession(agentId);
   logger.info(`[AgentPi] Instance cleared for: ${agentId}`);
+}
+
+export function abortAgent(agentId: string) {
+  const session = getOrCreateSession(agentId, activeProviders, pruneContext);
+  if (session && session.agent) {
+    session.agent.abort();
+    logger.info(`[AgentPi] Thinking aborted for: ${agentId}`);
+  }
 }

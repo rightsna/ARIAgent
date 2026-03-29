@@ -15,6 +15,8 @@ export interface AgentSession {
 
 const agentsMap = new Map<string, AgentSession>();
 
+import { getChatLogs, saveChatLogs } from "../../repositories/chat_log_repository";
+
 export function getOrCreateSession(
   agentId: string,
   activeProviders: AIProviderConfig[],
@@ -27,6 +29,9 @@ export function getOrCreateSession(
   }
 
   const { provider: initialProvider, index: initialProviderIndex } = findFirstUsableProvider(activeProviders, onInvalidProvider);
+
+  // Load history from disk
+  const history = getChatLogs(agentId);
 
   const session: AgentSession = {
     agent: null as unknown as Agent,
@@ -43,7 +48,7 @@ export function getOrCreateSession(
       model: resolveModel(initialProvider),
       thinkingLevel: "medium",
       tools: [],
-      messages: [],
+      messages: history,
     },
     transformContext,
     getApiKey: createApiKeyResolver(
@@ -55,6 +60,13 @@ export function getOrCreateSession(
   session.agent = agent;
   agentsMap.set(agentId, session);
   return session;
+}
+
+export function saveSession(agentId: string): void {
+  const session = agentsMap.get(agentId);
+  if (session && session.agent) {
+    saveChatLogs(agentId, session.agent.state.messages);
+  }
 }
 
 export function clearAgentSession(agentId: string): void {

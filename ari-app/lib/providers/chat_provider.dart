@@ -171,6 +171,12 @@ class ChatProvider extends ChangeNotifier {
     // 에이전트 호출 (이전 AgentService.sendMessage 로직)
     final response = await _callAgentApi(text, requestId);
 
+    // 취소되었거나 다른 요청이 시작된 경우 응답 무시
+    if (_activeRequestId != requestId) {
+      debugPrint('[Chat] Request $requestId was cancelled or superseded.');
+      return;
+    }
+
     _removeProgressMessage(requestId);
     _messages.add(
       ChatMessage(
@@ -192,6 +198,16 @@ class ChatProvider extends ChangeNotifier {
         isError: !response.success,
       );
     } catch (_) {}
+  }
+
+  void cancelSendMessage() {
+    if (!_isLoading) return;
+    final agentId = _currentAgentId ?? AvatarProvider().currentAvatarId;
+    WsManager.sendAsync('/AGENT.CANCEL', {'agentId': agentId});
+    _removeProgressMessage(_activeRequestId ?? '');
+    _isLoading = false;
+    _activeRequestId = null;
+    notifyListeners();
   }
 
   Future<AgentResponse> _callAgentApi(String message, String requestId) async {

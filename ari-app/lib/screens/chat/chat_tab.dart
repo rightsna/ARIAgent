@@ -150,6 +150,7 @@ class _ChatTabState extends State<ChatTab> {
                     ),
                     child: ChatInput(
                       onSubmit: _sendMessage,
+                      onCancel: chatProvider.cancelSendMessage,
                       isLoading: chatProvider.isLoading,
                     ),
                   ),

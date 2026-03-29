@@ -4,9 +4,15 @@ import 'package:flutter/services.dart';
 /// 채팅 입력 위젯
 class ChatInput extends StatefulWidget {
   final Function(String) onSubmit;
+  final VoidCallback? onCancel;
   final bool isLoading;
 
-  const ChatInput({super.key, required this.onSubmit, this.isLoading = false});
+  const ChatInput({
+    super.key,
+    required this.onSubmit,
+    this.onCancel,
+    this.isLoading = false,
+  });
 
   @override
   State<ChatInput> createState() => _ChatInputState();
@@ -51,6 +57,7 @@ class _ChatInputState extends State<ChatInput> {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: KeyboardListener(
@@ -79,42 +86,57 @@ class _ChatInputState extends State<ChatInput> {
                     vertical: 10,
                   ),
                 ),
-                maxLines: 1,
+                minLines: 1,
+                maxLines: 3,
+                textInputAction: TextInputAction.newline,
               ),
             ),
           ),
           const SizedBox(width: 8),
-          // 전송 버튼
-          GestureDetector(
-            onTap: widget.isLoading ? null : _handleSubmit,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: widget.isLoading
-                    ? null
-                    : const LinearGradient(
-                        colors: [Color(0xFF6C63FF), Color(0xFF9D4EDD)],
-                      ),
-                color: widget.isLoading ? const Color(0xFF333355) : null,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Center(
-                child: widget.isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFF6C63FF),
+          // 전송/취소 버튼
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: GestureDetector(
+              onTap: widget.isLoading ? widget.onCancel : _handleSubmit,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: widget.isLoading
+                      ? null
+                      : const LinearGradient(
+                          colors: [Color(0xFF6C63FF), Color(0xFF9D4EDD)],
                         ),
-                      )
-                    : const Icon(
-                        Icons.send_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                  color: widget.isLoading ? const Color(0xFF333344) : null,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Center(
+                  child: widget.isLoading
+                      ? const Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF6C63FF),
+                              ),
+                            ),
+                            Icon(
+                              Icons.stop_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ],
+                        )
+                      : const Icon(
+                          Icons.send_rounded,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                ),
               ),
             ),
           ),

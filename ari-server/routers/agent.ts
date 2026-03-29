@@ -41,3 +41,21 @@ router.on("/AGENT", async (ws, params) => {
     ws.send("/AGENT", { ok: false, message: err.message });
   }
 });
+
+// /AGENT.CANCEL
+router.on("/AGENT.CANCEL", async (ws, params) => {
+  const agentId = params.agentId as string;
+  if (!agentId) return;
+
+  const { abortAgent } = require("../services/agent");
+  abortAgent(agentId);
+  ws.send("/AGENT.CANCEL", { ok: true, data: { agentId } });
+});
+
+// /AGENT.HISTORY
+router.on("/AGENT.HISTORY", async (ws, params) => {
+  const agentId = params.agentId as string;
+  const { getChatLogs } = require("../repositories/chat_log_repository");
+  const history = getChatLogs(agentId);
+  ws.send("/AGENT.HISTORY", { ok: true, data: { history, agentId } });
+});
