@@ -7,49 +7,14 @@ import path from "path";
 import { appStateService } from "../services/app_state_service";
 import { UserSocketHandler } from "../system/ws";
 import { logger } from "../infra/logger";
-import { getBundleRoots, getWorkspaceRoot } from "../infra/runtime_paths";
+import { getBundleRoots, getWorkspaceRoot, findAppExecutable } from "../infra/runtime_paths";
 import { DATA_DIR } from "../infra/data";
 import { loadAllSkills } from "../skills";
 import { execPromise } from "./bash";
 
 function resolveAppExecutable(appName: string): string {
-  const workspaceRoot = getWorkspaceRoot();
-  const bundleRoots = getBundleRoots();
-
-  const candidates: string[] = [];
-
-  if (process.platform === "darwin") {
-    for (const bundleRoot of bundleRoots) {
-      candidates.push(
-        path.join(bundleRoot, appName, "app.app", "Contents", "MacOS", "app"),
-        path.join(bundleRoot, appName, "Contents", "MacOS", "app"),
-        path.join(bundleRoot, appName, "Contents", "MacOS", appName),
-        path.join(
-          bundleRoot,
-          appName,
-          `${appName}.app`,
-          "Contents",
-          "MacOS",
-          appName,
-        ),
-      );
-    }
-  }
-
-  if (process.platform === "win32") {
-    for (const bundleRoot of bundleRoots) {
-      candidates.push(
-        path.join(bundleRoot, appName, "app.exe"),
-        path.join(bundleRoot, appName, `${appName}.exe`),
-        path.join(bundleRoot, `${appName}.exe`),
-      );
-    }
-  }
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
+  const executable = findAppExecutable(appName);
+  if (executable) return executable;
   throw new Error(`로컬 ${appName} 실행 파일을 찾지 못했습니다.`);
 }
 
