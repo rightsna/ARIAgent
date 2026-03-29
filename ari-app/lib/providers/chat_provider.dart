@@ -74,6 +74,35 @@ class ChatProvider extends ChangeNotifier {
     }
 
     notifyListeners();
+
+    // 서버에 대화 맥락 주입 (이전 대화 복구 컨셉)
+    _seedServerHistory(agentId, chatLogs);
+  }
+
+  void _seedServerHistory(String agentId, List<Map<String, dynamic>> chatLogs) {
+    if (!WsManager.isConnected) return;
+
+    // 최근 20개 정도만 추출하여 서버에 전달 (AI 컨텍스트용)
+    final recentLogs = chatLogs.length > 20
+        ? chatLogs.sublist(chatLogs.length - 20)
+        : chatLogs;
+
+    final history = recentLogs.map((log) {
+      return {
+        'role': log['isUser'] == true ? 'user' : 'assistant',
+        'content': [
+          {
+            'type': 'text',
+            'text': log['message']?.toString() ?? '',
+          }
+        ],
+      };
+    }).toList();
+
+    WsManager.sendAsync('/AGENT.SET_HISTORY', {
+      'agentId': agentId,
+      'history': history,
+    });
   }
 
   void _initWebSocket() {
@@ -150,9 +179,24 @@ class ChatProvider extends ChangeNotifier {
         );
       } catch (_) {}
     });
+
+    // 서버 사이드 컨텍스트 초기화 응답 핸들러 (디버깅용)
+    _setHistorySub = WsManager.on('/AGENT.SET_HISTORY', (data) {
+      debugPrint('[Chat] Server history seeded ok');
+    });
+
+    WsManager.connectionNotifier.addListener(_onConnectionChanged);
+  }
+
+  void _onConnectionChanged() {
+    if (WsManager.isConnected && _currentAgentId != null) {
+      final chatLogs = LogRepository().getChatLogs(_currentAgentId!);
+      _seedServerHistory(_currentAgentId!, chatLogs);
+    }
   }
 
   StreamSubscription? _agentPushSub;
+  StreamSubscription? _setHistorySub;
 
 
   /// 에이전트에게 메시지 송신 (기존 AgentService 통합)
@@ -284,6 +328,8 @@ class ChatProvider extends ChangeNotifier {
     _taskResultSub?.cancel();
     _progressSub?.cancel();
     _agentPushSub?.cancel();
+    _setHistorySub?.cancel();
+    WsManager.connectionNotifier.removeListener(_onConnectionChanged);
     AvatarProvider().removeListener(_onAvatarChanged);
     super.dispose();
   }

@@ -52,10 +52,13 @@ router.on("/AGENT.CANCEL", async (ws, params) => {
   ws.send("/AGENT.CANCEL", { ok: true, data: { agentId } });
 });
 
-// /AGENT.HISTORY
-router.on("/AGENT.HISTORY", async (ws, params) => {
+// /AGENT.SET_HISTORY
+router.on("/AGENT.SET_HISTORY", async (ws, params) => {
   const agentId = params.agentId as string;
-  const { getChatLogs } = require("../repositories/chat_log_repository");
-  const history = getChatLogs(agentId);
-  ws.send("/AGENT.HISTORY", { ok: true, data: { history, agentId } });
+  const history = params.history as any[];
+  if (!agentId || !history) return;
+
+  const { setAgentHistory } = require("../services/agent");
+  setAgentHistory(agentId, history);
+  ws.send("/AGENT.SET_HISTORY", { ok: true, data: { agentId, count: history.length } });
 });
