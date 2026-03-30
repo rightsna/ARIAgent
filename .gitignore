@@ -63,3 +63,4 @@ app.*.map.json
 # But we can explicitly ignore their artifacts here if needed.
 ari-framework/sample_control/pubspec.lock
 ari-framework/sample_basic/pubspec.lock
+ari-framework/plugin/pubspec.lock
