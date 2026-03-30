@@ -41,7 +41,7 @@ export const readAppStateTool: AgentTool = {
 
     try {
       // Pull 방식: 앱에게 직접 질의하여 최신 상태를 가져옴
-      const result = await UserSocketHandler.queryApp(appId, "GET_STATE");
+      const result = await UserSocketHandler.commandApp(appId, 'GET_STATE');
 
       return {
         content: [

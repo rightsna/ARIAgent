@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import '../ws/WsManager.dart';
 
 class AppProtocolHandler {
@@ -19,7 +17,6 @@ class AppProtocolHandler {
 
   void start() {
     _subscriptions.add(WsManager.on('/APP.COMMAND', _handleAppCommand));
-    _subscriptions.add(WsManager.on('/APP.QUERY', _handleAppQuery));
     _subscriptions.add(WsManager.on('/GREETING', (_) => _registerApp()));
 
     if (WsManager.isConnected) {
@@ -47,6 +44,19 @@ class AppProtocolHandler {
     if (command == null) return;
 
     final params = data['params'] as Map<String, dynamic>? ?? {};
+
+    // Handle reserved command: GET_STATE
+    if (command == 'GET_STATE' && onGetState != null) {
+      final state = onGetState!();
+      if (requestId != null) {
+        WsManager.sendAsync('/APP.COMMAND_RESPONSE', {
+          'requestId': requestId,
+          'result': state,
+        });
+      }
+      return;
+    }
+
     final result = await onCommand?.call(command, params);
 
     if (requestId != null && result != null) {
@@ -54,24 +64,6 @@ class AppProtocolHandler {
         'requestId': requestId,
         'result': result,
       });
-    }
-  }
-
-  void _handleAppQuery(Map<String, dynamic> data) {
-    if (data['appId'] != appId) return;
-
-    final queryType = data['queryType'] as String?;
-    final requestId = data['requestId'] as String?;
-
-    if (requestId == null || queryType == null) return;
-
-    if (queryType == 'GET_STATE' && onGetState != null) {
-      WsManager.sendAsync('/APP.QUERY_RESPONSE', {
-        'requestId': requestId,
-        'result': onGetState!(),
-      });
-    } else {
-      debugPrint('Unhandled queryType: $queryType');
     }
   }
 }

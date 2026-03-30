@@ -110,10 +110,9 @@ Future<void> main(List<String> args) async {
 
 1.  **플러그인 등록**: `/APP.REGISTER {"appId": "..."}` (연결 시 자동 수행)
 2.  **명령 수신 (COMMAND)**: `/APP.COMMAND {"command": "...", "params": {...}}`
+    - 명령어 중 `GET_STATE`는 앱의 현재 상태를 요청하는 예약된 명령어입니다.
 3.  **결과 응답**: `/APP.COMMAND_RESPONSE {"requestId": "...", "result": {...}}`
-4.  **상태 쿼리 (QUERY)**: `/APP.QUERY {"queryType": "GET_STATE"}`
-    - 상태 쿼리에 대한 응답은 `/APP.QUERY_RESPONSE`를 통해 전송됩니다.
-5.  **자발적 보고 (REPORT)**: `/APP.REPORT {"appId": "...", "message": "...", "type": "info"}`
+4.  **자발적 보고 (REPORT)**: `/APP.REPORT {"appId": "...", "message": "...", "type": "info"}`
     - 앱이 스스로 서버(에이전트)에게 특정 사건을 보고할 때 사용합니다.
     - **중요**: 이 명령을 보내면 서버의 에이전트가 내용을 분석하고 사용자에게 **자연스러운 문장**으로 답변을 생성하여 전달합니다. (역방향 소통)
 

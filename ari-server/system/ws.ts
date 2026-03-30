@@ -133,37 +133,6 @@ export namespace UserSocketHandler {
     broadcast("/CONNECTED_APPS_CHANGED", { connectedIds });
   };
 
-  export const queryApp = async (
-    appId: string,
-    queryType: string,
-    params: any = {},
-    timeoutMs = 5000,
-  ): Promise<any> => {
-    const target = clients.find((c) => c.appId === appId);
-    if (!target || target.readyState !== WebSocket.OPEN) {
-      throw new Error(`App '${appId}' is not connected.`);
-    }
-
-    const requestId = Math.random().toString(36).substring(7);
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        router.off(`/APP.QUERY_RESPONSE:${requestId}`);
-        reject(new Error(`Query to '${appId}' timed out (${timeoutMs}ms)`));
-      }, timeoutMs);
-
-      router.once(`/APP.QUERY_RESPONSE:${requestId}`, (ws, data) => {
-        clearTimeout(timeout);
-        resolve(data.result);
-      });
-
-      target.send("/APP.QUERY", { appId, queryType, requestId, params });
-      logger.debug(
-        `[WS] Sent Query to ${appId}: ${queryType} (req:${requestId})`,
-      );
-    });
-  };
-
   export const commandApp = async (
     appId: string,
     command: string,

@@ -83,8 +83,7 @@ Flutter 앱 (쉘) <-> 로컬 서버 (ari-server) <-> 에이전트 런타임 (age
 높은 확장성을 달성하기 위해 모든 앱(내장 앱 포함)은 공통 동기화 프로토콜을 따릅니다.
 
 - **`APP.REGISTER`**: 앱이 연결될 때 자신의 `appId`를 알립니다.
-- **`APP.COMMAND`**: 서버가 특정 앱에 명령(예: `UPDATE`, `PLAY`)을 보냅니다.
-- **`APP.QUERY` & `APP.QUERY_RESPONSE`**: 서버가 앱에 정보를 동적으로 요청합니다(`GET_STATE`).
+- **`APP.COMMAND` & `APP.COMMAND_RESPONSE`**: 서버가 앱에 명령을 보내거나(예: `UPDATE`, `PLAY`) 상태를 요청(`GET_STATE`)하고 결과를 수신합니다.
   - 클라이언트 측에서 이 프로토콜은 `AppProtocolHandler`(Flutter 앱의 경우)를 통해 추상화되어 `appId`, `onCommand`, `onGetState` 콜백을 간단히 주입할 수 있습니다.
 
 - **범용 도구 (Universal Tools)**:
