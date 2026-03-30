@@ -26,13 +26,13 @@ class _ModelSettingsState extends State<ModelSettings> {
   void initState() {
     super.initState();
     // WS가 연결될 때만 설정 로드 (ServerProvider 로그 notifyListeners 폭발 방지)
-    WsManager.connectionNotifier.addListener(_onConnectionChanged);
-    if (WsManager.isConnected) _loadCurrentSettings();
+    AriAgent.connectionNotifier.addListener(_onConnectionChanged);
+    if (AriAgent.isConnected) _loadCurrentSettings();
   }
 
   @override
   void dispose() {
-    WsManager.connectionNotifier.removeListener(_onConnectionChanged);
+    AriAgent.connectionNotifier.removeListener(_onConnectionChanged);
     for (var p in _providers) {
       p.dispose();
     }
@@ -40,7 +40,7 @@ class _ModelSettingsState extends State<ModelSettings> {
   }
 
   void _onConnectionChanged() {
-    if (WsManager.isConnected) _loadCurrentSettings();
+    if (AriAgent.isConnected) _loadCurrentSettings();
   }
 
   // ─── 설정 ────────────────────────────────────────────

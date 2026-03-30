@@ -80,7 +80,7 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _seedServerHistory(String agentId, List<Map<String, dynamic>> chatLogs) {
-    if (!WsManager.isConnected) return;
+    if (!AriAgent.isConnected) return;
 
     // 최근 20개 정도만 추출하여 서버에 전달 (AI 컨텍스트용)
     final recentLogs = chatLogs.length > 20
@@ -99,14 +99,14 @@ class ChatProvider extends ChangeNotifier {
       };
     }).toList();
 
-    WsManager.sendAsync('/AGENT.SET_HISTORY', {
+    AriAgent.sendAsync('/AGENT.SET_HISTORY', {
       'agentId': agentId,
       'history': history,
     });
   }
 
   void _initWebSocket() {
-    _taskResultSub = WsManager.on('/TASK_RESULT', (data) {
+    _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
       final taskData = data;
       final taskId = taskData['taskId']?.toString() ?? 'unknown';
 
@@ -135,7 +135,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    _progressSub = WsManager.on('/AGENT.PROGRESS', (data) {
+    _progressSub = AriAgent.on('/AGENT.PROGRESS', (data) {
       final payload = data['data'] is Map<String, dynamic>
           ? data['data'] as Map<String, dynamic>
           : data;
@@ -150,7 +150,7 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     });
 
-    _agentPushSub = WsManager.on('/AGENT.PUSH', (data) {
+    _agentPushSub = AriAgent.on('/AGENT.PUSH', (data) {
       final payload = data['data'] is Map<String, dynamic>
           ? data['data'] as Map<String, dynamic>
           : data;
@@ -181,15 +181,15 @@ class ChatProvider extends ChangeNotifier {
     });
 
     // 서버 사이드 컨텍스트 초기화 응답 핸들러 (디버깅용)
-    _setHistorySub = WsManager.on('/AGENT.SET_HISTORY', (data) {
+    _setHistorySub = AriAgent.on('/AGENT.SET_HISTORY', (data) {
       debugPrint('[Chat] Server history seeded ok');
     });
 
-    WsManager.connectionNotifier.addListener(_onConnectionChanged);
+    AriAgent.connectionNotifier.addListener(_onConnectionChanged);
   }
 
   void _onConnectionChanged() {
-    if (WsManager.isConnected && _currentAgentId != null) {
+    if (AriAgent.isConnected && _currentAgentId != null) {
       final chatLogs = LogRepository().getChatLogs(_currentAgentId!);
       _seedServerHistory(_currentAgentId!, chatLogs);
     }
@@ -247,7 +247,7 @@ class ChatProvider extends ChangeNotifier {
   void cancelSendMessage() {
     if (!_isLoading) return;
     final agentId = _currentAgentId ?? AvatarProvider().currentAvatarId;
-    WsManager.sendAsync('/AGENT.CANCEL', {'agentId': agentId});
+    AriAgent.sendAsync('/AGENT.CANCEL', {'agentId': agentId});
     _removeProgressMessage(_activeRequestId ?? '');
     _isLoading = false;
     _activeRequestId = null;
@@ -259,7 +259,7 @@ class ChatProvider extends ChangeNotifier {
       final avatar = AvatarProvider();
       final persona = avatar.persona.trim();
 
-      final res = await WsManager.call('/AGENT', {
+      final res = await AriAgent.call('/AGENT', {
         'message': message,
         'requestId': requestId,
         'persona': persona,
@@ -329,7 +329,7 @@ class ChatProvider extends ChangeNotifier {
     _progressSub?.cancel();
     _agentPushSub?.cancel();
     _setHistorySub?.cancel();
-    WsManager.connectionNotifier.removeListener(_onConnectionChanged);
+    AriAgent.connectionNotifier.removeListener(_onConnectionChanged);
     AvatarProvider().removeListener(_onAvatarChanged);
     super.dispose();
   }

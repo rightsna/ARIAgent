@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../ws/WsManager.dart';
+import '../ws/AriAgent.dart';
 
 class AppProtocolHandler {
   final String appId;
@@ -16,10 +16,10 @@ class AppProtocolHandler {
   final List<StreamSubscription> _subscriptions = [];
 
   void start() {
-    _subscriptions.add(WsManager.on('/APP.COMMAND', _handleAppCommand));
-    _subscriptions.add(WsManager.on('/GREETING', (_) => _registerApp()));
+    _subscriptions.add(AriAgent.on('/APP.COMMAND', _handleAppCommand));
+    _subscriptions.add(AriAgent.on('/GREETING', (_) => _registerApp()));
 
-    if (WsManager.isConnected) {
+    if (AriAgent.isConnected) {
       _registerApp();
     }
   }
@@ -32,8 +32,8 @@ class AppProtocolHandler {
   }
 
   void _registerApp() {
-    if (!WsManager.isConnected) return;
-    WsManager.sendAsync('/APP.REGISTER', {'appId': appId});
+    if (!AriAgent.isConnected) return;
+    AriAgent.register(appId);
   }
 
   Future<void> _handleAppCommand(Map<String, dynamic> data) async {
@@ -49,10 +49,7 @@ class AppProtocolHandler {
     if (command == 'GET_STATE' && onGetState != null) {
       final state = onGetState!();
       if (requestId != null) {
-        WsManager.sendAsync('/APP.COMMAND_RESPONSE', {
-          'requestId': requestId,
-          'result': state,
-        });
+        AriAgent.sendResponse(requestId: requestId, result: state);
       }
       return;
     }
@@ -60,10 +57,7 @@ class AppProtocolHandler {
     final result = await onCommand?.call(command, params);
 
     if (requestId != null && result != null) {
-      WsManager.sendAsync('/APP.COMMAND_RESPONSE', {
-        'requestId': requestId,
-        'result': result,
-      });
+      AriAgent.sendResponse(requestId: requestId, result: result);
     }
   }
 }

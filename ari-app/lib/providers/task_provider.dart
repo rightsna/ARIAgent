@@ -80,7 +80,7 @@ class TaskProvider extends ChangeNotifier {
     if (task == null) return '❌ 작업을 찾을 수 없습니다.';
 
     try {
-      final res = await WsManager.call('/AGENT', {'message': task.prompt});
+      final res = await AriAgent.call('/AGENT', {'message': task.prompt});
       final response = res['response'] ?? '응답 없음';
       await updateResult(id, response);
       return response;
@@ -93,10 +93,10 @@ class TaskProvider extends ChangeNotifier {
   Future<void> _syncToSystem() async {
     try {
       final allTasks = tasks.map((t) => t.toMap()).toList();
-      await WsManager.call('/TASKS.SYNC', {'tasks': allTasks});
+      await AriAgent.call('/TASKS.SYNC', {'tasks': allTasks});
 
       final enabledTasks = tasks.where((t) => t.enabled).toList();
-      await WsManager.call('/TASKS.CRONTAB', {
+      await AriAgent.call('/TASKS.CRONTAB', {
         'tasks': enabledTasks.map((t) => {'id': t.id, 'cron': t.cron}).toList(),
       });
     } catch (e) {
@@ -113,13 +113,13 @@ class TaskProvider extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> fetchTasksFromServer() async {
     final List<Map<String, dynamic>> tasksList = [];
     try {
-      final tasksResult = await WsManager.call('/TASKS');
+      final tasksResult = await AriAgent.call('/TASKS');
       final parsed = tasksResult['tasks'] as List? ?? [];
       tasksList.addAll(
         parsed.map((t) => Map<String, dynamic>.from(t)).toList(),
       );
 
-      final resultsResult = await WsManager.call('/TASKS.RESULTS');
+      final resultsResult = await AriAgent.call('/TASKS.RESULTS');
       final resultsData = resultsResult['results'] ?? {};
       for (final task in tasksList) {
         final r = resultsData[task['id']];

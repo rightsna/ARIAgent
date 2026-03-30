@@ -48,8 +48,8 @@ void main() async {
   await AvatarProvider().init();
   await TaskProvider().init();
 
-  // WsManager 초기화 (Repository에서 URL 가져옴)
-  WsManager.init(url: configRepo.wsUrl);
+  // AriAgent 초기화 (Repository에서 URL 가져옴)
+  AriAgent.init(url: configRepo.wsUrl);
 
   // 에이전트 시작 (비동기)
   unawaited(ServerProvider().start(version: version));

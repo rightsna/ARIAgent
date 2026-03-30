@@ -32,21 +32,21 @@ class ConfigProvider extends ChangeNotifier {
     await _repository.init();
 
     // 서버 환경 상태 수신
-    WsManager.on('/GREETING', (data) {
+    AriAgent.on('/GREETING', (data) {
       _mode = data['mode'];
       debugPrint('[SERVER] Running in ${data['mode']} mode');
       notifyListeners();
     });
 
     // 서버 로그 수신 시 디버그 콘솔에 출력
-    WsManager.on('/SERVER.LOG', (data) {
+    AriAgent.on('/SERVER.LOG', (data) {
       debugPrint(
         '[SERVER-LOG] [${data['level']}] [${data['label']}] ${data['message']}',
       );
     });
 
     // 실시간 연결된 앱 목록 수신
-    WsManager.on('/CONNECTED_APPS_CHANGED', (data) {
+    AriAgent.on('/CONNECTED_APPS_CHANGED', (data) {
       final ids = data['connectedIds'];
       if (ids is List) {
         _connectedAppIds = ids.cast<String>();
@@ -88,12 +88,12 @@ class ConfigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- 서버 통신 (WsManager 호출) ---
+  // --- 서버 통신 (AriAgent 호출) ---
 
   /// 서버 상태 확인
   Future<Map<String, dynamic>?> getServerHealth() async {
     try {
-      final health = await WsManager.call('/HEALTH');
+      final health = await AriAgent.call('/HEALTH');
       if (health.containsKey('hasApiKey')) {
         final newHasApiKey = health['hasApiKey'] == true;
         if (_hasApiKey != newHasApiKey) {
@@ -111,7 +111,7 @@ class ConfigProvider extends ChangeNotifier {
   Future<bool> saveApiKey(String? apiKey) async {
     if (apiKey == null) return false;
     try {
-      await WsManager.call('/SETTINGS', {'apiKey': apiKey});
+      await AriAgent.call('/SETTINGS', {'apiKey': apiKey});
       _hasApiKey = true;
       notifyListeners();
       return true;
@@ -123,7 +123,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<bool> saveProviders(List<Map<String, dynamic>> providers) async {
     try {
-      await WsManager.call('/SETTINGS', {'providers': providers});
+      await AriAgent.call('/SETTINGS', {'providers': providers});
       bool anyKey = providers.any(
         (p) => p['apiKey'] != null && p['apiKey'].toString().trim().isNotEmpty,
       );
@@ -138,7 +138,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<bool> saveModel(String model) async {
     try {
-      await WsManager.call('/SETTINGS', {'model': model});
+      await AriAgent.call('/SETTINGS', {'model': model});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] saveModel failed: $e');
@@ -148,7 +148,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<bool> saveProvider(String provider) async {
     try {
-      await WsManager.call('/SETTINGS', {'provider': provider});
+      await AriAgent.call('/SETTINGS', {'provider': provider});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] saveProvider failed: $e');
@@ -158,7 +158,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<bool> savePortToServer(int port) async {
     try {
-      await WsManager.call('/SETTINGS', {'port': port});
+      await AriAgent.call('/SETTINGS', {'port': port});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] savePortToServer failed: $e');
@@ -168,7 +168,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> getPlugins() async {
     try {
-      return await WsManager.call('/PLUGINS');
+      return await AriAgent.call('/PLUGINS');
     } catch (e) {
       debugPrint('[ConfigProvider] getPlugins failed: $e');
       return null;
@@ -177,7 +177,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<List<String>> getConnectedApps() async {
     try {
-      final res = await WsManager.call('/GET_CONNECTED_APPS');
+      final res = await AriAgent.call('/GET_CONNECTED_APPS');
       final connectedIds = res['connectedIds'];
       if (connectedIds is List) {
         return connectedIds.cast<String>();
@@ -191,7 +191,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<bool> launchApp(String appId) async {
     try {
-      await WsManager.call('/LAUNCH_APP', {'appId': appId});
+      await AriAgent.call('/LAUNCH_APP', {'appId': appId});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] launchApp failed: $e');
@@ -201,7 +201,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<bool> deleteSkill(String name) async {
     try {
-      await WsManager.call('/DELETE_SKILL', {'name': name});
+      await AriAgent.call('/DELETE_SKILL', {'name': name});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] deleteSkill failed: $e');
@@ -214,7 +214,7 @@ class ConfigProvider extends ChangeNotifier {
   /// 지원되는 OAuth 프로바이더 목록 + 로그인 상태 조회
   Future<List<Map<String, dynamic>>?> getOAuthProviders() async {
     try {
-      final result = await WsManager.call('/OAUTH_PROVIDERS');
+      final result = await AriAgent.call('/OAUTH_PROVIDERS');
       final providers = result['providers'];
       if (providers is List) {
         return providers.cast<Map<String, dynamic>>();
@@ -229,7 +229,7 @@ class ConfigProvider extends ChangeNotifier {
   /// OAuth 로그인 시작 (진행 상황은 /OAUTH_EVENT push로 수신)
   Future<bool> startOAuthLogin(String provider) async {
     try {
-      await WsManager.call('/OAUTH_LOGIN', {'provider': provider});
+      await AriAgent.call('/OAUTH_LOGIN', {'provider': provider});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] startOAuthLogin failed: $e');
@@ -240,7 +240,7 @@ class ConfigProvider extends ChangeNotifier {
   /// OAuth prompt에 사용자 입력값 전달 (코드 입력 등)
   Future<bool> sendOAuthPrompt(String provider, String value) async {
     try {
-      await WsManager.call('/OAUTH_PROMPT', {
+      await AriAgent.call('/OAUTH_PROMPT', {
         'provider': provider,
         'value': value,
       });
@@ -254,7 +254,7 @@ class ConfigProvider extends ChangeNotifier {
   /// OAuth 로그인 상태 조회
   Future<Map<String, dynamic>?> getOAuthStatus(String provider) async {
     try {
-      return await WsManager.call('/OAUTH_STATUS', {'provider': provider});
+      return await AriAgent.call('/OAUTH_STATUS', {'provider': provider});
     } catch (e) {
       debugPrint('[ConfigProvider] getOAuthStatus failed: $e');
       return null;
@@ -264,7 +264,7 @@ class ConfigProvider extends ChangeNotifier {
   /// OAuth 로그아웃
   Future<bool> logoutOAuth(String provider) async {
     try {
-      await WsManager.call('/OAUTH_LOGOUT', {'provider': provider});
+      await AriAgent.call('/OAUTH_LOGOUT', {'provider': provider});
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] logoutOAuth failed: $e');
@@ -274,7 +274,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>?> getHACredentials() async {
     try {
-      final res = await WsManager.call('/GET_HA_CREDENTIALS');
+      final res = await AriAgent.call('/GET_HA_CREDENTIALS');
       return res;
     } catch (e) {
       debugPrint('[ConfigProvider] getHACredentials failed: $e');
@@ -284,7 +284,7 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<List<Map<String, dynamic>>?> getHADevices() async {
     try {
-      final res = await WsManager.call('/GET_HA_DEVICES');
+      final res = await AriAgent.call('/GET_HA_DEVICES');
       final devices = res['devices'];
       if (devices is List) {
         return devices.map((item) => Map<String, dynamic>.from(item)).toList();
@@ -302,7 +302,7 @@ class ConfigProvider extends ChangeNotifier {
     String token,
   ) async {
     try {
-      final res = await WsManager.call('/SET_HA_CREDENTIALS', {
+      final res = await AriAgent.call('/SET_HA_CREDENTIALS', {
         'url': url,
         'token': token,
       });
@@ -320,7 +320,7 @@ class ConfigProvider extends ChangeNotifier {
     String? domain,
   }) async {
     try {
-      final res = await WsManager.call('/CONTROL_HA_DEVICE', {
+      final res = await AriAgent.call('/CONTROL_HA_DEVICE', {
         'entity_id': entityId,
         'service': service,
         if (domain != null) 'domain': domain,

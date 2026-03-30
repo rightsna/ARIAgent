@@ -100,7 +100,7 @@ class _OAuthSectionState extends State<OAuthSection> {
   // ─── /OAUTH_EVENT 구독 ────────────────────────────────────
 
   void _subscribeEvents() {
-    _eventSub = WsManager.on('/OAUTH_EVENT', (data) {
+    _eventSub = AriAgent.on('/OAUTH_EVENT', (data) {
       if (data['provider'] != _provider || !mounted) return;
       final type = data['type'] as String?;
       if (type == null) return;

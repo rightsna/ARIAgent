@@ -57,7 +57,7 @@ class ProfileRepository {
     }
 
     // 4. 서버로부터 동기화 데이터 리스닝
-    _agentsListSub = WsManager.on('/AGENTS.LIST', (payload) {
+    _agentsListSub = AriAgent.on('/AGENTS.LIST', (payload) {
       _updateInternalState(payload);
       _saveToLocalFile();
     });
@@ -66,7 +66,7 @@ class ProfileRepository {
   /// 서버로부터 최신 목록 가져오기 (비동기)
   Future<void> refreshFromServer() async {
     try {
-      final data = await WsManager.call('/AGENTS');
+      final data = await AriAgent.call('/AGENTS');
       if (data.containsKey('agents') || data.containsKey('selected')) {
         _updateInternalState(data);
         await _saveToLocalFile(); // 로컬 캐시 갱신
@@ -148,13 +148,13 @@ class ProfileRepository {
 
   Future<void> initializeMemory(String agentId) async {
     try {
-      await WsManager.call('/MEMORY.CLEAR', {'agentId': agentId});
+      await AriAgent.call('/MEMORY.CLEAR', {'agentId': agentId});
     } catch (_) {}
   }
 
   Future<Map<String, dynamic>> getMemory(String agentId) async {
     try {
-      return await WsManager.call('/MEMORY.GET', {'agentId': agentId});
+      return await AriAgent.call('/MEMORY.GET', {'agentId': agentId});
     } catch (e) {
       return {'error': e.toString()};
     }
@@ -162,7 +162,7 @@ class ProfileRepository {
 
   Future<void> updateMemory(String agentId, String content) async {
     try {
-      await WsManager.call('/MEMORY.UPDATE', {
+      await AriAgent.call('/MEMORY.UPDATE', {
         'agentId': agentId,
         'content': content,
       });
@@ -212,7 +212,7 @@ class ProfileRepository {
         'selected': _selectedAgentId,
         'agents': _agentsMap.values.toList(),
       };
-      await WsManager.call('/AGENTS.SAVE', {'agents': dataToSave});
+      await AriAgent.call('/AGENTS.SAVE', {'agents': dataToSave});
     } catch (e) {
       debugPrint('[ProfileRepository] 서버 저장 실패 (현재 로컬에만 저장됨): $e');
     }
@@ -222,7 +222,7 @@ class ProfileRepository {
     _selectedAgentId = id;
     await _saveToLocalFile();
     try {
-      await WsManager.call('/AGENTS.SET_SELECTED', {'id': id});
+      await AriAgent.call('/AGENTS.SET_SELECTED', {'id': id});
     } catch (_) {}
   }
 
@@ -242,9 +242,9 @@ class ProfileRepository {
         'selected': _selectedAgentId,
         'agents': _agentsMap.values.toList(),
       };
-      await WsManager.call('/AGENTS.SAVE', {'agents': dataToSave});
+      await AriAgent.call('/AGENTS.SAVE', {'agents': dataToSave});
       // 서버에서 명시적으로 set_selected도 호출해줌
-      await WsManager.call('/AGENTS.SET_SELECTED', {'id': _selectedAgentId});
+      await AriAgent.call('/AGENTS.SET_SELECTED', {'id': _selectedAgentId});
     } catch (e) {
       debugPrint('[ProfileRepository] 서버 삭제 반영 실패: $e');
     }

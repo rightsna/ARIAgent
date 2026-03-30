@@ -5,8 +5,8 @@ import 'protocol_config.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  WsManager.init();
-  WsManager.connect();
+  AriAgent.init();
+  AriAgent.connect();
 
   runApp(const MyApp());
 }
@@ -68,8 +68,8 @@ class _SampleHomeState extends State<SampleHome> {
             ),
             const SizedBox(height: 8),
             StreamBuilder<bool>(
-              stream: WsManager.connectionStream,
-              initialData: WsManager.isConnected,
+              stream: AriAgent.connectionStream,
+              initialData: AriAgent.isConnected,
               builder: (context, snapshot) {
                 final isConnected = snapshot.data ?? false;
                 return Text('connected: $isConnected');

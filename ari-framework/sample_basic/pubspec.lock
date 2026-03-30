@@ -14,10 +14,10 @@ packages:
     description:
       path: "ari-framework/plugin"
       ref: main
-      resolved-ref: c2748f7c5a0e1f8e099f86b6f0efad2c254ed2b2
+      resolved-ref: "7f1e711d81013b622678115803e9fdd1f770aeb9"
       url: "https://github.com/rightsna/ARIAgent.git"
     source: git
-    version: "0.1.5"
+    version: "0.1.7"
   async:
     dependency: transitive
     description:

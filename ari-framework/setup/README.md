@@ -91,8 +91,8 @@ import 'protocol_config.dart';
 
 Future<void> main(List<String> args) async {
   // 1. 연결 초기화 (args 파싱 생략)
-  WsManager.init(host: host, port: port);
-  WsManager.connect();
+  AriAgent.init(host: host, port: port);
+  AriAgent.connect();
 
   // 2. 핸들러 등록 및 시작
   final handler = ProtocolConfig.createHandler();
@@ -115,6 +115,15 @@ Future<void> main(List<String> args) async {
 4.  **자발적 보고 (REPORT)**: `/APP.REPORT {"appId": "...", "message": "...", "type": "info"}`
     - 앱이 스스로 서버(에이전트)에게 특정 사건을 보고할 때 사용합니다.
     - **중요**: 이 명령을 보내면 서버의 에이전트가 내용을 분석하고 사용자에게 **자연스러운 문장**으로 답변을 생성하여 전달합니다. (역방향 소통)
+
+---
+
+### 4.1 편의 메서드 (Helper Methods)
+`AriAgent` 클래스는 위 프로토콜을 쉽게 사용할 수 있도록 래퍼 메서드를 제공합니다.
+
+- **등록**: `AriAgent.register(appId)`
+- **보고**: `AriAgent.report(appId: appId, message: "메시지", type: "info")`
+- **응답**: `AriAgent.sendResponse(requestId: id, result: data)`
 
 ---
 

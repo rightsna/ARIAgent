@@ -23,8 +23,8 @@ class AppInfoCard extends StatelessWidget {
                 Text('ID: $appId', style: const TextStyle(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 StreamBuilder<bool>(
-                  stream: WsManager.connectionStream,
-                  initialData: WsManager.isConnected,
+                  stream: AriAgent.connectionStream,
+                  initialData: AriAgent.isConnected,
                   builder: (context, snapshot) {
                     final isConnected = snapshot.data ?? false;
                     return Row(

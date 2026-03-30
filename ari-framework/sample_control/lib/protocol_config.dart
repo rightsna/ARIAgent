@@ -7,7 +7,7 @@ class ProtocolConfig {
   /// Current state of the app to be sent to the agent
   static Map<String, dynamic> getAppState() {
     return {
-      'connected': WsManager.isConnected,
+      'connected': AriAgent.isConnected,
       'timestamp': DateTime.now().toIso8601String(),
       'version': '1.0.0',
     };

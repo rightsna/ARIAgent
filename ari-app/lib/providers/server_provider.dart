@@ -54,7 +54,7 @@ class ServerProvider extends ChangeNotifier {
 
     if (success) {
       _setStatus(ServerStatus.running);
-      WsManager.connect(); // 서버가 정상적으로 켜졌을 때 웹소켓 연결 시도
+      AriAgent.connect(); // 서버가 정상적으로 켜졌을 때 웹소켓 연결 시도
     } else {
       _setStatus(ServerStatus.error);
     }
@@ -64,7 +64,7 @@ class ServerProvider extends ChangeNotifier {
 
   Future<void> stop() async {
     _setStatus(ServerStatus.stopping);
-    WsManager.close(); // 에이전트 종료 시 웹소켓 먼저 닫기
+    AriAgent.close(); // 에이전트 종료 시 웹소켓 먼저 닫기
     await _service.stopServer((msg) {
       debugPrint('[ServerProvider] $msg');
       _addLog(msg);
