@@ -226,7 +226,7 @@ class WebSocketService with WidgetsBindingObserver {
     _channel?.sink.close(status.normalClosure);
   }
 
-  Future<void> sendAsync(String cmd, Map<String, dynamic> param) async {
+  Future<void> emit(String cmd, Map<String, dynamic> param) async {
     if (_channel == null || !isConnected) {
       await connect();
     }
@@ -234,9 +234,9 @@ class WebSocketService with WidgetsBindingObserver {
     if (_channel != null && isConnected) {
       final data = '$cmd ${jsonEncode(param)}';
       _channel!.sink.add(data);
-      debugPrint('sendAsync(): $data');
+      debugPrint('emit(): $data');
     } else {
-      debugPrint('Failed to send: $cmd');
+      debugPrint('Failed to emit: $cmd');
     }
   }
 

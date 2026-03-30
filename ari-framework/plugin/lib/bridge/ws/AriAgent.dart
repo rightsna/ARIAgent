@@ -40,13 +40,13 @@ class AriAgent {
     _webSocketService.automaticallyClose = value;
   }
 
-  static Future<void> sendAsync(String cmd, Map<String, dynamic> param) async {
-    await _webSocketService.sendAsync(cmd, param);
+  static Future<void> emit(String cmd, Map<String, dynamic> param) async {
+    await _webSocketService.emit(cmd, param);
   }
 
   /// Registers the application with the given appId.
   static Future<void> register(String appId) async {
-    await sendAsync('/APP.REGISTER', {'appId': appId});
+    await emit('/APP.REGISTER', {'appId': appId});
   }
 
   /// Reports an event or message to the agent.
@@ -57,7 +57,7 @@ class AriAgent {
     String type = 'info',
     Map<String, dynamic>? details,
   }) async {
-    await sendAsync('/APP.REPORT', {
+    await emit('/APP.REPORT', {
       'appId': appId,
       'message': message,
       'type': type,
@@ -70,7 +70,7 @@ class AriAgent {
     required String requestId,
     required dynamic result,
   }) async {
-    await sendAsync('/APP.COMMAND_RESPONSE', {
+    await emit('/APP.COMMAND_RESPONSE', {
       'requestId': requestId,
       'result': result,
     });

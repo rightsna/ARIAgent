@@ -99,7 +99,7 @@ class ChatProvider extends ChangeNotifier {
       };
     }).toList();
 
-    AriAgent.sendAsync('/AGENT.SET_HISTORY', {
+    AriAgent.emit('/AGENT.SET_HISTORY', {
       'agentId': agentId,
       'history': history,
     });
@@ -247,7 +247,7 @@ class ChatProvider extends ChangeNotifier {
   void cancelSendMessage() {
     if (!_isLoading) return;
     final agentId = _currentAgentId ?? AvatarProvider().currentAvatarId;
-    AriAgent.sendAsync('/AGENT.CANCEL', {'agentId': agentId});
+    AriAgent.emit('/AGENT.CANCEL', {'agentId': agentId});
     _removeProgressMessage(_activeRequestId ?? '');
     _isLoading = false;
     _activeRequestId = null;

@@ -62,7 +62,7 @@ class _SampleHomeState extends State<SampleHome> {
     if (text.isEmpty) return;
 
     // 에이전트가 자연스럽게 인지하도록 보고 형식으로 전송
-    AriAgent.sendAsync('/APP.REPORT', {
+    AriAgent.emit('/APP.REPORT', {
       'appId': ProtocolConfig.appId,
       'message': text,
       'type': 'info',
@@ -185,7 +185,7 @@ class _SampleHomeState extends State<SampleHome> {
                           icon: Icons.send_and_archive,
                           color: Colors.purple,
                           onPressed: () {
-                            AriAgent.sendAsync('/APP.REPORT', {
+                            AriAgent.emit('/APP.REPORT', {
                               'appId': ProtocolConfig.appId,
                               'message': '사용자가 앱에서 직접 보고를 전송했습니다.',
                               'type': 'success',
