@@ -1,12 +1,12 @@
 # 📱 앱 제어 (App Control)
 ARI 서버에 연결된 외부 앱들을 탐색하고 원격 제어하기 위한 스킬입니다.
 
-**사용 도구 (Tools)**: `list_apps`, `discover_app_commands`, `read_app_state`, `send_app_command`, `launch_app`, `terminate_app`
+**사용 도구 (Tools)**: `list_apps`, `read_app_state`, `send_app_command`, `launch_app`, `terminate_app`, `install_app`
 
 ### 💡 사용 지침
 1. **앱 탐색**: 사용자가 특정 앱 제어를 원할 때, 가장 먼저 `list_apps` 도구를 호출하여 앱이 현재 **연결(Connected)** 상태인지, 혹은 **설치만(Installed)** 되어 있는지 확인하십시오.
 2. **앱 실행**: 앱이 설치되어 있으나 연결되지 않은 상태라면, `launch_app` 도구를 사용하여 앱을 먼저 실행하십시오.
-3. **기능 조회**: 처음 제어하는 앱이거나 사용 가능한 명령어를 모를 경우, `discover_app_commands`를 호출하여 지원되는 명령어 목록을 확인하십시오.
+3. **기능 파악**: 특정 앱이 어떤 명령어를 지원하는지 확인하려면 해당 앱의 **별도 스킬(Skill)** 파일 또는 **`SKILL.md`** 내용을 참조하십시오.
 4. **명령 전송 및 상태 확인**: 
    - 앱 제어는 `send_app_command`를 사용합니다.
    - 앱의 현재 실시간 데이터가 필요할 때는 `read_app_state`를 사용합니다.

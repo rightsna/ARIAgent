@@ -3,11 +3,6 @@ import 'package:ari_plugin/ari_plugin.dart';
 class ProtocolConfig {
   static const String appId = 'sample_basic';
 
-  /// Descriptions of commands this app supports
-  static Map<String, String> get availableCommands => {
-        'PING': 'Returns app availability and status',
-      };
-
   /// Current state of the app to be sent to the agent
   static Map<String, dynamic> getAppState() {
     return {
@@ -25,7 +20,6 @@ class ProtocolConfig {
         params: params,
       ),
       onGetState: getAppState,
-      onGetCommands: () => availableCommands,
     );
   }
 

@@ -133,15 +133,6 @@ export namespace UserSocketHandler {
     broadcast("/CONNECTED_APPS_CHANGED", { connectedIds });
   };
 
-  export const sendToApp = (appId: string, cmd: string, data: any) => {
-    const target = clients.find((c) => c.appId === appId);
-    if (target && target.readyState === WebSocket.OPEN) {
-      target.send(cmd, data);
-      return true;
-    }
-    return false;
-  };
-
   export const queryApp = async (
     appId: string,
     queryType: string,

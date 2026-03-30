@@ -75,7 +75,6 @@ class ProtocolConfig {
     appId: appId,
     onCommand: (cmd, params) => handleCommand(cmd, params),
     onGetState: () => { 'status': 'ready' },
-    onGetCommands: () => { 'MY_ACTION': '설명' },
   );
 
   static dynamic handleCommand(String command, Map<String, dynamic> params) {

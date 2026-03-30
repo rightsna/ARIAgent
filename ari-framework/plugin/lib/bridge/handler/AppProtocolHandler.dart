@@ -8,13 +8,11 @@ class AppProtocolHandler {
   final String appId;
   final FutureOr<dynamic> Function(String command, Map<String, dynamic> params)? onCommand;
   final Map<String, dynamic> Function()? onGetState;
-  final Map<String, String> Function()? onGetCommands;
 
   AppProtocolHandler({
     required this.appId,
     this.onCommand,
     this.onGetState,
-    this.onGetCommands,
   });
 
   final List<StreamSubscription> _subscriptions = [];
@@ -71,11 +69,6 @@ class AppProtocolHandler {
       WsManager.sendAsync('/APP.QUERY_RESPONSE', {
         'requestId': requestId,
         'result': onGetState!(),
-      });
-    } else if (queryType == 'GET_COMMANDS' && onGetCommands != null) {
-      WsManager.sendAsync('/APP.QUERY_RESPONSE', {
-        'requestId': requestId,
-        'result': onGetCommands!(),
       });
     } else {
       debugPrint('Unhandled queryType: $queryType');

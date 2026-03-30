@@ -7,7 +7,11 @@ import path from "path";
 import { appStateService } from "../services/app_state_service";
 import { UserSocketHandler } from "../system/ws";
 import { logger } from "../infra/logger";
-import { getBundleRoots, getWorkspaceRoot, findAppExecutable } from "../infra/runtime_paths";
+import {
+  getBundleRoots,
+  getWorkspaceRoot,
+  findAppExecutable,
+} from "../infra/runtime_paths";
 import { DATA_DIR } from "../infra/data";
 import { loadAllSkills } from "../skills";
 import { execPromise } from "./bash";
@@ -88,7 +92,7 @@ export const sendAppCommandTool: AgentTool = {
   name: "send_app_command",
   label: "앱 명령 전송",
   description:
-    "실행 중인 특정 앱에 제어 명령을 보냅니다. 반드시 'discover_app_commands'를 통해 지원되는 명령어 목록을 먼저 확인하는 것이 좋습니다.",
+    "실행 중인 특정 앱에 제어 명령을 보냅니다. 해당 앱의 SKILL.md 파일에서 지원하는 명령어 목록을 먼저 확인하십시오.",
   parameters: Type.Object({
     appId: Type.String({
       description: "명령을 받을 앱의 식별자 (예: youtube_player, notepad)",
@@ -177,7 +181,9 @@ export const launchAppTool: AgentTool = {
     }
 
     const executable = resolveAppExecutable(appName);
-    logger.info(`[AppLifecycle] Launching app '${appName}' via: ${executable} (args: ${JSON.stringify(args || [])})`);
+    logger.info(
+      `[AppLifecycle] Launching app '${appName}' via: ${executable} (args: ${JSON.stringify(args || [])})`,
+    );
 
     const child = spawn(executable, args || [], {
       detached: true,
@@ -239,49 +245,6 @@ export const terminateAppTool: AgentTool = {
       content: [{ type: "text", text: `✅ '${appName}' 앱을 종료했습니다.` }],
       details: { appName, success: true },
     };
-  },
-};
-
-/**
- * discover_app_commands
- * 특정 앱이 지원하는 명령어 목록과 설명을 조회합니다.
- */
-export const discoverAppCommandsTool: AgentTool = {
-  name: "discover_app_commands",
-  label: "앱 명령어 조회",
-  description:
-    "특정 앱(ID 기반)이 지원하는 제어 명령어 목록과 각 명령어의 설명을 조회합니다. 앱을 처음 제어하거나 사용 가능한 기능을 확인할 때 사용합니다.",
-  parameters: Type.Object({
-    appId: Type.String({
-      description: "명령어를 조회할 앱의 식별자 (예: youtube_player)",
-    }),
-  }),
-  execute: async (_id, params) => {
-    const { appId } = params as { appId: string };
-
-    try {
-      const result = await UserSocketHandler.queryApp(appId, "GET_COMMANDS");
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `💡 '${appId}' 앱 지원 명령어 목록:\n${JSON.stringify(result, null, 2)}`,
-          },
-        ],
-        details: { appId, commands: result },
-      };
-    } catch (error: any) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `❌ '${appId}' 앱의 명령어 목록을 가져오는 데 실패했습니다: ${error.message}`,
-          },
-        ],
-        details: { appId, success: false, error: error.message },
-      };
-    }
   },
 };
 
@@ -444,7 +407,8 @@ export const installAppTool: AgentTool = {
 export const listAppsTool: AgentTool = {
   name: "list_apps",
   label: "앱 목록 조회",
-  description: "현재 서버에 연결된 실시간 앱 ID 목록과 설치된 번들 앱 목록을 조회합니다. 명령을 내릴 앱의 식별자를 찾을 때 사용합니다.",
+  description:
+    "현재 서버에 연결된 실시간 앱 ID 목록과 설치된 번들 앱 목록을 조회합니다. 명령을 내릴 앱의 식별자를 찾을 때 사용합니다.",
   parameters: Type.Object({}),
   execute: async () => {
     // 1. 실시간 연결된 앱 ID 가져오기
@@ -453,12 +417,14 @@ export const listAppsTool: AgentTool = {
     // 2. 설치된 앱 목록 가져오기 (폴더 기준)
     const bundleRoots = getBundleRoots();
     const installedApps: string[] = [];
-    
+
     for (const root of bundleRoots) {
       if (fs.existsSync(root)) {
-        const items = fs.readdirSync(root).filter(dir => {
+        const items = fs.readdirSync(root).filter((dir) => {
           const stats = fs.statSync(path.join(root, dir));
-          return stats.isDirectory() && !dir.startsWith(".") && dir !== "__MACOSX";
+          return (
+            stats.isDirectory() && !dir.startsWith(".") && dir !== "__MACOSX"
+          );
         });
         installedApps.push(...items);
       }
@@ -470,21 +436,21 @@ export const listAppsTool: AgentTool = {
       content: [
         {
           type: "text",
-          text: `📱 ARI 앱 목록:\n\n` +
-                `🟢 연결됨 (Connected):\n${connectedIds.length > 0 ? connectedIds.map(id => `- ${id}`).join("\n") : "(없음)"}\n\n` +
-                `📦 설치됨 (Installed):\n${uniqueInstalled.length > 0 ? uniqueInstalled.map(id => `- ${id}`).join("\n") : "(없음)"}`
-        }
+          text:
+            `📱 ARI 앱 목록:\n\n` +
+            `🟢 연결됨 (Connected):\n${connectedIds.length > 0 ? connectedIds.map((id) => `- ${id}`).join("\n") : "(없음)"}\n\n` +
+            `📦 설치됨 (Installed):\n${uniqueInstalled.length > 0 ? uniqueInstalled.map((id) => `- ${id}`).join("\n") : "(없음)"}`,
+        },
       ],
-      details: { connected: connectedIds, installed: uniqueInstalled }
+      details: { connected: connectedIds, installed: uniqueInstalled },
     };
-  }
+  },
 };
 
 export const TOOLS = [
   listAppsTool,
   readAppStateTool,
   sendAppCommandTool,
-  discoverAppCommandsTool,
   launchAppTool,
   terminateAppTool,
   installAppTool,

@@ -4,15 +4,6 @@ import 'providers/log_provider.dart';
 class ProtocolConfig {
   static const String appId = 'sample_control';
 
-  /// Descriptions of commands this app supports
-  static Map<String, String> get availableCommands => {
-        'PING': 'Returns app availability and status',
-        'SYNC': 'Triggers a data synchronization',
-        'NOTIFY': 'Shows a notification toast',
-        'ALERT': 'Triggers an alert dialog',
-        'SETTINGS': 'Opens app settings view',
-      };
-
   /// Current state of the app to be sent to the agent
   static Map<String, dynamic> getAppState() {
     return {
@@ -31,7 +22,6 @@ class ProtocolConfig {
         params: params,
       ),
       onGetState: getAppState,
-      onGetCommands: () => availableCommands,
     );
   }
 
