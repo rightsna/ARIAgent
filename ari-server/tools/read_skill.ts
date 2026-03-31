@@ -59,6 +59,7 @@ export const readSkillTool: AgentTool = {
         tools: skill.tools,
         content: skill.content,
         filePath: skill.filePath,
+        isApp: skill.isApp,
       },
     };
   },

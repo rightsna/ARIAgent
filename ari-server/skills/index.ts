@@ -11,6 +11,7 @@ export interface SkillDefinition {
   content: string;
   filePath: string;
   isCustom?: boolean;
+  isApp?: boolean;
   icon?: string;
 }
 
@@ -88,6 +89,7 @@ function loadSkillsFromDir(dirPath: string): SkillDefinition[] {
       icon: parseSkillIcon(content),
       content,
       filePath: skillFilePath,
+      isApp: fs.existsSync(path.join(skillDir, "app.app")) || fs.existsSync(path.join(skillDir, "app_info.json")),
     });
   }
   return skills;

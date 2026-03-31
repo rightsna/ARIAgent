@@ -117,10 +117,18 @@ export namespace UserSocketHandler {
     logger.info(`CLIENT connected = ${clients.length} (uuid: ${ws.uuid})`);
   };
 
-  export const broadcast = (cmd: string, data: any) => {
+  export const broadcast = (cmd: string, data: any, targetAppIds?: string[]) => {
     clients.forEach((ws) => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(cmd, data);
+        if (targetAppIds && targetAppIds.length > 0) {
+          // 특정 앱 아이디가 지정된 경우 필터링
+          if (ws.appId && targetAppIds.includes(ws.appId)) {
+            ws.send(cmd, data);
+          }
+        } else {
+          // 지정되지 않은 경우 전체 브로드캐스트
+          ws.send(cmd, data);
+        }
       }
     });
   };

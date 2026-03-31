@@ -1,6 +1,6 @@
 import { loadAllSkills, SkillDefinition } from "../../skills";
 
-export type ActiveSkill = Pick<SkillDefinition, "name" | "description" | "tools" | "content">;
+export type ActiveSkill = Pick<SkillDefinition, "name" | "description" | "tools" | "content" | "isApp">;
 
 export async function loadAvailableSkills(): Promise<SkillDefinition[]> {
   return await loadAllSkills();
@@ -16,6 +16,7 @@ function cloneSkill(skill: ActiveSkill): ActiveSkill {
     description: skill.description,
     tools: [...skill.tools],
     content: skill.content,
+    isApp: skill.isApp,
   };
 }
 
@@ -33,6 +34,7 @@ export function mergeActiveSkill(activeSkills: ActiveSkill[], details: any): Act
     description: typeof details.description === "string" ? details.description : "",
     tools: Array.isArray(details.tools) ? details.tools.filter((tool: unknown): tool is string => typeof tool === "string") : [],
     content: details.content,
+    isApp: !!details.isApp,
   };
 
   const remaining = activeSkills.filter((skill) => skill.name !== nextSkill.name);

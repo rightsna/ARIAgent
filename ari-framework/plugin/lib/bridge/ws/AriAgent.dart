@@ -56,12 +56,14 @@ class AriAgent {
     required String message,
     String type = 'info',
     Map<String, dynamic>? details,
+    bool onlySelf = false,
   }) async {
     await emit('/APP.REPORT', {
       'appId': appId,
       'message': message,
       'type': type,
       if (details != null) 'details': details,
+      'onlySelf': onlySelf,
     });
   }
 
@@ -79,10 +81,47 @@ class AriAgent {
   static Future<Map<String, dynamic>> call(
     String uri, [
     Map<String, dynamic>? param,
+    Duration idleTimeout = const Duration(seconds: 60),
   ]) async {
     final completer = Completer<Map<String, dynamic>>();
+    final requestId = param?['requestId']?.toString();
+
+    Timer? timer;
+    StreamSubscription? progressSub;
+
+    // 타임아웃 타이머를 초기화하거나 갱신하는 내부 함수 (Activity Watchdog)
+    void resetTimer() {
+      timer?.cancel();
+      timer = Timer(idleTimeout, () {
+        if (!completer.isCompleted) {
+          progressSub?.cancel();
+          completer.completeError(
+            Exception('[AriAgent] Inactivity timeout: $uri ($requestId)'),
+          );
+        }
+      });
+    }
+
+    resetTimer(); // 첫 실행 시 타이머 시작
+
+    // 만약 requestId가 전달되었다면, 해당 요청에 대한 PROGRESS가 올 때마다 타이머 갱신
+    if (requestId != null) {
+      progressSub = on('/AGENT.PROGRESS', (data) {
+        final payload = data['data'] ?? data;
+        if (payload['requestId']?.toString() == requestId) {
+          debugPrint(
+            '[AriAgent] Refreshing timeout for $requestId due to activity signal.',
+          );
+          resetTimer();
+        }
+      });
+    }
 
     _webSocketService.send(uri, param ?? {}, (res) {
+      progressSub?.cancel();
+      timer?.cancel();
+      if (completer.isCompleted) return;
+
       if (res.r) {
         completer.complete(res.d as Map<String, dynamic>);
       } else {
@@ -90,10 +129,7 @@ class AriAgent {
       }
     });
 
-    return await completer.future.timeout(
-      const Duration(seconds: 120),
-      onTimeout: () => throw Exception('Request timeout: $uri'),
-    );
+    return await completer.future;
   }
 
   static StreamSubscription<Map<String, dynamic>> on(

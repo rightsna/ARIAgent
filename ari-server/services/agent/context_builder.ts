@@ -2,6 +2,7 @@ import { AgentMessage } from "@mariozechner/pi-agent-core";
 import { AgentRuntimeContext } from "../../models/agent_runtime";
 import { SkillDefinition } from "../../skills";
 import { Prompt } from "../../infra/prompt";
+import { logger } from "../../infra/logger";
 import { readCoreMemory, readRecentDailyLogs } from "../memory";
 import { ActiveSkill } from "./skill_registry";
 
@@ -9,7 +10,7 @@ export async function buildSystemPrompt(
   persona: string,
   runtimeContext: AgentRuntimeContext,
   agentId: string,
-  availableSkills: Pick<SkillDefinition, "name" | "description">[] = [],
+  availableSkills: Pick<SkillDefinition, "name" | "description" | "isApp">[] = [],
   activeSkills: ActiveSkill[] = [],
 ): Promise<string> {
   const coreMemory = readCoreMemory(agentId);
@@ -23,19 +24,27 @@ export async function buildSystemPrompt(
     content: skill.content,
   }));
 
-  return Prompt.load("system_prompt.hbs", {
+  const systemPrompt = await Prompt.load("system_prompt.hbs", {
     now_str: new Date().toISOString(),
     avatarName,
     platform,
     persona,
     coreMemory,
     recentDailyLogs,
-    skills: availableSkills.map((skill) => ({
+    skills: availableSkills.filter((s) => !s.isApp).map((skill) => ({
+      name: skill.name,
+      description: skill.description,
+    })),
+    apps: availableSkills.filter((s) => s.isApp).map((skill) => ({
       name: skill.name,
       description: skill.description,
     })),
     loadedSkills,
   });
+
+  logger.debug(`[Agent] Built System Prompt:\n${systemPrompt}`);
+
+  return systemPrompt;
 }
 
 export function pruneContext(messages: AgentMessage[]): Promise<AgentMessage[]> {

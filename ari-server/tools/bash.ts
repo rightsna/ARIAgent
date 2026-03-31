@@ -28,7 +28,7 @@ export const executeBashTool: AgentTool = {
     if (isDangerous(command)) {
       throw new Error("⚠️ 보안상 실행이 차단된 명령어입니다.");
     }
-    const output = await execPromise(command, { timeout: 15000 });
+    const output = await execPromise(command, { timeout: 120000 });
     return {
       content: [{ type: "text" as const, text: output }],
       details: {},
