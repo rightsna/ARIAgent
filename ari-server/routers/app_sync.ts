@@ -30,11 +30,22 @@ router.on("/APP.REGISTER", (ws, params) => {
  * 이제 서버(에이전트)가 이 내용을 읽고 "생각"한 뒤 자연스럽게 답변합니다.
  */
 router.on("/APP.REPORT", async (ws, params) => {
-  const { appId, message, type } = params;
+  const { appId, message, type, details } = params;
   logger.info(`[AppSync] Proactive report from ${appId}: ${message} (${type || "info"})`);
 
   const requestId = `report-${Date.now()}`;
-  const proactivePrompt = `[시스템 보고] '${appId}' 앱으로부터 보고가 도착했습니다: "${message}"\n이 정보를 사용자에게 자연스럽게 설명해주고 필요하다면 그에 따른 의견을 덧붙여줘.`;
+  
+  // 모든 앱의 보고에 대해 범용적으로 적용되는 지침 (보고 타입과 상세 정보 포함)
+  const proactivePrompt = `[앱 보고 수신] '${appId}' 앱으로부터 보고가 도착했습니다.
+- 메시지: "${message}"
+- 타입: "${type || 'info'}"
+- 상세 정보: ${JSON.stringify(details || {})}
+
+이 보고 내용을 분석하여 다음 중 하나를 수행하세요:
+1. 해당 앱을 제어해야 하는 요청(예: 전략 수립, 데이터 업데이트 등)이라면, 'read_skill'로 '${appId}' 스킬 지침을 확인한 뒤 적절한 프로토콜(예: send_app_command)로 작업을 수행하세요.
+2. 단순 정보 알림이라면 사용자에게 자연스럽게 설명하고 필요한 경우 의견을 덧붙여주세요.
+
+사용자에게는 항상 최종적인 처리 결과나 설명만 답변으로 제공하세요.`;
 
   try {
     // 에이전트가 생각하고 답변을 생성하도록 유도
