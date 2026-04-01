@@ -1,17 +1,37 @@
 import { router } from "../system/router";
 import { chatWithAgent } from "../services/agent";
+import { Prompt } from "../infra/prompt";
+import { UserSocketHandler } from "../system/ws";
 
 // /AGENT
 router.on("/AGENT", async (ws, params) => {
-  const message = params.message as string;
-  const requestId = (params.requestId as string) || "";
-  const persona = (params.persona as string) || "";
-  const avatarName = (params.avatarName as string) || "";
-  const platform = (params.platform as string) || "";
-  const agentId = params.agentId as string;
+  const {
+    requestId = "",
+    persona = "",
+    avatarName = "",
+    platform = "",
+    agentId,
+    source = "user", // 'user' | 'app'
+    appId,
+    type,
+    details,
+    broadcast: shouldBroadcast = false,
+  } = params;
+
+  let message = params.message as string;
 
   if (!message) {
     return ws.send("/AGENT", { ok: false, message: "message required" });
+  }
+
+  // 앱 소스인 경우 템플릿 적용 (동적 래핑)
+  if (source === "app") {
+    message = await Prompt.load("app_report.hbs", {
+      appId: appId || ws.appId || "unknown",
+      message,
+      type: type || "info",
+      detailsJson: JSON.stringify(details || {}),
+    });
   }
 
   try {
@@ -20,23 +40,37 @@ router.on("/AGENT", async (ws, params) => {
       persona,
       agentId,
       {
-        avatarName,
-        platform,
+        avatarName: avatarName || (source === "app" ? "ARI" : undefined),
+        platform: platform || (source === "app" ? "system" : undefined),
       },
       (progressMessage) => {
-        ws.send("/AGENT.PROGRESS", {
+        const payload = {
           ok: true,
-          data: {
-            requestId,
-            message: progressMessage,
-          },
-        });
+          data: { requestId, message: progressMessage },
+        };
+        // 브로드캐스트 모드이거나 앱 소스인 경우 전체 방송
+        if (shouldBroadcast || source === "app") {
+          UserSocketHandler.broadcast("/AGENT.PROGRESS", payload);
+        } else {
+          ws.send("/AGENT.PROGRESS", payload);
+        }
       },
     );
-    ws.send("/AGENT", {
+
+    const responsePayload = {
       ok: true,
-      data: { response: result.responseText, requestId },
-    });
+      data: { response: result.responseText, requestId, appId },
+    };
+
+    // 최종 응답 전송 방식 결정
+    if (shouldBroadcast || source === "app") {
+      // 자발적 보고에 대한 답변은 /AGENT 대신 /AGENT.PUSH로 방송 (채팅방 UI 트리거용)
+      UserSocketHandler.broadcast("/AGENT.PUSH", responsePayload);
+      // 요청자에게는 작업 완료 응답만 별도로 전송 (command call fulfillment용)
+      ws.send("/AGENT", { ok: true, data: { status: "broadcasted", requestId } });
+    } else {
+      ws.send("/AGENT", responsePayload);
+    }
   } catch (err: any) {
     ws.send("/AGENT", { ok: false, message: err.message });
   }

@@ -26,67 +26,6 @@ router.on("/APP.REGISTER", (ws, params) => {
 });
 
 /**
- * /APP.REPORT
- * 앱이 서버(및 사용자)에게 자발적으로 보내는 상태 보고 또는 메시지
- * 이제 서버(에이전트)가 이 내용을 읽고 "생각"한 뒤 자연스럽게 답변합니다.
- */
-router.on("/APP.REPORT", async (ws, params) => {
-  const { appId, message, type, details, onlySelf } = params;
-  logger.info(`[AppSync] Proactive report from ${appId}: ${message} (${type || "info"})`);
-
-  const requestId = `report-${Date.now()}`;
-  const targetAppIds = onlySelf ? [appId] : undefined;
-  
-  // 모든 앱의 보고에 대해 범용적으로 적용되는 지침 (보고 타입과 상세 정보 포함)
-  const proactivePrompt = await Prompt.load("app_report.hbs", {
-    appId,
-    message,
-    type: type || "info",
-    detailsJson: JSON.stringify(details || {}),
-  });
-
-  try {
-    // 에이전트가 생각하고 답변을 생성하도록 유도
-    const result = await chatWithAgent(
-      proactivePrompt,
-      "", // persona
-      undefined, // agentId
-      { platform: "system" },
-      (progressMessage) => {
-        // 본앱 UI에 에이전트의 "생각 중" 상태를 전달
-        UserSocketHandler.broadcast(
-          "/AGENT.PROGRESS",
-          {
-            ok: true,
-            data: {
-              requestId,
-              message: progressMessage,
-            },
-          },
-          targetAppIds,
-        );
-      },
-    );
-
-    // 생성된 자연스러운 답변을 본앱 UI로 전송 (자발적 푸시이므로 /AGENT.PUSH 사용)
-    UserSocketHandler.broadcast(
-      "/AGENT.PUSH",
-      {
-        ok: true,
-        data: {
-          response: result.responseText,
-          requestId,
-          appId, // 출처 정보 포함
-        },
-      },
-      targetAppIds,
-    );
-  } catch (err: any) {
-    logger.error(`[AppSync] Failed to process proactive report from ${appId}: ${err.message}`);
-  }
-});
-
-/**
  * /APP.COMMAND_RESPONSE
  * 명령 실행 후 앱으로부터 결과를 받을 때 (동기식 commandApp 호출의 응답)
  */

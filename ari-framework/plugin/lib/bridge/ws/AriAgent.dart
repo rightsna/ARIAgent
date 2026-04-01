@@ -51,19 +51,23 @@ class AriAgent {
 
   /// Reports an event or message to the agent.
   /// The agent will typically analyze this and respond to the user.
-  static Future<void> report({
+  static Future<Map<String, dynamic>> report({
     required String appId,
     required String message,
     String type = 'info',
     Map<String, dynamic>? details,
-    bool onlySelf = false,
+    String? agentId,
   }) async {
-    await emit('/APP.REPORT', {
+    final requestId = 'report-${DateTime.now().millisecondsSinceEpoch}';
+
+    return await call('/AGENT', {
+      'source': 'app',
       'appId': appId,
       'message': message,
       'type': type,
-      if (details != null) 'details': details,
-      'onlySelf': onlySelf,
+      'details': details,
+      'requestId': requestId,
+      'agentId': agentId,
     });
   }
 
