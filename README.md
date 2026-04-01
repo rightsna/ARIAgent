@@ -119,7 +119,9 @@ ARIAgent/
 ├── ari-app/                     # Flutter 데스크톱 UI 쉘
 ├── ari-server/                  # 메인 런타임 (상태 관리, 도구 실행, RPC)
 ├── ari-launcher/                # 업데이트 확인 및 앱 실행기
-└── ari-framework/               # 앱 연동 규격 및 개발 프레임워크/가이드 (flutter)
+├── ari-framework/               # 앱 연동 규격 및 개발 프레임워크/가이드 (flutter)
+├── ARIWeb/                      # ARI 웹 사이트 및 문서 (서브모듈)
+└── ARIStock/                    # 주식 분석 예제 앱 (서브모듈)
 ```
 
 ## 🚀 예제 연동 앱 (Sample Apps)
