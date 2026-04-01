@@ -10,7 +10,7 @@
 {{#if apps}}
 [Available Apps]
 {{#each apps}}
-- `{{name}}`: {{description}}
+- `{{name}}`: {{#if isRunning}}[Running] {{/if}}{{description}}
 {{/each}}
 {{/if}}
 

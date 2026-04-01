@@ -3,6 +3,7 @@ import { AgentRuntimeContext } from "../../models/agent_runtime";
 import { SkillDefinition } from "../../skills";
 import { Prompt } from "../../infra/prompt";
 import { logger } from "../../infra/logger";
+import { UserSocketHandler } from "../../system/ws";
 import { readCoreMemory, readRecentDailyLogs } from "../memory";
 import { ActiveSkill } from "./skill_registry";
 
@@ -35,10 +36,16 @@ export async function buildSystemPrompt(
       name: skill.name,
       description: skill.description,
     })),
-    apps: availableSkills.filter((s) => s.isApp).map((skill) => ({
-      name: skill.name,
-      description: skill.description,
-    })),
+    apps: availableSkills
+      .filter((s) => s.isApp)
+      .map((skill) => {
+        const isRunning = UserSocketHandler.getConnectedAppIds().includes(skill.name);
+        return {
+          name: skill.name,
+          description: skill.description,
+          isRunning,
+        };
+      }),
     loadedSkills,
   });
 

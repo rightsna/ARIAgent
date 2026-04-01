@@ -118,6 +118,28 @@ export const sendAppCommandTool: AgentTool = {
         cmdParams || {},
       );
 
+      // 앱에서 반환한 결과 내부에 명시적인 '에러' 상태가 있는지 확인
+      const isAppError = result?.status === "error" || result?.ok === false;
+
+      if (isAppError) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ '${appId}' 앱에서 명령 실행 중 에러가 발생했습니다:\n${result?.message || JSON.stringify(result)}`,
+            },
+          ],
+          details: {
+            appId,
+            command,
+            params: cmdParams,
+            result,
+            success: false,
+            error: result?.message,
+          },
+        };
+      }
+
       return {
         content: [
           {

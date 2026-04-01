@@ -12,6 +12,7 @@ import { TOOLS as SCHEDULE_TOOLS } from "./schedule";
 import { TOOLS as WEB_BROWSER_TOOLS } from "./web_browser";
 import { TOOLS as WEB_FETCH_TOOLS } from "./web_fetch";
 import { TOOLS as YOUTUBE_SEARCH_TOOLS } from "./youtube_search";
+import { TOOLS as UTILS_TOOLS } from "./utils";
 import { TOOLS as HA_TOOLS } from "./homeassistant";
 import { updateCoreMemoryTool } from "./core_memory_tool";
 import { appendDailyMemoryTool } from "./daily_memory_tool";
@@ -27,6 +28,7 @@ const BUILT_IN_TOOLS = [
   ...WEB_BROWSER_TOOLS,
   ...WEB_FETCH_TOOLS,
   ...YOUTUBE_SEARCH_TOOLS,
+  ...UTILS_TOOLS,
   ...HA_TOOLS,
   updateCoreMemoryTool,
   appendDailyMemoryTool,

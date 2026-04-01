@@ -88,9 +88,19 @@ router.on("/APP.REPORT", async (ws, params) => {
 
 /**
  * /APP.COMMAND_RESPONSE
- * 명령 실행 후 앱으로부터 결과를 받을 때 (선택사항)
+ * 명령 실행 후 앱으로부터 결과를 받을 때 (동기식 commandApp 호출의 응답)
  */
 router.on("/APP.COMMAND_RESPONSE", (ws, params) => {
-  const { appId, command, success, result } = params;
-  logger.info(`[AppSync] Command response from ${appId}: ${command} (Success: ${success})`);
+  const { requestId, result } = params;
+  const appId = ws.appId || "unknown";
+  
+  // 결과 내부에 에러 정보가 있는지 확인
+  const isError = result?.status === "error" || result?.ok === false;
+  const statusMsg = isError ? `❌ Error: ${result?.message || "Unknown error"}` : "✅ Success";
+
+  logger.info(`[AppSync] Command response from ${appId} (req:${requestId || "N/A"}): ${statusMsg}`);
+  
+  if (isError) {
+    logger.debug(`[AppSync] Detailed error from ${appId}: ${JSON.stringify(result)}`);
+  }
 });
