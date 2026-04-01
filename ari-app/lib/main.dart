@@ -14,7 +14,6 @@ import 'repositories/config_repository.dart';
 import 'providers/config_provider.dart';
 import 'providers/server_provider.dart';
 import 'providers/task_provider.dart';
-import 'repositories/log_repository.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import 'providers/chat_provider.dart';
 import 'package:flutter/gestures.dart';
@@ -32,8 +31,6 @@ void main() async {
     hiveDir.createSync(recursive: true);
   }
   Hive.init(hivePath);
-
-  await LogRepository().init();
 
   // PackageInfo 초기화
   final packageInfo = await PackageInfo.fromPlatform();

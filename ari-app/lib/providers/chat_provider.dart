@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
 import 'package:ari_plugin/ari_plugin.dart';
-import '../repositories/log_repository.dart';
 import 'avatar_provider.dart';
 
 /// ChatProvider: 채팅 상태 관리 및 서버(에이전트) 통신 수행.
@@ -24,9 +23,7 @@ class ChatProvider extends ChangeNotifier {
 
   ChatProvider() {
     _initWebSocket();
-    // 초기 로드
     _currentAgentId = AvatarProvider().currentAvatarId;
-    loadHistory(_currentAgentId!);
 
     // 아바타 변경 시 히스토리 자동 갱신
     AvatarProvider().addListener(_onAvatarChanged);
@@ -39,70 +36,45 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
-  void loadHistory(String agentId) {
+  Future<void> loadHistory(String agentId) async {
     _currentAgentId = agentId;
-    _messages.clear();
-
-    final repo = LogRepository();
-    final chatLogs = repo.getChatLogs(agentId);
-    final taskLogs = repo.getTaskLogs(agentId);
-
-    // 두 로그를 시간순으로 병합
-    final allLogs = [...chatLogs, ...taskLogs];
-    allLogs.sort((a, b) {
-      final t1 = a['timestamp']?.toString() ?? '';
-      final t2 = b['timestamp']?.toString() ?? '';
-      return t1.compareTo(t2);
-    });
-
-    for (final log in allLogs) {
-      if (log.containsKey('message')) {
-        _messages.add(
-          ChatMessage(
-            text: log['message']?.toString() ?? '',
-            isUser: log['isUser'] == true,
-            isError: log['isError'] == true,
-          ),
-        );
-      } else if (log.containsKey('taskId')) {
-        final label = log['label'] ?? '스케줄 작업';
-        final result = log['result'] ?? '';
-        _messages.add(
-          ChatMessage(text: '🕒 [$label] 실행 결과:\n$result', isUser: false),
-        );
-      }
-    }
-
-    notifyListeners();
-
-    // 서버에 대화 맥락 주입 (이전 대화 복구 컨셉)
-    _seedServerHistory(agentId, chatLogs);
-  }
-
-  void _seedServerHistory(String agentId, List<Map<String, dynamic>> chatLogs) {
     if (!AriAgent.isConnected) return;
 
-    // 최근 20개 정도만 추출하여 서버에 전달 (AI 컨텍스트용)
-    final recentLogs = chatLogs.length > 20
-        ? chatLogs.sublist(chatLogs.length - 20)
-        : chatLogs;
+    try {
+      final response = await AriAgent.call('/CHAT.GET_HISTORY', {
+        'agentId': agentId,
+        'index': 0,
+        'size': 50,
+      });
 
-    final history = recentLogs.map((log) {
-      return {
-        'role': log['isUser'] == true ? 'user' : 'assistant',
-        'content': [
-          {
-            'type': 'text',
-            'text': log['message']?.toString() ?? '',
+      if (response['ok'] == true) {
+        final List logs = response['data']['logs'] ?? [];
+        _messages.clear();
+
+        // 서버 로그는 최신순이므로 역순(과거->최신)으로 추가
+        for (final log in logs.reversed) {
+          if (log['type'] == 'chat') {
+            _messages.add(
+              ChatMessage(
+                text: log['message']?.toString() ?? '',
+                isUser: log['isUser'] == true,
+                isError: log['isError'] == true,
+                requestId: log['requestId']?.toString(),
+              ),
+            );
+          } else if (log['type'] == 'task') {
+            final label = log['label'] ?? '스케줄 작업';
+            final result = log['result'] ?? '';
+            _messages.add(
+              ChatMessage(text: '🕒 [$label] 실행 결과:\n$result', isUser: false),
+            );
           }
-        ],
-      };
-    }).toList();
-
-    AriAgent.emit('/AGENT.SET_HISTORY', {
-      'agentId': agentId,
-      'history': history,
-    });
+        }
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[Chat] 히스토리 로드 실패: $e');
+    }
   }
 
   void _initWebSocket() {
@@ -116,14 +88,6 @@ class ChatProvider extends ChangeNotifier {
 
       _messages.add(ChatMessage(text: message, isUser: true, requestId: requestId));
       notifyListeners();
-
-      try {
-        LogRepository().addChatLog(
-          agentId: _currentAgentId ?? AvatarProvider().currentAvatarId,
-          message: message,
-          isUser: true,
-        );
-      } catch (_) {}
     });
 
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
@@ -137,17 +101,6 @@ class ChatProvider extends ChangeNotifier {
 
       final label = taskData['label'] ?? '스케줄 작업';
       final result = taskData['result'] ?? '';
-
-      try {
-        LogRepository().addTaskLog(
-          taskId: taskData['taskId'] ?? 'unknown',
-          label: label,
-          result: result,
-          agentId: AvatarProvider().currentAvatarId,
-        );
-      } catch (e) {
-        debugPrint('[Hive] 저장 에러: $e');
-      }
 
       _messages.add(
         ChatMessage(text: '🕒 [$label] 실행 결과:\n$result', isUser: false),
@@ -190,19 +143,6 @@ class ChatProvider extends ChangeNotifier {
       }
 
       notifyListeners();
-
-      try {
-        LogRepository().addChatLog(
-          agentId: AvatarProvider().currentAvatarId,
-          message: response,
-          isUser: false,
-        );
-      } catch (_) {}
-    });
-
-    // 서버 사이드 컨텍스트 초기화 응답 핸들러 (디버깅용)
-    _setHistorySub = AriAgent.on('/AGENT.SET_HISTORY', (data) {
-      debugPrint('[Chat] Server history seeded ok');
     });
 
     AriAgent.connectionNotifier.addListener(_onConnectionChanged);
@@ -210,8 +150,7 @@ class ChatProvider extends ChangeNotifier {
 
   void _onConnectionChanged() {
     if (AriAgent.isConnected && _currentAgentId != null) {
-      final chatLogs = LogRepository().getChatLogs(_currentAgentId!);
-      _seedServerHistory(_currentAgentId!, chatLogs);
+      loadHistory(_currentAgentId!);
     }
   }
 
@@ -248,14 +187,6 @@ class ChatProvider extends ChangeNotifier {
       _isLoading = false;
       _activeRequestId = null;
       notifyListeners();
-      try {
-        LogRepository().addChatLog(
-          agentId: agentId,
-          message: '에이전트에 연결할 수 없습니다. ($e)',
-          isUser: false,
-          isError: true,
-        );
-      } catch (_) {}
     }
   }
 

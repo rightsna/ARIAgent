@@ -2,6 +2,8 @@ import { router } from "../system/router";
 import { handleGetTasksWs, handleTasksSyncWs, handleTasksCrontabWs, handleTasksResultsWs } from "../services/task";
 import { UserSocketHandler } from "../system/ws";
 import { logger } from "../infra/logger";
+import { appendChatLog } from "../repositories/chat_log_repository";
+import { getActiveAgentId } from "../services/memory";
 
 router.on("/TASKS", async (ws, params) => {
   const data = await handleGetTasksWs();
@@ -27,6 +29,8 @@ router.on("/TASKS.RESULTS", async (ws, params) => {
 router.on("/TASKS.NOTIFY_RESULT", async (ws, params) => {
   logger.info(`📡 Inbound: /TASKS.NOTIFY_RESULT from client [${ws.uuid}] for [${params.label || "unknown"}]`);
 
+  const agentId = getActiveAgentId();
+
   // 브로드캐스트 데이터 구성
   const broadcastData = {
     taskId: params.taskId,
@@ -34,6 +38,14 @@ router.on("/TASKS.NOTIFY_RESULT", async (ws, params) => {
     result: params.result,
     executedAt: new Date().toISOString(),
   };
+
+  // 태스크 결과 저장
+  appendChatLog(agentId, {
+    type: 'task',
+    taskId: params.taskId,
+    label: params.label,
+    result: params.result
+  });
 
   // /TASK_RESULT 채널로 모든 클라이언트에게 전송 (MQ의 Publish 역할)
   UserSocketHandler.broadcast("/TASK_RESULT", broadcastData);

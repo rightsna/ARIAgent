@@ -2,6 +2,7 @@ import { router } from "../system/router";
 import { chatWithAgent } from "../services/agent";
 import { Prompt } from "../infra/prompt";
 import { UserSocketHandler } from "../system/ws";
+import { appendChatLog } from "../repositories/chat_log_repository";
 
 // /AGENT
 router.on("/AGENT", async (ws, params) => {
@@ -22,6 +23,9 @@ router.on("/AGENT", async (ws, params) => {
   if (!message) {
     return ws.send("/AGENT", { ok: false, message: "message required" });
   }
+
+  // 사용자 질문 저장
+  appendChatLog(agentId, { type: 'chat', isUser: true, message, requestId });
 
   // 사용자 질문을 모든 클라이언트에 브로드캐스트 (주식앱 등 다른 앱의 채팅창에도 표시)
   // /AGENT 재사용 시 루프 위험이 있으므로 별도 프로토콜 사용
@@ -55,6 +59,9 @@ router.on("/AGENT", async (ws, params) => {
       },
     );
 
+    // AI 응답 저장
+    appendChatLog(agentId, { type: 'chat', isUser: false, message: result.responseText, requestId });
+
     // 응답은 항상 /APP.PUSH 로 전체 브로드캐스트 (본앱, 써드파티앱 모두 수신)
     UserSocketHandler.broadcast("/APP.PUSH", {
       ok: true,
@@ -76,15 +83,4 @@ router.on("/AGENT.CANCEL", async (ws, params) => {
   const { abortAgent } = require("../services/agent");
   abortAgent(agentId);
   ws.send("/AGENT.CANCEL", { ok: true, data: { agentId } });
-});
-
-// /AGENT.SET_HISTORY
-router.on("/AGENT.SET_HISTORY", async (ws, params) => {
-  const agentId = params.agentId as string;
-  const history = params.history as any[];
-  if (!agentId || !history) return;
-
-  const { setAgentHistory } = require("../services/agent");
-  setAgentHistory(agentId, history);
-  ws.send("/AGENT.SET_HISTORY", { ok: true, data: { agentId, count: history.length } });
 });

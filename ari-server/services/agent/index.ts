@@ -300,11 +300,3 @@ export function abortAgent(agentId: string) {
     logger.info(`[AgentPi] Thinking aborted for: ${agentId}`);
   }
 }
-
-export function setAgentHistory(agentId: string, messages: AgentMessage[]) {
-  const session = getOrCreateSession(agentId, activeProviders, pruneContext);
-  if (session && session.agent) {
-    session.agent.replaceMessages(messages);
-    logger.info(`[AgentPi] History seeded for agent: ${agentId} (${messages.length} messages)`);
-  }
-}
