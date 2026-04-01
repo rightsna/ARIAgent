@@ -11,11 +11,10 @@ router.on("/AGENT", async (ws, params) => {
     avatarName = "",
     platform = "",
     agentId,
-    source = "user", // 'user' | 'app'
+    source = "user", // 'user' | 'app' — 앱 소스일 경우 메시지 템플릿 래핑에 사용
     appId,
     type,
     details,
-    broadcast: shouldBroadcast = false,
   } = params;
 
   let message = params.message as string;
@@ -23,6 +22,10 @@ router.on("/AGENT", async (ws, params) => {
   if (!message) {
     return ws.send("/AGENT", { ok: false, message: "message required" });
   }
+
+  // 사용자 질문을 모든 클라이언트에 브로드캐스트 (주식앱 등 다른 앱의 채팅창에도 표시)
+  // /AGENT 재사용 시 루프 위험이 있으므로 별도 프로토콜 사용
+  UserSocketHandler.broadcast("/AGENT.REQUEST", { message: params.message, requestId });
 
   // 앱 소스인 경우 템플릿 적용 (동적 래핑)
   if (source === "app") {
@@ -44,33 +47,22 @@ router.on("/AGENT", async (ws, params) => {
         platform: platform || (source === "app" ? "system" : undefined),
       },
       (progressMessage) => {
-        const payload = {
+        // 프로그래스는 항상 전체 브로드캐스트
+        UserSocketHandler.broadcast("/AGENT.PROGRESS", {
           ok: true,
           data: { requestId, message: progressMessage },
-        };
-        // 브로드캐스트 모드이거나 앱 소스인 경우 전체 방송
-        if (shouldBroadcast || source === "app") {
-          UserSocketHandler.broadcast("/AGENT.PROGRESS", payload);
-        } else {
-          ws.send("/AGENT.PROGRESS", payload);
-        }
+        });
       },
     );
 
-    const responsePayload = {
+    // 응답은 항상 /APP.PUSH 로 전체 브로드캐스트 (본앱, 써드파티앱 모두 수신)
+    UserSocketHandler.broadcast("/APP.PUSH", {
       ok: true,
       data: { response: result.responseText, requestId, appId },
-    };
+    });
 
-    // 최종 응답 전송 방식 결정
-    if (shouldBroadcast || source === "app") {
-      // 자발적 보고에 대한 답변은 /AGENT 대신 /AGENT.PUSH로 방송 (채팅방 UI 트리거용)
-      UserSocketHandler.broadcast("/AGENT.PUSH", responsePayload);
-      // 요청자에게는 작업 완료 응답만 별도로 전송 (command call fulfillment용)
-      ws.send("/AGENT", { ok: true, data: { status: "broadcasted", requestId } });
-    } else {
-      ws.send("/AGENT", responsePayload);
-    }
+    // 요청자에게 완료 확인 (call 의 Promise 해제용)
+    ws.send("/AGENT", { ok: true, data: { status: "broadcasted", requestId } });
   } catch (err: any) {
     ws.send("/AGENT", { ok: false, message: err.message });
   }

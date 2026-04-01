@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
-import '../models/agent_response.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import '../repositories/log_repository.dart';
 import 'avatar_provider.dart';
@@ -16,6 +15,7 @@ class ChatProvider extends ChangeNotifier {
 
   StreamSubscription? _taskResultSub;
   StreamSubscription? _progressSub;
+  StreamSubscription? _agentRequestSub;
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;
@@ -106,6 +106,26 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _initWebSocket() {
+    // 질문 표시 — 본앱/다른 앱 모두 이 경로로 표시 (requestId로 중복 제거)
+    _agentRequestSub = AriAgent.on('/AGENT.REQUEST', (data) {
+      final requestId = data['requestId']?.toString() ?? '';
+      final message = data['message']?.toString() ?? '';
+
+      if (message.isEmpty) return;
+      if (_messages.any((m) => m.isUser && m.requestId == requestId)) return;
+
+      _messages.add(ChatMessage(text: message, isUser: true, requestId: requestId));
+      notifyListeners();
+
+      try {
+        LogRepository().addChatLog(
+          agentId: _currentAgentId ?? AvatarProvider().currentAvatarId,
+          message: message,
+          isUser: true,
+        );
+      } catch (_) {}
+    });
+
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
       final taskData = data;
       final taskId = taskData['taskId']?.toString() ?? 'unknown';
@@ -142,15 +162,13 @@ class ChatProvider extends ChangeNotifier {
       final progressMessage = payload['message']?.toString() ?? '';
       final requestId = payload['requestId']?.toString() ?? '';
 
-      if (progressMessage.isEmpty) {
-        return;
-      }
+      if (progressMessage.isEmpty) return;
 
       _upsertProgressMessage(progressMessage, requestId);
       notifyListeners();
     });
 
-    _agentPushSub = AriAgent.on('/AGENT.PUSH', (data) {
+    _agentPushSub = AriAgent.on('/APP.PUSH', (data) {
       final payload = data['data'] is Map<String, dynamic>
           ? data['data'] as Map<String, dynamic>
           : data;
@@ -159,18 +177,20 @@ class ChatProvider extends ChangeNotifier {
 
       if (response.isEmpty) return;
 
-      // 만약 진행 중인 메시지가 있다면 제거
       if (requestId.isNotEmpty) {
         _removeProgressMessage(requestId);
       }
 
-      // 채팅창에 에이전트의 응답으로 표시
-      _messages.add(
-        ChatMessage(text: response, isUser: false),
-      );
+      _messages.add(ChatMessage(text: response, isUser: false));
+
+      // 요청자인 경우 로딩 상태 해제
+      if (requestId == _activeRequestId) {
+        _isLoading = false;
+        _activeRequestId = null;
+      }
+
       notifyListeners();
 
-      // 로그 저장 (선택 사항)
       try {
         LogRepository().addChatLog(
           agentId: AvatarProvider().currentAvatarId,
@@ -199,49 +219,44 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _setHistorySub;
 
 
-  /// 에이전트에게 메시지 송신 (기존 AgentService 통합)
+  /// 에이전트에게 메시지 송신
+  /// 질문은 서버가 /AGENT.REQUEST 로 브로드캐스트 → 리스너에서 표시 (양쪽 동일 코드패스)
+  /// 응답은 서버가 /APP.PUSH 로 브로드캐스트 → _agentPushSub 에서 처리
   Future<void> sendMessage(String text, String agentId) async {
     final requestId = DateTime.now().microsecondsSinceEpoch.toString();
     _activeRequestId = requestId;
-    _messages.add(ChatMessage(text: text, isUser: true));
     _isLoading = true;
     notifyListeners();
 
-    // 로그 저장
     try {
-      LogRepository().addChatLog(agentId: agentId, message: text, isUser: true);
-    } catch (_) {}
-
-    // 에이전트 호출 (이전 AgentService.sendMessage 로직)
-    final response = await _callAgentApi(text, requestId);
-
-    // 취소되었거나 다른 요청이 시작된 경우 응답 무시
-    if (_activeRequestId != requestId) {
-      debugPrint('[Chat] Request $requestId was cancelled or superseded.');
-      return;
-    }
-
-    _removeProgressMessage(requestId);
-    _messages.add(
-      ChatMessage(
-        text: response.message,
-        isUser: false,
-        isError: !response.success,
-      ),
-    );
-    _isLoading = false;
-    _activeRequestId = null;
-    notifyListeners();
-
-    // 로그 저장
-    try {
-      LogRepository().addChatLog(
-        agentId: agentId,
-        message: response.message,
-        isUser: false,
-        isError: !response.success,
+      final avatar = AvatarProvider();
+      await AriAgent.call('/AGENT', {
+        'message': text,
+        'requestId': requestId,
+        'persona': avatar.persona.trim(),
+        'avatarName': avatar.name,
+        'platform': _getPlatformLabel(),
+        'agentId': avatar.currentAvatarId,
+      });
+      // 응답은 /APP.PUSH 리스너에서 처리
+    } catch (e) {
+      if (_activeRequestId != requestId) return;
+      _removeProgressMessage(requestId);
+      _messages.add(
+        ChatMessage(text: '에이전트에 연결할 수 없습니다. ($e)', isUser: false, isError: true),
       );
-    } catch (_) {}
+      _isLoading = false;
+      _activeRequestId = null;
+      notifyListeners();
+      try {
+        LogRepository().addChatLog(
+          agentId: agentId,
+          message: '에이전트에 연결할 수 없습니다. ($e)',
+          isUser: false,
+          isError: true,
+        );
+      } catch (_) {}
+    }
   }
 
   void cancelSendMessage() {
@@ -252,26 +267,6 @@ class ChatProvider extends ChangeNotifier {
     _isLoading = false;
     _activeRequestId = null;
     notifyListeners();
-  }
-
-  Future<AgentResponse> _callAgentApi(String message, String requestId) async {
-    try {
-      final avatar = AvatarProvider();
-      final persona = avatar.persona.trim();
-
-      final res = await AriAgent.call('/AGENT', {
-        'message': message,
-        'requestId': requestId,
-        'persona': persona,
-        'avatarName': avatar.name,
-        'platform': _getPlatformLabel(),
-        'agentId': avatar.currentAvatarId,
-      });
-
-      return AgentResponse(message: res['response'] ?? '', success: true);
-    } catch (e) {
-      return AgentResponse(message: '에이전트에 연결할 수 없습니다. ($e)', success: false);
-    }
   }
 
   String _getPlatformLabel() {
@@ -325,6 +320,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _agentRequestSub?.cancel();
     _taskResultSub?.cancel();
     _progressSub?.cancel();
     _agentPushSub?.cancel();
