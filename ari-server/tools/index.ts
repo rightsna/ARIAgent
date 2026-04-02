@@ -17,6 +17,7 @@ import { TOOLS as HA_TOOLS } from "./homeassistant";
 import { updateCoreMemoryTool } from "./core_memory_tool";
 import { appendDailyMemoryTool } from "./daily_memory_tool";
 import { readSkillTool } from "./read_skill";
+import { searchStoreAppTool } from "./store";
 
 const BUILT_IN_TOOLS = [
   ...APP_CONTROL_TOOLS,
@@ -33,6 +34,7 @@ const BUILT_IN_TOOLS = [
   updateCoreMemoryTool,
   appendDailyMemoryTool,
   readSkillTool,
+  searchStoreAppTool,
 ] as AgentTool[];
 
 async function loadToolsFromDir(dirPath: string): Promise<AgentTool[]> {

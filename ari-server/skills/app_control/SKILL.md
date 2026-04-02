@@ -1,7 +1,7 @@
 # 📱 앱 제어 (App Control)
 ARI 서버에 연결된 외부 앱들을 탐색하고 원격 제어하기 위한 스킬입니다.
 
-**사용 도구 (Tools)**: `list_apps`, `read_app_state`, `send_app_command`, `launch_app`, `terminate_app`, `install_app`
+**사용 도구 (Tools)**: `list_apps`, `read_app_state`, `send_app_command`, `launch_app`, `terminate_app`, `install_app`, `search_store_app`
 
 ### 💡 사용 지침
 1. **앱 탐색**: 사용자가 특정 앱 제어를 원할 때, 가장 먼저 `list_apps` 도구를 호출하여 앱이 현재 **연결(Connected)** 상태인지, 혹은 **설치만(Installed)** 되어 있는지 확인하십시오.
