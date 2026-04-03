@@ -67,15 +67,14 @@ class _LogsTabState extends State<LogsTab> {
         'size': _pageSize,
       });
 
-      if (response['ok'] == true) {
-        final List logs = response['data']['logs'] ?? [];
-        _total = response['data']['total'] ?? 0;
-        if (mounted) {
-          setState(() {
-            _logs.addAll(logs);
-            _hasMore = _logs.length < _total;
-          });
-        }
+      // AriAgent.call은 data 필드를 unwrap해서 반환
+      final List logs = response['logs'] ?? [];
+      _total = response['total'] ?? 0;
+      if (mounted) {
+        setState(() {
+          _logs.addAll(logs);
+          _hasMore = _logs.length < _total;
+        });
       }
     } catch (e) {
       debugPrint('[Logs] Load failed: $e');
@@ -97,14 +96,12 @@ class _LogsTabState extends State<LogsTab> {
         'size': _pageSize,
       });
 
-      if (response['ok'] == true) {
-        final List logs = response['data']['logs'] ?? [];
-        if (mounted) {
-          setState(() {
-            _logs.addAll(logs);
-            _hasMore = _logs.length < _total;
-          });
-        }
+      final List logs = response['logs'] ?? [];
+      if (mounted) {
+        setState(() {
+          _logs.addAll(logs);
+          _hasMore = _logs.length < _total;
+        });
       }
     } catch (e) {
       debugPrint('[Logs] Load more failed: $e');

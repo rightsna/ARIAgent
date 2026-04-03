@@ -14,6 +14,7 @@ export interface AgentToolResultSummary {
 
 export interface ChatWithAgentResult {
   responseText: string;
+  aborted?: boolean;
 }
 
 export interface AgentRuntimeContext {

@@ -11,7 +11,10 @@ export async function buildSystemPrompt(
   persona: string,
   runtimeContext: AgentRuntimeContext,
   agentId: string,
-  availableSkills: Pick<SkillDefinition, "name" | "description" | "isApp">[] = [],
+  availableSkills: Pick<
+    SkillDefinition,
+    "name" | "description" | "isApp"
+  >[] = [],
   activeSkills: ActiveSkill[] = [],
 ): Promise<string> {
   const coreMemory = readCoreMemory(agentId);
@@ -32,14 +35,18 @@ export async function buildSystemPrompt(
     persona,
     coreMemory,
     recentDailyLogs,
-    skills: availableSkills.filter((s) => !s.isApp).map((skill) => ({
-      name: skill.name,
-      description: skill.description,
-    })),
+    skills: availableSkills
+      .filter((s) => !s.isApp)
+      .map((skill) => ({
+        name: skill.name,
+        description: skill.description,
+      })),
     apps: availableSkills
       .filter((s) => s.isApp)
       .map((skill) => {
-        const isRunning = UserSocketHandler.getConnectedAppIds().includes(skill.name);
+        const isRunning = UserSocketHandler.getConnectedAppIds().includes(
+          skill.name,
+        );
         return {
           name: skill.name,
           description: skill.description,
@@ -49,12 +56,14 @@ export async function buildSystemPrompt(
     loadedSkills,
   });
 
-  logger.debug(`[Agent] Built System Prompt:\n${systemPrompt}`);
+  // logger.debug(`[Agent] Built System Prompt:\n${systemPrompt}`);
 
   return systemPrompt;
 }
 
-export function pruneContext(messages: AgentMessage[]): Promise<AgentMessage[]> {
+export function pruneContext(
+  messages: AgentMessage[],
+): Promise<AgentMessage[]> {
   const maxMessages = 60; // 기본 메시지 유지 개수를 60개로 상향
   if (messages.length <= maxMessages) {
     return Promise.resolve(messages);
@@ -70,7 +79,7 @@ export function pruneContext(messages: AgentMessage[]): Promise<AgentMessage[]> 
     startIndex++;
   }
 
-  // 만약 윈도우 내에서 user 메시지를 찾지 못하면(매우 드문 경우), 
+  // 만약 윈도우 내에서 user 메시지를 찾지 못하면(매우 드문 경우),
   // 기존처럼 단순히 뒤에서부터 자릅니다.
   if (startIndex >= messages.length - 1) {
     startIndex = messages.length - maxMessages;
@@ -78,4 +87,3 @@ export function pruneContext(messages: AgentMessage[]): Promise<AgentMessage[]> 
 
   return Promise.resolve(messages.slice(startIndex));
 }
-

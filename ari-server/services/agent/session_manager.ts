@@ -82,6 +82,10 @@ export function getOrCreateSession(
   return session;
 }
 
+export function getSession(agentId: string): AgentSession | undefined {
+  return agentsMap.get(agentId);
+}
+
 export function clearAgentSession(agentId: string): void {
   const session = agentsMap.get(agentId);
   if (session && session.agent) {

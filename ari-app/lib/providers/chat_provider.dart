@@ -27,6 +27,11 @@ class ChatProvider extends ChangeNotifier {
 
     // 아바타 변경 시 히스토리 자동 갱신
     AvatarProvider().addListener(_onAvatarChanged);
+
+    // 이미 연결된 상태로 시작할 경우 connectionNotifier가 발화하지 않으므로 직접 로드
+    if (AriAgent.isConnected && _currentAgentId != null) {
+      Future.microtask(() => loadHistory(_currentAgentId!));
+    }
   }
 
   void _onAvatarChanged() {
@@ -47,8 +52,9 @@ class ChatProvider extends ChangeNotifier {
         'size': 50,
       });
 
-      if (response['ok'] == true) {
-        final List logs = response['data']['logs'] ?? [];
+      // AriAgent.call은 data 필드를 unwrap해서 반환
+      final List logs = response['logs'] ?? [];
+      if (logs.isNotEmpty) {
         _messages.clear();
 
         // 서버 로그는 최신순이므로 역순(과거->최신)으로 추가

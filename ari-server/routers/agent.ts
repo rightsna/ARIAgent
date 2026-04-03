@@ -3,6 +3,7 @@ import { chatWithAgent } from "../services/agent";
 import { Prompt } from "../infra/prompt";
 import { UserSocketHandler } from "../system/ws";
 import { appendChatLog } from "../repositories/chat_log_repository";
+import { logger } from "../infra/logger";
 
 // /AGENT
 router.on("/AGENT", async (ws, params) => {
@@ -23,9 +24,6 @@ router.on("/AGENT", async (ws, params) => {
   if (!message) {
     return ws.send("/AGENT", { ok: false, message: "message required" });
   }
-
-  // 사용자 질문 저장
-  appendChatLog(agentId, { type: 'chat', isUser: true, message, requestId });
 
   // 사용자 질문을 모든 클라이언트에 브로드캐스트 (주식앱 등 다른 앱의 채팅창에도 표시)
   // /AGENT 재사용 시 루프 위험이 있으므로 별도 프로토콜 사용
@@ -59,7 +57,15 @@ router.on("/AGENT", async (ws, params) => {
       },
     );
 
-    // AI 응답 저장
+    // 취소된 요청은 히스토리 저장 없이 종료
+    if (result.aborted) {
+      logger.info(`[/AGENT] Request cancelled by user: ${requestId}`);
+      ws.send("/AGENT", { ok: true, data: { status: "cancelled", requestId } });
+      return;
+    }
+
+    // 완료된 요청만 히스토리에 저장
+    appendChatLog(agentId, { type: 'chat', isUser: true, message: params.message, requestId });
     appendChatLog(agentId, { type: 'chat', isUser: false, message: result.responseText, requestId });
 
     // 응답은 항상 /APP.PUSH 로 전체 브로드캐스트 (본앱, 써드파티앱 모두 수신)

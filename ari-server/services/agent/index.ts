@@ -10,7 +10,7 @@ import { buildSystemPrompt, pruneContext } from "./context_builder";
 import { extractFinalResponseText } from "./response_parser";
 import { buildSessionTools, buildSessionToolsSync, clearToolCache, loadMainTools } from "./tool_registry";
 import { getAttemptOrder, resolveModel, resolveApiKey, isOAuthProvider } from "./provider_selector";
-import { AgentSession, clearAgentSession, clearAllAgentSessions, getOrCreateSession } from "./session_manager";
+import { AgentSession, clearAgentSession, clearAllAgentSessions, getOrCreateSession, getSession } from "./session_manager";
 import { cloneActiveSkills, clearSkillCache, collectSkillToolNames, loadAvailableSkills, mergeActiveSkill } from "./skill_registry";
 import { AgentMessage } from "@mariozechner/pi-agent-core";
 
@@ -95,6 +95,10 @@ export async function chatWithAgent(
 
   // 실패 결과를 사용자 응답 형태로 정리합니다.
   if (!result.success) {
+    if (result.aborted) {
+      return { responseText: "", aborted: true };
+    }
+
     if (result.lastError) {
       return {
         responseText: `❌ 모든 프로바이더에서 오류가 발생했습니다: ${result.lastError.message}`,
@@ -117,7 +121,7 @@ async function runInference(
   userMessage: string,
   systemPrompt: string,
   onProgress?: ProgressReporter,
-): Promise<{ responseText: string; lastError: Error | null; success: boolean }> {
+): Promise<{ responseText: string; lastError: Error | null; success: boolean; aborted?: boolean }> {
   // 프로바이더가 없으면 추론을 시작하지 않습니다.
   if (activeProviders.length === 0) {
     return {
@@ -206,6 +210,11 @@ async function runInference(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       unsubscribe();
+      // AbortError는 사용자가 의도적으로 취소한 것이므로 다음 프로바이더로 넘어가지 않음
+      if (lastError.name === "AbortError" || lastError.message?.toLowerCase().includes("abort")) {
+        logger.info(`[AgentPi] Inference aborted by user for ${provider.provider}. Stopping retry.`);
+        break;
+      }
       onProgress?.("다른 모델로 다시 시도하는 중...");
       logger.warn(`❌ [AgentPi] Provider ${provider.provider} threw before completion: ${lastError.message}`);
       continue;
@@ -216,6 +225,11 @@ async function runInference(
     // 에이전트 내부 오류가 있으면 다음 프로바이더로 넘어갑니다.
     if (agent.state.error) {
       lastError = new Error(agent.state.error);
+      // abort로 인한 오류는 재시도하지 않음
+      if (String(agent.state.error).toLowerCase().includes("abort")) {
+        logger.info(`[AgentPi] Inference aborted (state.error) for ${provider.provider}. Stopping retry.`);
+        break;
+      }
       onProgress?.("다른 모델로 다시 시도하는 중...");
       logger.warn(`❌ [AgentPi] Provider ${provider.provider} failed: ${agent.state.error}. Trying next provider if available.`);
       continue;
@@ -240,10 +254,12 @@ async function runInference(
   session.activeSkills = baseSkills;
   session.activeSkillToolNames = baseSkillToolNames;
 
+  const isAborted = !!lastError && (lastError.name === "AbortError" || lastError.message?.toLowerCase().includes("abort"));
   return {
     responseText: "",
     lastError,
     success: false,
+    aborted: isAborted,
   };
 }
 
@@ -294,9 +310,11 @@ export function clearAgentInstance(agentId: string) {
 }
 
 export function abortAgent(agentId: string) {
-  const session = getOrCreateSession(agentId, activeProviders, pruneContext);
+  const session = getSession(agentId);
   if (session && session.agent) {
     session.agent.abort();
     logger.info(`[AgentPi] Thinking aborted for: ${agentId}`);
+  } else {
+    logger.warn(`[AgentPi] No active session to abort for: ${agentId}`);
   }
 }
