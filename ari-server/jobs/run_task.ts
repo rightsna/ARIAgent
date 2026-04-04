@@ -76,6 +76,7 @@ export async function runScheduledTask(taskId: string): Promise<void> {
     const request = `/AGENT ${JSON.stringify({
       message: task.prompt,
       agentId: task.agentId || "default",
+      ...(task.appId ? { appId: task.appId } : {}),
     })}`;
     logger.info(`[${timestamp()}] 📤 AI 응답 요청 전송: ${request.substring(0, 100)}...`);
     ws.send(request);

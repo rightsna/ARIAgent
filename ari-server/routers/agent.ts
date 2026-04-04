@@ -47,6 +47,7 @@ router.on("/AGENT", async (ws, params) => {
       {
         avatarName: avatarName || (source === "app" ? "ARI" : undefined),
         platform: platform || (source === "app" ? "system" : undefined),
+        appId: appId || ws.appId || undefined,
       },
       (progressMessage) => {
         // 프로그래스는 항상 전체 브로드캐스트

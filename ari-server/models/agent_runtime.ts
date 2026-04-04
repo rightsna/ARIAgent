@@ -20,6 +20,7 @@ export interface ChatWithAgentResult {
 export interface AgentRuntimeContext {
   avatarName?: string;
   platform?: string;
+  appId?: string;
 }
 
 export interface AgentPassResult {

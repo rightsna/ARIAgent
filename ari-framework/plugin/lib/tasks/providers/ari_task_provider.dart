@@ -76,6 +76,7 @@ class AriTaskProvider extends ChangeNotifier {
     required String cron,
     String? label,
     String agentId = 'default',
+    String? appId,
     bool isOneOff = false,
   }) async {
     try {
@@ -84,6 +85,7 @@ class AriTaskProvider extends ChangeNotifier {
         'cron': cron,
         'label': label ?? _generateLabel(prompt),
         'agentId': agentId,
+        if (appId != null) 'appId': appId,
         'isOneOff': isOneOff,
       });
       debugPrint('[AriTaskProvider] 작업 추가 완료: ${res['task']?['label']}');
@@ -147,6 +149,10 @@ class AriTaskProvider extends ChangeNotifier {
         final aid = (t.agentId?.trim().isEmpty ?? true) ? 'default' : t.agentId!.trim();
         return aid == agentId;
       }).toList();
+
+  /// 특정 appId의 작업만 필터링
+  List<AriScheduledTask> tasksForApp(String appId) =>
+      tasks.where((t) => t.appId == appId).toList();
 
   String _generateLabel(String prompt) {
     if (prompt.length <= 20) return prompt;

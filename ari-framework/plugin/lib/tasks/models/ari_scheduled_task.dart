@@ -9,6 +9,7 @@ class AriScheduledTask {
   final DateTime? lastRunAt;
   final String? lastResult;
   final String? agentId;
+  final String? appId;
   final bool isOneOff;
 
   AriScheduledTask({
@@ -21,6 +22,7 @@ class AriScheduledTask {
     this.lastRunAt,
     this.lastResult,
     this.agentId,
+    this.appId,
     this.isOneOff = false,
   });
 
@@ -34,6 +36,7 @@ class AriScheduledTask {
     'lastRunAt': lastRunAt?.toIso8601String(),
     'lastResult': lastResult,
     'agentId': agentId,
+    'appId': appId,
     'isOneOff': isOneOff,
   };
 
@@ -49,6 +52,7 @@ class AriScheduledTask {
         : null,
     lastResult: m['lastResult'],
     agentId: m['agentId'],
+    appId: m['appId'],
     isOneOff: m['isOneOff'] ?? false,
   );
 
@@ -66,6 +70,7 @@ class AriScheduledTask {
     lastRunAt: lastRunAt ?? this.lastRunAt,
     lastResult: lastResult ?? this.lastResult,
     agentId: agentId,
+    appId: appId,
     isOneOff: isOneOff,
   );
 

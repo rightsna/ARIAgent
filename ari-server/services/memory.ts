@@ -11,6 +11,7 @@ import {
 import { logger } from "../infra/logger";
 
 let activeAgentId: string = "default";
+let activeAppId: string | undefined = undefined;
 
 export function setActiveAgentId(id: string) {
   activeAgentId = id;
@@ -18,6 +19,14 @@ export function setActiveAgentId(id: string) {
 
 export function getActiveAgentId(): string {
   return activeAgentId;
+}
+
+export function setActiveAppId(id: string | undefined) {
+  activeAppId = id;
+}
+
+export function getActiveAppId(): string | undefined {
+  return activeAppId;
 }
 
 export function updateCoreMemory(newContent: string, agentId?: string): void {

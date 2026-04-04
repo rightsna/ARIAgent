@@ -1,4 +1,4 @@
-import { setActiveAgentId } from "../memory";
+import { setActiveAgentId, setActiveAppId } from "../memory";
 import { getSettings } from "../../repositories/setting_repository";
 import { getAgentsConfig } from "../../repositories/agent_repository";
 import { AgentsConfig } from "../../models/agent";
@@ -70,6 +70,7 @@ export async function chatWithAgent(
   // 이번 요청이 어느 대화 세션에 속하는지 결정합니다.
   const currentAgentId = agentId || getAgentsConfig(new AgentsConfig()).selected || "default";
   setActiveAgentId(currentAgentId);
+  setActiveAppId(runtimeContext.appId);
 
   // 사용 가능한 프로바이더가 없으면 즉시 에코 모드 응답을 반환합니다.
   if (activeProviders.length === 0) {

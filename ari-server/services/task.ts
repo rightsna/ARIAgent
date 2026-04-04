@@ -13,6 +13,9 @@ initTasksFileIfMissing();
 // 결과 디렉토리 초기화
 ensureTaskResultDirSync();
 
+// 서버 시작 시 만료된 1회성 태스크 정리
+cleanupExpiredOneOffTasks();
+
 // 실행 파일 환경 감지 (ts-node 환경이면 .ts 원본 사용, 아니면 dist의 .js 사용)
 const isTs = __filename.endsWith(".ts");
 const PROJECT_ROOT = getServerRootDir();
@@ -45,6 +48,7 @@ export async function handleTasksSyncWs(params: Record<string, unknown>): Promis
   const tasks = params.tasks as Task[];
   saveTasks(tasks);
   logger.info(`📋 tasks.json 동기화: ${tasks.length}개`);
+  await refreshCrontab();
 }
 
 export async function handleTasksCrontabWs(params: Record<string, unknown>): Promise<void> {
@@ -115,6 +119,7 @@ export async function handleAddTaskWs(params: Record<string, unknown>): Promise<
     cron: params.cron,
     label: params.label,
     agentId: params.agentId || "default",
+    appId: params.appId,
     isOneOff: params.isOneOff || false,
     enabled: true,
     createdAt: new Date().toISOString(),
@@ -179,7 +184,31 @@ export async function handleRunTaskWs(params: Record<string, unknown>): Promise<
 
 // ── Agent Tool용 (기존 호환) ──
 
-export async function registerScheduledTask(taskData: { cron: string; prompt: string; label: string; agentId?: string; isOneOff?: boolean }): Promise<void> {
-  const { cron, prompt, label, agentId, isOneOff } = taskData;
-  await handleAddTaskWs({ cron, prompt, label, agentId: agentId || "default", isOneOff: isOneOff || false });
+export async function registerScheduledTask(taskData: { cron: string; prompt: string; label: string; agentId?: string; appId?: string; isOneOff?: boolean }): Promise<void> {
+  const { cron, prompt, label, agentId, appId, isOneOff } = taskData;
+  await handleAddTaskWs({ cron, prompt, label, agentId: agentId || "default", appId, isOneOff: isOneOff || false });
+}
+
+// 서버 시작 시 이미 지나간 1회성 태스크를 tasks.json과 crontab에서 제거
+export function cleanupExpiredOneOffTasks(): void {
+  const tasks = getTasks();
+  const now = new Date();
+
+  const expired = tasks.filter((t) => {
+    if (!t.isOneOff) return false;
+    // cron: "분 시 일 월 *" 형식에서 실행 시각 파싱
+    const parts = t.cron.split(" ");
+    if (parts.length < 5) return false;
+    const [minute, hour, day, month] = parts;
+    const year = now.getFullYear();
+    const runAt = new Date(year, Number(month) - 1, Number(day), Number(hour), Number(minute));
+    return runAt < now;
+  });
+
+  if (expired.length === 0) return;
+
+  const remaining = tasks.filter((t) => !expired.find((e) => e.id === t.id));
+  saveTasks(remaining);
+  logger.info(`🧹 만료된 1회성 태스크 ${expired.length}개 정리: ${expired.map((t) => t.label).join(", ")}`);
+  // crontab은 다음 refreshCrontab 호출 시 자동 반영 (비동기 불필요)
 }
