@@ -7,6 +7,7 @@ class AriChatMessage {
   final String text;
   final bool isUser;
   final bool isSystem;
+  final bool isError;
   final DateTime createdAt;
   final String? requestId;
 
@@ -15,6 +16,7 @@ class AriChatMessage {
     required this.isUser,
     required this.createdAt,
     this.isSystem = false,
+    this.isError = false,
     this.requestId,
   });
 }

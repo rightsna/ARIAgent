@@ -6,6 +6,8 @@ class ChatInputArea extends StatelessWidget {
   final VoidCallback onSend;
   final AriChatTheme theme;
   final String hintText;
+  final bool isLoading;
+  final VoidCallback? onCancel;
 
   const ChatInputArea({
     super.key,
@@ -13,6 +15,8 @@ class ChatInputArea extends StatelessWidget {
     required this.onSend,
     required this.theme,
     this.hintText = '메시지를 입력하세요...',
+    this.isLoading = false,
+    this.onCancel,
   });
 
   @override
@@ -46,6 +50,7 @@ class ChatInputArea extends StatelessWidget {
               ),
               child: TextField(
                 controller: controller,
+                enabled: !isLoading,
                 style: TextStyle(color: theme.textMain, fontSize: 13),
                 decoration: InputDecoration(
                   hintText: hintText,
@@ -53,7 +58,7 @@ class ChatInputArea extends StatelessWidget {
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                onSubmitted: (_) => onSend(),
+                onSubmitted: isLoading ? null : (_) => onSend(),
               ),
             ),
           ),
@@ -62,12 +67,18 @@ class ChatInputArea extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: theme.primaryColor,
+              color: isLoading
+                  ? theme.primaryColor.withValues(alpha: 0.5)
+                  : theme.primaryColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
-              onPressed: onSend,
-              icon: const Icon(Icons.send_rounded, size: 20, color: Colors.white),
+              onPressed: isLoading ? onCancel : onSend,
+              icon: Icon(
+                isLoading ? Icons.stop_rounded : Icons.send_rounded,
+                size: 20,
+                color: Colors.white,
+              ),
             ),
           ),
         ],

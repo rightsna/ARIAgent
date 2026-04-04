@@ -10,6 +10,7 @@ class AriChatTheme {
   final Color textMain;
   final Color textSub;
   final Color borderColor;
+  final double borderWidth;
   final Color hintColor;
 
   const AriChatTheme({
@@ -19,6 +20,7 @@ class AriChatTheme {
     this.textMain = const Color(0xFF191F28),
     this.textSub = const Color(0xFF4E5968),
     this.borderColor = const Color(0x1A191F28),
+    this.borderWidth = 1.0,
     this.hintColor = const Color(0x61191F28),
   });
 }

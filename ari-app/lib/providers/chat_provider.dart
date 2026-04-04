@@ -1,13 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import '../models/chat_message.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import 'avatar_provider.dart';
 
 /// ChatProvider: 채팅 상태 관리 및 서버(에이전트) 통신 수행.
 class ChatProvider extends ChangeNotifier {
-  final List<ChatMessage> _messages = [];
+  final List<AriChatMessage> _messages = [];
   bool _isLoading = false;
   final Set<String> _processedTaskIds = {}; // 중복 처리 방지용
   String? _activeRequestId;
@@ -16,7 +15,7 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _progressSub;
   StreamSubscription? _agentRequestSub;
 
-  List<ChatMessage> get messages => List.unmodifiable(_messages);
+  List<AriChatMessage> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;
 
   String? _currentAgentId;
@@ -52,7 +51,6 @@ class ChatProvider extends ChangeNotifier {
         'size': 50,
       });
 
-      // AriAgent.call은 data 필드를 unwrap해서 반환
       final List logs = response['logs'] ?? [];
       if (logs.isNotEmpty) {
         _messages.clear();
@@ -61,10 +59,11 @@ class ChatProvider extends ChangeNotifier {
         for (final log in logs.reversed) {
           if (log['type'] == 'chat') {
             _messages.add(
-              ChatMessage(
+              AriChatMessage(
                 text: log['message']?.toString() ?? '',
                 isUser: log['isUser'] == true,
                 isError: log['isError'] == true,
+                createdAt: DateTime.now(),
                 requestId: log['requestId']?.toString(),
               ),
             );
@@ -72,7 +71,11 @@ class ChatProvider extends ChangeNotifier {
             final label = log['label'] ?? '스케줄 작업';
             final result = log['result'] ?? '';
             _messages.add(
-              ChatMessage(text: '🕒 [$label] 실행 결과:\n$result', isUser: false),
+              AriChatMessage(
+                text: '🕒 [$label] 실행 결과:\n$result',
+                isUser: false,
+                createdAt: DateTime.now(),
+              ),
             );
           }
         }
@@ -92,25 +95,29 @@ class ChatProvider extends ChangeNotifier {
       if (message.isEmpty) return;
       if (_messages.any((m) => m.isUser && m.requestId == requestId)) return;
 
-      _messages.add(ChatMessage(text: message, isUser: true, requestId: requestId));
+      _messages.add(AriChatMessage(
+        text: message,
+        isUser: true,
+        createdAt: DateTime.now(),
+        requestId: requestId,
+      ));
       notifyListeners();
     });
 
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
-      final taskData = data;
-      final taskId = taskData['taskId']?.toString() ?? 'unknown';
+      final taskId = data['taskId']?.toString() ?? 'unknown';
 
-      if (taskId != 'unknown' && _processedTaskIds.contains(taskId)) {
-        return;
-      }
+      if (taskId != 'unknown' && _processedTaskIds.contains(taskId)) return;
       _processedTaskIds.add(taskId);
 
-      final label = taskData['label'] ?? '스케줄 작업';
-      final result = taskData['result'] ?? '';
+      final label = data['label'] ?? '스케줄 작업';
+      final result = data['result'] ?? '';
 
-      _messages.add(
-        ChatMessage(text: '🕒 [$label] 실행 결과:\n$result', isUser: false),
-      );
+      _messages.add(AriChatMessage(
+        text: '🕒 [$label] 실행 결과:\n$result',
+        isUser: false,
+        createdAt: DateTime.now(),
+      ));
       notifyListeners();
     });
 
@@ -136,13 +143,14 @@ class ChatProvider extends ChangeNotifier {
 
       if (response.isEmpty) return;
 
-      if (requestId.isNotEmpty) {
-        _removeProgressMessage(requestId);
-      }
+      if (requestId.isNotEmpty) _removeProgressMessage(requestId);
 
-      _messages.add(ChatMessage(text: response, isUser: false));
+      _messages.add(AriChatMessage(
+        text: response,
+        isUser: false,
+        createdAt: DateTime.now(),
+      ));
 
-      // 요청자인 경우 로딩 상태 해제
       if (requestId == _activeRequestId) {
         _isLoading = false;
         _activeRequestId = null;
@@ -163,10 +171,7 @@ class ChatProvider extends ChangeNotifier {
   StreamSubscription? _agentPushSub;
   StreamSubscription? _setHistorySub;
 
-
   /// 에이전트에게 메시지 송신
-  /// 질문은 서버가 /AGENT.REQUEST 로 브로드캐스트 → 리스너에서 표시 (양쪽 동일 코드패스)
-  /// 응답은 서버가 /APP.PUSH 로 브로드캐스트 → _agentPushSub 에서 처리
   Future<void> sendMessage(String text, String agentId) async {
     final requestId = DateTime.now().microsecondsSinceEpoch.toString();
     _activeRequestId = requestId;
@@ -183,13 +188,15 @@ class ChatProvider extends ChangeNotifier {
         'platform': _getPlatformLabel(),
         'agentId': avatar.currentAvatarId,
       });
-      // 응답은 /APP.PUSH 리스너에서 처리
     } catch (e) {
       if (_activeRequestId != requestId) return;
       _removeProgressMessage(requestId);
-      _messages.add(
-        ChatMessage(text: '에이전트에 연결할 수 없습니다. ($e)', isUser: false, isError: true),
-      );
+      _messages.add(AriChatMessage(
+        text: '에이전트에 연결할 수 없습니다. ($e)',
+        isUser: false,
+        isError: true,
+        createdAt: DateTime.now(),
+      ));
       _isLoading = false;
       _activeRequestId = null;
       notifyListeners();
@@ -226,22 +233,20 @@ class ChatProvider extends ChangeNotifier {
   }
 
   void _upsertProgressMessage(String text, String requestId) {
-    final isMyRequest =
-        _activeRequestId != null && requestId == _activeRequestId;
+    final isMyRequest = _activeRequestId != null && requestId == _activeRequestId;
     final isBackgroundRequest = requestId.startsWith('report-');
 
-    if (!isMyRequest && !isBackgroundRequest) {
-      return;
-    }
+    if (!isMyRequest && !isBackgroundRequest) return;
 
     final idx = _messages.lastIndexWhere(
       (m) => m.isSystem && m.requestId == requestId,
     );
-    final msg = ChatMessage(
+    final msg = AriChatMessage(
       text: text,
       isUser: false,
       isSystem: true,
       requestId: requestId,
+      createdAt: DateTime.now(),
     );
 
     if (idx >= 0) {
