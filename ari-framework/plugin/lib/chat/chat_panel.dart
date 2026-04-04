@@ -10,7 +10,7 @@ import 'widgets/chat_message_item.dart';
 /// ARI 프레임워크 표준 채팅 패널.
 ///
 /// [appId]와 선택적 커스터마이징 파라미터만으로 어느 앱에서든 사용 가능하며,
-/// [ChatProvider]를 내부에서 직접 생성하여 관리합니다.
+/// [AriChatProvider]를 내부에서 직접 생성하여 관리합니다.
 ///
 /// 사용 예시:
 /// ```dart
@@ -51,7 +51,7 @@ class AriChatPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ChatProvider(),
+      create: (_) => AriChatProvider(),
       child: _AriChatPanelBody(
         appId: appId,
         contextLabel: contextLabel,
@@ -89,12 +89,12 @@ class _AriChatPanelBodyState extends State<_AriChatPanelBody> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   int _lastMessageCount = 0;
-  late final ChatProvider _chatProvider;
+  late final AriChatProvider _chatProvider;
 
   @override
   void initState() {
     super.initState();
-    _chatProvider = context.read<ChatProvider>();
+    _chatProvider = context.read<AriChatProvider>();
     _lastMessageCount = _chatProvider.messages.length;
     _chatProvider.addListener(_onMessagesChanged);
   }
@@ -154,7 +154,7 @@ class _AriChatPanelBodyState extends State<_AriChatPanelBody> {
 
   @override
   Widget build(BuildContext context) {
-    final chatProvider = context.watch<ChatProvider>();
+    final chatProvider = context.watch<AriChatProvider>();
     final theme = widget.theme;
 
     return Container(
@@ -241,7 +241,7 @@ class _AriChatPanelBodyState extends State<_AriChatPanelBody> {
                       padding: const EdgeInsets.all(20),
                       itemCount: chatProvider.messages.length,
                       itemBuilder: (context, index) {
-                        return ChatMessageItem(
+                        return AriChatMessageItem(
                           message: chatProvider.messages[index],
                           theme: theme,
                         );

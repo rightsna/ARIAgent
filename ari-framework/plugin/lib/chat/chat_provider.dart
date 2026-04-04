@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import '../bridge/ws/AriAgent.dart';
 
 /// 채팅 메시지 데이터 모델.
-class ChatMessage {
+class AriChatMessage {
   final String text;
   final bool isUser;
   final bool isSystem;
   final DateTime createdAt;
   final String? requestId;
 
-  ChatMessage({
+  AriChatMessage({
     required this.text,
     required this.isUser,
     required this.createdAt,
@@ -23,13 +23,13 @@ class ChatMessage {
 ///
 /// [AriChatPanel]이 내부적으로 생성하여 사용하며, 필요 시 외부에서
 /// [ChangeNotifierProvider]로 주입하는 것도 가능합니다.
-class ChatProvider extends ChangeNotifier {
-  final List<ChatMessage> _messages = [];
+class AriChatProvider extends ChangeNotifier {
+  final List<AriChatMessage> _messages = [];
   StreamSubscription? _agentPushSub;
   StreamSubscription? _agentRequestSub;
   StreamSubscription? _progressSub;
 
-  ChatProvider() {
+  AriChatProvider() {
     _initListeners();
   }
 
@@ -43,7 +43,7 @@ class ChatProvider extends ChangeNotifier {
           _messages.any((m) => m.isUser && m.requestId == requestId))
         return;
 
-      _messages.add(ChatMessage(
+      _messages.add(AriChatMessage(
         text: message,
         isUser: true,
         createdAt: DateTime.now(),
@@ -67,7 +67,7 @@ class ChatProvider extends ChangeNotifier {
           ))
         return;
 
-      _messages.add(ChatMessage(
+      _messages.add(AriChatMessage(
         text: response,
         isUser: false,
         createdAt: DateTime.now(),
@@ -88,13 +88,13 @@ class ChatProvider extends ChangeNotifier {
     });
   }
 
-  List<ChatMessage> get messages => List.unmodifiable(_messages);
+  List<AriChatMessage> get messages => List.unmodifiable(_messages);
 
   void _upsertProgressMessage(String text, String requestId) {
     final idx = _messages.lastIndexWhere(
       (m) => m.isSystem && m.requestId == requestId,
     );
-    final msg = ChatMessage(
+    final msg = AriChatMessage(
       text: text,
       isUser: false,
       isSystem: true,
@@ -116,7 +116,7 @@ class ChatProvider extends ChangeNotifier {
     if (requestId != null &&
         _messages.any((m) => !m.isUser && m.requestId == requestId))
       return;
-    _messages.add(ChatMessage(
+    _messages.add(AriChatMessage(
       text: text,
       isUser: false,
       createdAt: DateTime.now(),
@@ -129,7 +129,7 @@ class ChatProvider extends ChangeNotifier {
     if (requestId != null &&
         _messages.any((m) => m.isUser && m.requestId == requestId))
       return;
-    _messages.add(ChatMessage(
+    _messages.add(AriChatMessage(
       text: text,
       isUser: true,
       createdAt: DateTime.now(),

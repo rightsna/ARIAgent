@@ -3,11 +3,11 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../theme/ari_chat_theme.dart';
 import '../chat_provider.dart';
 
-class ChatMessageItem extends StatelessWidget {
-  final ChatMessage message;
+class AriChatMessageItem extends StatelessWidget {
+  final AriChatMessage message;
   final AriChatTheme theme;
 
-  const ChatMessageItem({
+  const AriChatMessageItem({
     super.key,
     required this.message,
     required this.theme,
