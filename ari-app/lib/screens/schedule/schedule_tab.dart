@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 import '../../providers/avatar_provider.dart';
-import '../../providers/task_provider.dart';
 import 'package:ari_agent/screens/schedule/widgets/task_card.dart';
 
 /// 스케줄 탭 - 서버에 등록된 작업 목록
@@ -25,7 +25,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
   Future<void> _refreshTasks() async {
     setState(() => _isLoading = true);
     try {
-      await context.read<TaskProvider>().refresh();
+      await context.read<AriTaskProvider>().refresh();
     } catch (e) {
       debugPrint('[Schedule] ❌ 갱신 실패: $e');
     }
@@ -35,14 +35,11 @@ class _ScheduleTabState extends State<ScheduleTab> {
   @override
   Widget build(BuildContext context) {
     final avatar = context.watch<AvatarProvider>();
-    final taskProvider = context.watch<TaskProvider>();
+    final taskProvider = context.watch<AriTaskProvider>();
     final currentAgentId = avatar.currentAvatarId;
 
     // 현재 아바타의 작업만 필터
-    final filteredTasks = taskProvider.tasks.where((t) {
-      final aid = (t.agentId?.trim().isEmpty ?? true) ? 'default' : t.agentId!.trim();
-      return aid == currentAgentId;
-    }).toList();
+    final filteredTasks = taskProvider.tasksForAgent(currentAgentId);
 
     final List<Widget> items = [];
 

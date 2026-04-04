@@ -13,7 +13,7 @@ import 'screens/home_screen.dart';
 import 'repositories/config_repository.dart';
 import 'providers/config_provider.dart';
 import 'providers/server_provider.dart';
-import 'providers/task_provider.dart';
+
 import 'package:ari_plugin/ari_plugin.dart';
 import 'package:flutter/gestures.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -49,9 +49,7 @@ void main() async {
   // 에이전트 시작 (비동기)
   unawaited(ServerProvider().start(version: version));
 
-  // TaskProvider는 서버 API를 사용하므로 AriAgent 이후 초기화
-  // (서버 시작 직후에는 연결이 안 될 수 있으므로 실패해도 앱이 시작되도록 함)
-  unawaited(TaskProvider().init());
+  unawaited(AriTaskProvider().init());
 
   // window_manager 초기화
   await windowManager.ensureInitialized();
@@ -167,7 +165,7 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
         ChangeNotifierProvider<ConfigProvider>.value(value: ConfigProvider()),
         ChangeNotifierProvider<AvatarProvider>.value(value: AvatarProvider()),
         ChangeNotifierProvider<ServerProvider>.value(value: ServerProvider()),
-        ChangeNotifierProvider<TaskProvider>.value(value: TaskProvider()),
+        ChangeNotifierProvider<AriTaskProvider>.value(value: AriTaskProvider()),
         ChangeNotifierProvider(create: (_) => AriChatProvider()),
       ],
       child: MaterialApp(

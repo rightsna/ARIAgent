@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 import '../../../models/agent_profile.dart';
-import '../../../models/scheduled_task.dart';
-import '../../../providers/task_provider.dart';
 
 class PlaceAvatar {
   final AgentProfile profile;
@@ -41,7 +40,7 @@ class PlaceAvatar {
   }
 
   /// 스케줄 작업 중인 아바타 ID들을 찾아냅니다.
-  static Set<String> getScheduledWorkingIds(TaskProvider taskProvider) {
+  static Set<String> getScheduledWorkingIds(AriTaskProvider taskProvider) {
     if (!taskProvider.isInitialized) return const <String>{};
     final now = DateTime.now();
     return taskProvider.tasks
@@ -50,7 +49,7 @@ class PlaceAvatar {
         .toSet();
   }
 
-  static bool _isCompletedOneOffTask(ScheduledTask task, DateTime now) {
+  static bool _isCompletedOneOffTask(AriScheduledTask task, DateTime now) {
     if (task.isOneOff != true) return false;
     final scheduledAt = _parseOneOffDateTime(task.cron);
     return scheduledAt != null && (task.lastRunAt != null || scheduledAt.isBefore(now));

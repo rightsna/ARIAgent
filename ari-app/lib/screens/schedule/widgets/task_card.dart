@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../models/scheduled_task.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 
 class TaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
@@ -18,7 +18,7 @@ class TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = task['enabled'] ?? true;
-    final scheduledTask = ScheduledTask.fromMap(task);
+    final scheduledTask = AriScheduledTask.fromMap(task);
 
     return GestureDetector(
       onTap: onTap,

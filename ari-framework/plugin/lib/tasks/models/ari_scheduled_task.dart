@@ -1,5 +1,5 @@
-/// 스케줄된 작업 모델
-class ScheduledTask {
+/// ARI 프레임워크 - 스케줄된 작업 모델
+class AriScheduledTask {
   final String id;
   final String prompt;
   final String cron;
@@ -11,7 +11,7 @@ class ScheduledTask {
   final String? agentId;
   final bool isOneOff;
 
-  ScheduledTask({
+  AriScheduledTask({
     required this.id,
     required this.prompt,
     required this.cron,
@@ -37,7 +37,7 @@ class ScheduledTask {
     'isOneOff': isOneOff,
   };
 
-  factory ScheduledTask.fromMap(Map<String, dynamic> m) => ScheduledTask(
+  factory AriScheduledTask.fromMap(Map<String, dynamic> m) => AriScheduledTask(
     id: m['id'] ?? '',
     prompt: m['prompt'] ?? '',
     cron: m['cron'] ?? '',
@@ -52,11 +52,11 @@ class ScheduledTask {
     isOneOff: m['isOneOff'] ?? false,
   );
 
-  ScheduledTask copyWith({
+  AriScheduledTask copyWith({
     bool? enabled,
     DateTime? lastRunAt,
     String? lastResult,
-  }) => ScheduledTask(
+  }) => AriScheduledTask(
     id: id,
     prompt: prompt,
     cron: cron,

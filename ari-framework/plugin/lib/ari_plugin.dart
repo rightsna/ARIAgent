@@ -9,3 +9,5 @@ export 'bridge/ws/AriAgent.dart';
 export 'theme/ari_chat_theme.dart';
 export 'chat/providers/chat_provider.dart';
 export 'chat/chat_panel.dart';
+
+export 'tasks/providers/ari_task_provider.dart';

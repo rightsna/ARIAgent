@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:ari_agent/providers/avatar_provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
-import 'package:ari_agent/providers/task_provider.dart';
+
 import 'package:ari_agent/providers/config_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -69,7 +69,7 @@ class _PlaceTabState extends State<PlaceTab> {
     final allProfiles = avatarProvider.allAvatars;
     final currentAvatarId = avatarProvider.currentAvatarId;
     final isWorking = context.watch<AriChatProvider>().isLoading;
-    final taskProvider = context.watch<TaskProvider>();
+    final taskProvider = context.watch<AriTaskProvider>();
     final configProvider = context.watch<ConfigProvider>();
 
     // 로직 호출을 모델 클래스에서 직접 수행
