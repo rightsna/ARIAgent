@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../providers/avatar_provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 
 class SettingsTab extends StatelessWidget {

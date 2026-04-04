@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/avatar_provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 
 class MemoryTab extends StatefulWidget {
   const MemoryTab({super.key});

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ari_plugin/ari_plugin.dart';
-import '../../../models/agent_profile.dart';
 
 class PlaceAvatar {
   final AgentProfile profile;

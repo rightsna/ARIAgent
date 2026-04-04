@@ -8,7 +8,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:system_tray/system_tray.dart';
 
-import 'providers/avatar_provider.dart';
 import 'screens/home_screen.dart';
 import 'repositories/config_repository.dart';
 import 'providers/config_provider.dart';

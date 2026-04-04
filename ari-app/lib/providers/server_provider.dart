@@ -55,6 +55,7 @@ class ServerProvider extends ChangeNotifier {
     if (success) {
       _setStatus(ServerStatus.running);
       AriAgent.connect(); // 서버가 정상적으로 켜졌을 때 웹소켓 연결 시도
+      AvatarProvider().refreshAvatars();
     } else {
       _setStatus(ServerStatus.error);
     }

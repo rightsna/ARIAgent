@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 
-import '../../providers/avatar_provider.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/config_provider.dart';
 

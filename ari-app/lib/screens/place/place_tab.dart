@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:ari_agent/providers/avatar_provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 
 import 'package:ari_agent/providers/config_provider.dart';

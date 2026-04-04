@@ -1,4 +1,4 @@
-import 'package:ari_agent/providers/avatar_provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

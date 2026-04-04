@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/avatar_provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 import '../../../providers/config_provider.dart';
 
 /// 메인 아바타 위젯 - 이미지와 상태 표시등을 포함.
