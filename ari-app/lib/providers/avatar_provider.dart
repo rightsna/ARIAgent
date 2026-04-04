@@ -1,7 +1,7 @@
 import 'package:ari_agent/models/agent_profile.dart';
 import 'package:ari_agent/repositories/profile_repository.dart';
 import 'package:ari_agent/providers/server_provider.dart';
-import 'package:ari_plugin/ari_plugin.dart';
+
 import 'package:flutter/foundation.dart';
 
 /// AvatarProvider: UI 상태 관리를 담당하며 ProfileRepository와 직접 대화합니다.
@@ -99,11 +99,7 @@ class AvatarProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 대화 초기화
-  Future<void> clearConversation() async {
-    AriAgent.emit('/CHAT.CLEAR', {'agentId': _currentAgentId});
-    notifyListeners();
-  }
+
 
   /// 아바타 삭제
   Future<void> deleteAvatar() async {

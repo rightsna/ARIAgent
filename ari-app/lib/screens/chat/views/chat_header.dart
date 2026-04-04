@@ -56,11 +56,21 @@ class _ChatHeaderState extends State<ChatHeader> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildStatus(isConnected, isStarting, name, server, isCompact: true),
+                  child: _buildStatus(
+                    isConnected,
+                    isStarting,
+                    name,
+                    server,
+                    isCompact: true,
+                  ),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white54, size: 20),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
                   onPressed: () => config.updateIsChatCollapsed(false),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -79,7 +89,11 @@ class _ChatHeaderState extends State<ChatHeader> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white54, size: 20),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_up,
+                          color: Colors.white54,
+                          size: 20,
+                        ),
                         onPressed: () => config.updateIsChatCollapsed(true),
                         tooltip: '접기',
                       ),
@@ -112,21 +126,14 @@ class _ChatHeaderState extends State<ChatHeader> {
   Widget _buildTrashButton(BuildContext context) {
     return IconButton(
       visualDensity: VisualDensity.compact,
-      icon: const Icon(
-        Icons.delete_outline,
-        color: Colors.white54,
-        size: 20,
-      ),
+      icon: const Icon(Icons.delete_outline, color: Colors.white54, size: 20),
       tooltip: '대화 기록 지우기',
       onPressed: () async {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
             backgroundColor: const Color(0xFF1E1E2E),
-            title: const Text(
-              '대화 목록 지우기',
-              style: TextStyle(fontSize: 16),
-            ),
+            title: const Text('대화 목록 지우기', style: TextStyle(fontSize: 16)),
             content: const Text(
               '현재 아바타와의 대화 기록을 모두 지우시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
               style: TextStyle(fontSize: 14),
@@ -151,16 +158,24 @@ class _ChatHeaderState extends State<ChatHeader> {
         );
 
         if (confirmed == true && context.mounted) {
-          await context.read<AvatarProvider>().clearConversation();
-          context.read<AriChatProvider>().clearMessages();
+          final avatarId = context.read<AvatarProvider>().currentAvatarId;
+          await context.read<AriChatProvider>().clearServerHistory(avatarId);
         }
       },
     );
   }
 
-  Widget _buildStatus(bool isConnected, bool isStarting, String name, ServerProvider server, {bool isCompact = false}) {
+  Widget _buildStatus(
+    bool isConnected,
+    bool isStarting,
+    String name,
+    ServerProvider server, {
+    bool isCompact = false,
+  }) {
     return Row(
-      mainAxisAlignment: isCompact ? MainAxisAlignment.start : MainAxisAlignment.center,
+      mainAxisAlignment: isCompact
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.center,
       children: [
         Flexible(
           child: Text(
@@ -187,16 +202,19 @@ class _ChatHeaderState extends State<ChatHeader> {
           decoration: BoxDecoration(
             color: isConnected
                 ? const Color(0xFF4ADE80)
-                : (isStarting ? const Color(0xFFFBBF24) : const Color(0xFFFF6B6B)),
+                : (isStarting
+                      ? const Color(0xFFFBBF24)
+                      : const Color(0xFFFF6B6B)),
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: (isConnected
-                        ? const Color(0xFF4ADE80)
-                        : (isStarting
-                            ? const Color(0xFFFBBF24)
-                            : const Color(0xFFFF6B6B)))
-                    .withValues(alpha: 0.4),
+                color:
+                    (isConnected
+                            ? const Color(0xFF4ADE80)
+                            : (isStarting
+                                  ? const Color(0xFFFBBF24)
+                                  : const Color(0xFFFF6B6B)))
+                        .withValues(alpha: 0.4),
                 blurRadius: 4,
               ),
             ],

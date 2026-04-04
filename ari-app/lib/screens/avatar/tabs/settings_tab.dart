@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../providers/avatar_provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -42,7 +43,12 @@ class SettingsTab extends StatelessWidget {
               context,
               '대화 초기화',
               '현재 아바타와의 모든 대화 내용을 삭제하시겠습니까?',
-              () => avatar.clearConversation(),
+              () async {
+                final avatarId = avatar.currentAvatarId;
+                if (context.mounted) {
+                  await context.read<AriChatProvider>().clearServerHistory(avatarId);
+                }
+              },
             ),
           ),
           const SizedBox(height: 24),

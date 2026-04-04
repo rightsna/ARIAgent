@@ -22,13 +22,14 @@ class AriChatProvider extends ChangeNotifier {
   String? get activeRequestId => _activeRequestId;
 
   // 추가 이벤트 핸들러 주입
-  final Map<String, void Function(dynamic data, AriChatProvider provider)>? customEventHandlers;
+  final Map<String, void Function(dynamic data, AriChatProvider provider)>?
+      customEventHandlers;
 
   AriChatProvider({
     this.customEventHandlers,
   }) {
     _initListeners();
-    
+
     // 주입된 커스텀 이벤트 핸들러 등록
     customEventHandlers?.forEach((event, handler) {
       _customSubs.add(AriAgent.on(event, (data) => handler(data, this)));
@@ -42,8 +43,7 @@ class AriChatProvider extends ChangeNotifier {
 
       if (message.isEmpty) return;
       if (requestId.isNotEmpty &&
-          _messages.any((m) => m.isUser && m.requestId == requestId))
-        return;
+          _messages.any((m) => m.isUser && m.requestId == requestId)) return;
 
       _messages.add(AriChatMessage(
         text: message,
@@ -66,8 +66,7 @@ class AriChatProvider extends ChangeNotifier {
       if (requestId.isNotEmpty &&
           _messages.any(
             (m) => !m.isUser && !m.isSystem && m.requestId == requestId,
-          ))
-        return;
+          )) return;
 
       _messages.add(AriChatMessage(
         text: response,
@@ -75,7 +74,7 @@ class AriChatProvider extends ChangeNotifier {
         createdAt: DateTime.now(),
         requestId: requestId,
       ));
-      
+
       onResponseReceived(requestId);
       notifyListeners();
     });
@@ -158,7 +157,8 @@ class AriChatProvider extends ChangeNotifier {
   }
 
   /// 표준 에이전트 메시지 송신 API
-  Future<void> sendAgentMessage(String text, {
+  Future<void> sendAgentMessage(
+    String text, {
     String? agentId,
     String? persona,
     String? avatarName,
@@ -205,8 +205,10 @@ class AriChatProvider extends ChangeNotifier {
   }
 
   void upsertSystemMessage(String text, String requestId) {
-    bool isMyRequest = _activeRequestId != null && requestId == _activeRequestId;
-    bool isBackgroundRequest = requestId.startsWith('report-') || requestId.startsWith('sys-');
+    bool isMyRequest =
+        _activeRequestId != null && requestId == _activeRequestId;
+    bool isBackgroundRequest =
+        requestId.startsWith('report-') || requestId.startsWith('sys-');
     if (!isMyRequest && !isBackgroundRequest) return;
 
     final idx = _messages.lastIndexWhere(
@@ -234,8 +236,7 @@ class AriChatProvider extends ChangeNotifier {
 
   void addAiMessage(String text, {String? requestId}) {
     if (requestId != null &&
-        _messages.any((m) => !m.isUser && m.requestId == requestId))
-      return;
+        _messages.any((m) => !m.isUser && m.requestId == requestId)) return;
     _messages.add(AriChatMessage(
       text: text,
       isUser: false,
@@ -247,8 +248,7 @@ class AriChatProvider extends ChangeNotifier {
 
   void addUserMessage(String text, {String? requestId}) {
     if (requestId != null &&
-        _messages.any((m) => m.isUser && m.requestId == requestId))
-      return;
+        _messages.any((m) => m.isUser && m.requestId == requestId)) return;
     _messages.add(AriChatMessage(
       text: text,
       isUser: true,
@@ -274,6 +274,12 @@ class AriChatProvider extends ChangeNotifier {
     _processedTaskIds.clear();
     _activeRequestId = null;
     notifyListeners();
+  }
+
+  /// 서버의 대화 이력을 삭제하고 로컬 메시지도 초기화합니다.
+  Future<void> clearServerHistory(String agentId) async {
+    AriAgent.emit('/CHAT.CLEAR', {'agentId': agentId});
+    clearMessages();
   }
 
   @override
