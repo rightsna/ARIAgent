@@ -11,6 +11,8 @@ import 'package:system_tray/system_tray.dart';
 import 'screens/home_screen.dart';
 import 'repositories/config_repository.dart';
 import 'providers/config_provider.dart';
+import 'providers/home_assistant_provider.dart';
+import 'providers/ari_app_provider.dart';
 import 'providers/server_provider.dart';
 
 import 'package:ari_plugin/ari_plugin.dart';
@@ -41,6 +43,7 @@ void main() async {
   // Provider 초기화
   await ConfigProvider().init();
   await AvatarProvider().init();
+  await AriAppProvider().init();
 
   // AriAgent 초기화 (Repository에서 URL 가져옴)
   AriAgent.init(url: configRepo.wsUrl);
@@ -165,6 +168,10 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
         ChangeNotifierProvider<AvatarProvider>.value(value: AvatarProvider()),
         ChangeNotifierProvider<ServerProvider>.value(value: ServerProvider()),
         ChangeNotifierProvider<AriTaskProvider>.value(value: AriTaskProvider()),
+        ChangeNotifierProvider<HomeAssistantProvider>.value(
+          value: HomeAssistantProvider(),
+        ),
+        ChangeNotifierProvider<AriAppProvider>.value(value: AriAppProvider()),
         ChangeNotifierProvider(create: (_) => AriChatProvider()),
       ],
       child: MaterialApp(

@@ -1,0 +1,80 @@
+import 'package:flutter/foundation.dart';
+import 'package:ari_plugin/ari_plugin.dart';
+import '../repositories/app_repository.dart';
+
+class AriAppProvider extends ChangeNotifier {
+  static final AriAppProvider _instance = AriAppProvider._internal();
+  factory AriAppProvider() => _instance;
+  AriAppProvider._internal();
+
+  final AppRepository _repository = AppRepository();
+
+  List<String> _connectedAppIds = [];
+  List<String> get connectedAppIds => _connectedAppIds;
+
+  Future<void> init() async {
+    // 실시간 연결된 앱 목록 수신
+    AriAgent.on('/CONNECTED_APPS_CHANGED', (data) {
+      final ids = data['connectedIds'];
+      if (ids is List) {
+        _connectedAppIds = ids.cast<String>();
+        debugPrint('[AriAppProvider] Connected Apps Changed: $_connectedAppIds');
+        notifyListeners();
+      }
+    });
+  }
+
+  /// 설치된 앱 목록 조회 (로컬 저장소 탐색)
+  Future<List<Map<String, dynamic>>> getInstalledApps() async {
+    return await _repository.getInstalledApps();
+  }
+
+  /// 서버에 연결된 앱 목록 조회
+  Future<List<String>> getConnectedApps() async {
+    try {
+      final res = await AriAgent.call('/GET_CONNECTED_APPS');
+      final connectedIds = res['connectedIds'];
+      if (connectedIds is List) {
+        _connectedAppIds = connectedIds.cast<String>();
+        notifyListeners();
+        return _connectedAppIds;
+      }
+      return [];
+    } catch (e) {
+      debugPrint('[AriAppProvider] getConnectedApps failed: $e');
+      return [];
+    }
+  }
+
+  /// 앱 실행
+  Future<bool> launchApp(String appId) async {
+    try {
+      await AriAgent.call('/LAUNCH_APP', {'appId': appId});
+      return true;
+    } catch (e) {
+      debugPrint('[AriAppProvider] launchApp failed: $e');
+      return false;
+    }
+  }
+
+  /// 스킬(앱) 삭제
+  Future<bool> deleteSkill(String name) async {
+    try {
+      await AriAgent.call('/DELETE_SKILL', {'name': name});
+      return true;
+    } catch (e) {
+      debugPrint('[AriAppProvider] deleteSkill failed: $e');
+      return false;
+    }
+  }
+
+  /// 모든 플러그인(스킬 포함) 정보 조회
+  Future<Map<String, dynamic>?> getPlugins() async {
+    try {
+      return await AriAgent.call('/PLUGINS');
+    } catch (e) {
+      debugPrint('[AriAppProvider] getPlugins failed: $e');
+      return null;
+    }
+  }
+}

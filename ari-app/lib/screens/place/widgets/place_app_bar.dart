@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../providers/config_provider.dart';
+import '../../../providers/ari_app_provider.dart';
 
 class PlaceAppBar extends StatelessWidget {
   final List<Map<String, dynamic>> apps;
@@ -129,7 +129,7 @@ class PlaceAppBar extends StatelessWidget {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () {
-                                  context.read<ConfigProvider>().launchApp(
+                                  context.read<AriAppProvider>().launchApp(
                                     appId,
                                   );
                                 },

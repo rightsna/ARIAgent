@@ -93,6 +93,16 @@ class ServerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<bool> savePortToServer(int port) async {
+    try {
+      await AriAgent.call('/SETTINGS', {'port': port});
+      return true;
+    } catch (e) {
+      debugPrint('[ServerProvider] savePortToServer failed: $e');
+      return false;
+    }
+  }
+
   @override
   void dispose() {
     _service.dispose();

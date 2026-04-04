@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../providers/config_provider.dart';
+import '../../../providers/ari_app_provider.dart';
 
 class SkillsTab extends StatefulWidget {
   const SkillsTab({super.key});
@@ -20,7 +20,7 @@ class _SkillsTabState extends State<SkillsTab> {
 
   void _refreshPlugins() {
     setState(() {
-      _pluginsFuture = context.read<ConfigProvider>().getPlugins();
+      _pluginsFuture = context.read<AriAppProvider>().getPlugins();
     });
   }
 
@@ -249,7 +249,7 @@ class _SkillCardState extends State<_SkillCard> {
                             if (confirm == true) {
                               if (mounted) {
                                 final success = await context
-                                    .read<ConfigProvider>()
+                                    .read<AriAppProvider>()
                                     .deleteSkill(name);
                                 if (success) {
                                   widget.onRefresh();

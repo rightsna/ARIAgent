@@ -60,7 +60,9 @@ class _ChatTabState extends State<ChatTab> {
       _lastAgentId = avatarId;
       _lastConnected = isConnected;
       if (isConnected) {
-        Future.microtask(() => context.read<AriChatProvider>().loadServerHistory(avatarId));
+        Future.microtask(
+          () => context.read<AriChatProvider>().loadServerHistory(avatarId),
+        );
       }
     }
 
@@ -81,7 +83,8 @@ class _ChatTabState extends State<ChatTab> {
         persona: avatar.persona.trim(),
         avatarName: avatar.name,
       ),
-      onCancel: () => chatProvider.cancelAgentMessage(agentId: avatar.currentAvatarId),
+      onCancel: () =>
+          chatProvider.cancelAgentMessage(agentId: avatar.currentAvatarId),
       isLoading: chatProvider.isLoading,
       hintText: 'ARI에게 물어보세요...',
       reverseMessages: true,

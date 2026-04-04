@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:ari_plugin/ari_plugin.dart';
 
-import 'package:ari_agent/providers/config_provider.dart';
+
+import 'package:ari_agent/providers/home_assistant_provider.dart';
+import 'package:ari_agent/providers/ari_app_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,7 +14,6 @@ import 'widgets/agent_avatar.dart';
 import 'widgets/ha_device_icon.dart';
 import 'widgets/ha_registration_sheet.dart';
 import 'widgets/place_app_bar.dart';
-import '../../repositories/app_repository.dart';
 
 class PlaceTab extends StatefulWidget {
   const PlaceTab({super.key});
@@ -37,8 +38,8 @@ class _PlaceTabState extends State<PlaceTab> {
   }
 
   Future<void> _loadHADevices() async {
-    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
-    final devices = await configProvider.getHADevices();
+    final haProvider = Provider.of<HomeAssistantProvider>(context, listen: false);
+    final devices = await haProvider.getHADevices();
     if (devices != null && mounted) {
       setState(() {
         _haDevices = devices;
@@ -50,7 +51,8 @@ class _PlaceTabState extends State<PlaceTab> {
   }
 
   Future<void> _loadInstalledApps() async {
-    final apps = await AppRepository().getInstalledApps();
+    final appProvider = Provider.of<AriAppProvider>(context, listen: false);
+    final apps = await appProvider.getInstalledApps();
     if (mounted) {
       setState(() {
         _installedApps = apps;
@@ -69,7 +71,7 @@ class _PlaceTabState extends State<PlaceTab> {
     final currentAvatarId = avatarProvider.currentAvatarId;
     final isWorking = context.watch<AriChatProvider>().isLoading;
     final taskProvider = context.watch<AriTaskProvider>();
-    final configProvider = context.watch<ConfigProvider>();
+    final appProvider = context.watch<AriAppProvider>();
 
     // 로직 호출을 모델 클래스에서 직접 수행
     final scheduledIds = PlaceAvatar.getScheduledWorkingIds(taskProvider);
@@ -110,7 +112,8 @@ class _PlaceTabState extends State<PlaceTab> {
                   child: HADeviceIcon(
                     item: device,
                     onTap: () async {
-                      final success = await configProvider.controlHADevice(
+                      final haProvider = context.read<HomeAssistantProvider>();
+                      final success = await haProvider.controlHADevice(
                           device.id, 'toggle',
                           domain: device.type);
                       if (success) {
@@ -133,7 +136,7 @@ class _PlaceTabState extends State<PlaceTab> {
               child: PlaceAppBar(
                 apps: _installedApps,
                 isLoading: _isLoadingApps,
-                connectedAppIds: configProvider.connectedAppIds,
+                connectedAppIds: appProvider.connectedAppIds,
               ),
             ),
 
@@ -179,8 +182,8 @@ class _PlaceTabState extends State<PlaceTab> {
   }
 
   Future<void> _startHAConnection(BuildContext context) async {
-    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
-    final existing = await configProvider.getHACredentials();
+    final haProvider = Provider.of<HomeAssistantProvider>(context, listen: false);
+    final existing = await haProvider.getHACredentials();
     if (!context.mounted) return;
     showModalBottomSheet(
       context: context,
@@ -198,8 +201,8 @@ class _PlaceTabState extends State<PlaceTab> {
 
   Future<void> _submitHARegistration(BuildContext context, String url, String token) async {
     showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.orange)));
-    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
-    final result = await configProvider.saveHACredentials(url, token);
+    final haProvider = Provider.of<HomeAssistantProvider>(context, listen: false);
+    final result = await haProvider.saveHACredentials(url, token);
     if (!context.mounted) return;
     Navigator.pop(context);
     if (result['ok'] == true) {

@@ -25,9 +25,6 @@ class ConfigProvider extends ChangeNotifier {
   String? get mode => _mode;
   bool get isDevelopment => _mode == 'development';
 
-  List<String> _connectedAppIds = [];
-  List<String> get connectedAppIds => _connectedAppIds;
-
   Future<void> init() async {
     await _repository.init();
 
@@ -43,16 +40,6 @@ class ConfigProvider extends ChangeNotifier {
       debugPrint(
         '[SERVER-LOG] [${data['level']}] [${data['label']}] ${data['message']}',
       );
-    });
-
-    // 실시간 연결된 앱 목록 수신
-    AriAgent.on('/CONNECTED_APPS_CHANGED', (data) {
-      final ids = data['connectedIds'];
-      if (ids is List) {
-        _connectedAppIds = ids.cast<String>();
-        debugPrint('[ConfigProvider] Connected Apps Changed: $_connectedAppIds');
-        notifyListeners();
-      }
     });
 
     notifyListeners();
@@ -166,49 +153,6 @@ class ConfigProvider extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>?> getPlugins() async {
-    try {
-      return await AriAgent.call('/PLUGINS');
-    } catch (e) {
-      debugPrint('[ConfigProvider] getPlugins failed: $e');
-      return null;
-    }
-  }
-
-  Future<List<String>> getConnectedApps() async {
-    try {
-      final res = await AriAgent.call('/GET_CONNECTED_APPS');
-      final connectedIds = res['connectedIds'];
-      if (connectedIds is List) {
-        return connectedIds.cast<String>();
-      }
-      return [];
-    } catch (e) {
-      debugPrint('[ConfigProvider] getConnectedApps failed: $e');
-      return [];
-    }
-  }
-
-  Future<bool> launchApp(String appId) async {
-    try {
-      await AriAgent.call('/LAUNCH_APP', {'appId': appId});
-      return true;
-    } catch (e) {
-      debugPrint('[ConfigProvider] launchApp failed: $e');
-      return false;
-    }
-  }
-
-  Future<bool> deleteSkill(String name) async {
-    try {
-      await AriAgent.call('/DELETE_SKILL', {'name': name});
-      return true;
-    } catch (e) {
-      debugPrint('[ConfigProvider] deleteSkill failed: $e');
-      return false;
-    }
-  }
-
   // ─── OAuth 관련 ─────────────────────────────────────────────
 
   /// 지원되는 OAuth 프로바이더 목록 + 로그인 상태 조회
@@ -268,66 +212,6 @@ class ConfigProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('[ConfigProvider] logoutOAuth failed: $e');
-      return false;
-    }
-  }
-
-  Future<Map<String, dynamic>?> getHACredentials() async {
-    try {
-      final res = await AriAgent.call('/GET_HA_CREDENTIALS');
-      return res;
-    } catch (e) {
-      debugPrint('[ConfigProvider] getHACredentials failed: $e');
-      return null;
-    }
-  }
-
-  Future<List<Map<String, dynamic>>?> getHADevices() async {
-    try {
-      final res = await AriAgent.call('/GET_HA_DEVICES');
-      final devices = res['devices'];
-      if (devices is List) {
-        return devices.map((item) => Map<String, dynamic>.from(item)).toList();
-      }
-      return null;
-    } catch (e) {
-      debugPrint('[ConfigProvider] getHADevices failed: $e');
-      return null;
-    }
-  }
-
-  /// Home Assistant 자격증명 저장
-  Future<Map<String, dynamic>> saveHACredentials(
-    String url,
-    String token,
-  ) async {
-    try {
-      final res = await AriAgent.call('/SET_HA_CREDENTIALS', {
-        'url': url,
-        'token': token,
-      });
-      return {'ok': true, 'data': res};
-    } catch (e) {
-      debugPrint('[ConfigProvider] saveHACredentials failed: $e');
-      return {'ok': false, 'error': e.toString()};
-    }
-  }
-
-  /// Home Assistant 기기 제어
-  Future<bool> controlHADevice(
-    String entityId,
-    String service, {
-    String? domain,
-  }) async {
-    try {
-      final res = await AriAgent.call('/CONTROL_HA_DEVICE', {
-        'entity_id': entityId,
-        'service': service,
-        if (domain != null) 'domain': domain,
-      });
-      return res['success'] == true;
-    } catch (e) {
-      debugPrint('[ConfigProvider] controlHADevice failed: $e');
       return false;
     }
   }
