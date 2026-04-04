@@ -1,5 +1,5 @@
 import 'package:ari_agent/models/agent_profile.dart';
-import 'package:ari_agent/repositories/profile_repository.dart';
+import 'package:ari_agent/repositories/avatar_repository.dart';
 import 'package:ari_agent/providers/server_provider.dart';
 
 import 'package:flutter/foundation.dart';
@@ -10,7 +10,7 @@ class AvatarProvider extends ChangeNotifier {
   factory AvatarProvider() => _instance;
   AvatarProvider._internal();
 
-  final ProfileRepository _repository = ProfileRepository();
+  final AvatarRepository _repository = AvatarRepository();
 
   String _currentAgentId = 'default';
   bool _isInitialSynced = false;

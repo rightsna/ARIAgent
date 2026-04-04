@@ -9,7 +9,7 @@ import 'config_repository.dart';
 
 /// 에이전트 프로필 정보를 관리하는 레포지토리.
 /// 서버(WebSocket)를 기본 데이터 소스로 사용하되, 오프라인 시 로컬 agents.json 파일을 참조합니다.
-class ProfileRepository {
+class AvatarRepository {
   final ConfigRepository _configRepository = ConfigRepository();
   Map<String, dynamic> _agentsMap = {};
   String _selectedAgentId = 'default';
