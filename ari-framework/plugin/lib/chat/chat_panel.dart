@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ari_plugin/ari_plugin.dart';
+import '../bridge/ws/AriAgent.dart';
 import '../theme/ari_chat_theme.dart';
 import 'chat_provider.dart';
 import 'widgets/chat_empty_state.dart';

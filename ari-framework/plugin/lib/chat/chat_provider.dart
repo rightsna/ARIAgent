@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:ari_plugin/ari_plugin.dart';
+import '../bridge/ws/AriAgent.dart';
 
 /// 채팅 메시지 데이터 모델.
 class ChatMessage {
