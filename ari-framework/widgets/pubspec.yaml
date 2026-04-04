@@ -1,6 +1,6 @@
-name: ari_plugin
-description: Shared ARI bridge package for Flutter desktop apps.
-version: 0.1.12
+name: ari_widgets
+description: ARI framework UI components — reusable, customizable Flutter chat widgets.
+version: 0.1.0
 publish_to: "none"
 
 environment:
@@ -10,8 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  connectivity_plus: ^7.0.0
-  web_socket_channel: ^3.0.3
+  provider: ^6.1.5+1
+  flutter_markdown: ^0.7.7+1
+  ari_plugin:
+    path: ../plugin
 
 dev_dependencies:
   flutter_test:
