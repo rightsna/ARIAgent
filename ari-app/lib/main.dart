@@ -15,7 +15,6 @@ import 'providers/config_provider.dart';
 import 'providers/server_provider.dart';
 import 'providers/task_provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
-import 'providers/chat_provider.dart';
 import 'package:flutter/gestures.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -166,7 +165,7 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
         ChangeNotifierProvider<AvatarProvider>.value(value: AvatarProvider()),
         ChangeNotifierProvider<ServerProvider>.value(value: ServerProvider()),
         ChangeNotifierProvider<TaskProvider>.value(value: TaskProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => AriChatProvider()),
       ],
       child: MaterialApp(
         title: 'ARI Agent',

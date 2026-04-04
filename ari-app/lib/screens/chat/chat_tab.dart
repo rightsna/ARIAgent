@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 
 import '../../providers/avatar_provider.dart';
-import '../../providers/chat_provider.dart';
 import '../../providers/server_provider.dart';
 import '../../providers/config_provider.dart';
 
@@ -14,34 +13,76 @@ import 'views/model_setup_view.dart';
 import 'widgets/chat_bubble.dart';
 import 'widgets/chat_input.dart';
 
-class ChatTab extends StatelessWidget {
+class ChatTab extends StatefulWidget {
   final VoidCallback? onSettingsTap;
 
   const ChatTab({super.key, this.onSettingsTap});
 
   @override
+  State<ChatTab> createState() => _ChatTabState();
+}
+
+class _ChatTabState extends State<ChatTab> {
+  String? _lastAgentId;
+  bool _lastConnected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AriAgent.connectionNotifier.addListener(_onConnectionChanged);
+  }
+
+  @override
+  void dispose() {
+    AriAgent.connectionNotifier.removeListener(_onConnectionChanged);
+    super.dispose();
+  }
+
+  void _onConnectionChanged() {
+    if (AriAgent.isConnected && _lastAgentId != null) {
+      context.read<AriChatProvider>().loadServerHistory(_lastAgentId!);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final chatProvider = context.watch<ChatProvider>();
+    final chatProvider = context.watch<AriChatProvider>();
     final server = context.watch<ServerProvider>();
     final config = context.watch<ConfigProvider>();
     final avatar = context.watch<AvatarProvider>();
 
     final isServerRunning = server.isRunning;
     final hasApiKey = config.hasApiKey;
+    final isConnected = AriAgent.isConnected;
+    final avatarId = avatar.currentAvatarId;
+
+    // 아바타가 변경되었거나, 서버가 방금 연결된 경우 히스토리 다시 불러오기
+    if (avatarId != _lastAgentId || (isConnected && !_lastConnected)) {
+      _lastAgentId = avatarId;
+      _lastConnected = isConnected;
+      if (isConnected) {
+        Future.microtask(() => context.read<AriChatProvider>().loadServerHistory(avatarId));
+      }
+    }
 
     // 조건부 오버레이 결정
     Widget? overlay;
     if (!isServerRunning) {
       overlay = const ServerStoppedView();
     } else if (!hasApiKey) {
-      overlay = ModelSetupView(onSettingsTap: onSettingsTap);
+      overlay = ModelSetupView(onSettingsTap: widget.onSettingsTap);
     }
 
     return AriChatPanel(
       appId: 'ari_agent',
       messages: chatProvider.messages,
-      onSend: (text) => chatProvider.sendMessage(text, avatar.currentAvatarId),
-      onCancel: chatProvider.cancelSendMessage,
+      onSend: (text) => chatProvider.sendAgentMessage(
+        text,
+        agentId: avatar.currentAvatarId,
+        persona: avatar.persona.trim(),
+        avatarName: avatar.name,
+      ),
+      onCancel: () => chatProvider.cancelAgentMessage(agentId: avatar.currentAvatarId),
       isLoading: chatProvider.isLoading,
       hintText: 'ARI에게 물어보세요...',
       reverseMessages: true,
@@ -62,7 +103,12 @@ class ChatTab extends StatelessWidget {
             ),
           ),
           ChatSuggestions(
-            onSuggestionTap: (text) => chatProvider.sendMessage(text, avatar.currentAvatarId),
+            onSuggestionTap: (text) => chatProvider.sendAgentMessage(
+              text,
+              agentId: avatar.currentAvatarId,
+              persona: avatar.persona.trim(),
+              avatarName: avatar.name,
+            ),
           ),
           const SizedBox(height: 8),
         ],

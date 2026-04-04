@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../avatar/widgets/avatar_widget.dart';
 import '../../../providers/avatar_provider.dart';
 import '../../../providers/server_provider.dart';
-import '../../../providers/chat_provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 import '../../../providers/config_provider.dart';
 
 class ChatHeader extends StatefulWidget {
@@ -152,7 +152,7 @@ class _ChatHeaderState extends State<ChatHeader> {
 
         if (confirmed == true && context.mounted) {
           await context.read<AvatarProvider>().clearConversation();
-          context.read<ChatProvider>().clearMessages();
+          context.read<AriChatProvider>().clearMessages();
         }
       },
     );

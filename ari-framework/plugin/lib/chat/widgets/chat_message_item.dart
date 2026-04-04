@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../theme/ari_chat_theme.dart';
-import '../chat_provider.dart';
+import '../providers/chat_provider.dart';
 
 class AriChatMessageItem extends StatelessWidget {
   final AriChatMessage message;

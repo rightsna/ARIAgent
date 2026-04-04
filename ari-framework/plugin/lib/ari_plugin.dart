@@ -7,5 +7,5 @@ export 'bridge/ws/WebSocketService.dart';
 export 'bridge/ws/AriAgent.dart';
 
 export 'theme/ari_chat_theme.dart';
-export 'chat/chat_provider.dart';
+export 'chat/providers/chat_provider.dart';
 export 'chat/chat_panel.dart';

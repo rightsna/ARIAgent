@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:ari_agent/providers/avatar_provider.dart';
-import 'package:ari_agent/providers/chat_provider.dart';
+import 'package:ari_plugin/ari_plugin.dart';
 import 'package:ari_agent/providers/task_provider.dart';
 import 'package:ari_agent/providers/config_provider.dart';
 import 'package:flutter/material.dart';
@@ -68,7 +68,7 @@ class _PlaceTabState extends State<PlaceTab> {
     final avatarProvider = context.watch<AvatarProvider>();
     final allProfiles = avatarProvider.allAvatars;
     final currentAvatarId = avatarProvider.currentAvatarId;
-    final isWorking = context.watch<ChatProvider>().isLoading;
+    final isWorking = context.watch<AriChatProvider>().isLoading;
     final taskProvider = context.watch<TaskProvider>();
     final configProvider = context.watch<ConfigProvider>();
 
