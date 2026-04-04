@@ -33,7 +33,7 @@ function getRunTaskInvocation(taskId: string, agentId: string): string {
 
   const serverRoot = getServerRootDir();
   const runTaskTs = path.join(serverRoot, "jobs", "run_task.ts");
-  const runTaskJs = path.join(serverRoot, "jobs", "run_task.js");
+  const runTaskJs = path.join(serverRoot, "dist", "jobs", "run_task.js");
   const runTaskScript = fs.existsSync(runTaskJs) ? runTaskJs : runTaskTs;
   const nodeBin = process.execPath;
   const useTsRegister = runTaskScript.endsWith(".ts");

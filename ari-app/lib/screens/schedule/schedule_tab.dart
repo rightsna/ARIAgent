@@ -4,7 +4,7 @@ import '../../providers/avatar_provider.dart';
 import '../../providers/task_provider.dart';
 import 'package:ari_agent/screens/schedule/widgets/task_card.dart';
 
-/// 스케줄 탭 - crontab에 등록된 작업 목록 (읽기 전용)
+/// 스케줄 탭 - 서버에 등록된 작업 목록
 class ScheduleTab extends StatefulWidget {
   const ScheduleTab({super.key});
 
@@ -13,45 +13,36 @@ class ScheduleTab extends StatefulWidget {
 }
 
 class _ScheduleTabState extends State<ScheduleTab> {
-  List<Map<String, dynamic>> _tasks = [];
-  bool _isLoading = true;
   String? _expandedTaskId;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadTasks();
+    _refreshTasks();
   }
 
-  Future<void> _loadTasks() async {
+  Future<void> _refreshTasks() async {
     setState(() => _isLoading = true);
     try {
-      final taskProvider = context.read<TaskProvider>();
-      final allTasks = await taskProvider.fetchTasksFromServer();
-      final currentAgentId = context.read<AvatarProvider>().currentAvatarId;
-
-      setState(() {
-        _tasks = allTasks.where((t) {
-          final aid = t['agentId'] ?? 'default';
-          return aid == currentAgentId;
-        }).toList();
-        _isLoading = false;
-      });
+      await context.read<TaskProvider>().refresh();
     } catch (e) {
-      debugPrint('[Schedule] ❌ 로드 실패: $e');
-      if (mounted) setState(() => _isLoading = false);
+      debugPrint('[Schedule] ❌ 갱신 실패: $e');
     }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final avatar = context.watch<AvatarProvider>();
+    final taskProvider = context.watch<TaskProvider>();
+    final currentAgentId = avatar.currentAvatarId;
 
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-      );
-    }
+    // 현재 아바타의 작업만 필터
+    final filteredTasks = taskProvider.tasks.where((t) {
+      final aid = (t.agentId?.trim().isEmpty ?? true) ? 'default' : t.agentId!.trim();
+      return aid == currentAgentId;
+    }).toList();
 
     final List<Widget> items = [];
 
@@ -60,7 +51,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
       Row(
         children: [
           Text(
-            '📅 ${avatar.name}의 스케줄 (${_tasks.length})',
+            '📅 ${avatar.name}의 스케줄 (${filteredTasks.length})',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.7),
               fontSize: 13,
@@ -69,12 +60,21 @@ class _ScheduleTabState extends State<ScheduleTab> {
           ),
           const Spacer(),
           GestureDetector(
-            onTap: _loadTasks,
-            child: Icon(
-              Icons.refresh,
-              size: 16,
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
+            onTap: _refreshTasks,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: Color(0xFF6C63FF),
+                    ),
+                  )
+                : Icon(
+                    Icons.refresh,
+                    size: 16,
+                    color: Colors.white.withValues(alpha: 0.3),
+                  ),
           ),
         ],
       ),
@@ -105,25 +105,25 @@ class _ScheduleTabState extends State<ScheduleTab> {
     );
     items.add(const SizedBox(height: 12));
 
-    for (final task in _tasks) {
+    for (final task in filteredTasks) {
+      final taskMap = task.toMap();
       items.add(
         TaskCard(
-          task: task,
-          isExpanded: _expandedTaskId == task['id'],
+          task: taskMap,
+          isExpanded: _expandedTaskId == task.id,
           onTap: () => setState(
-            () => _expandedTaskId = _expandedTaskId == task['id']
+            () => _expandedTaskId = _expandedTaskId == task.id
                 ? null
-                : task['id'],
+                : task.id,
           ),
-          onDelete: () {
-            // 삭제 로직은 Provider를 통하도록 개선 필요 (현재는 UI 수동 관리 상태)
-            setState(() => _tasks.removeWhere((t) => t['id'] == task['id']));
+          onDelete: () async {
+            await taskProvider.deleteTask(task.id);
           },
         ),
       );
     }
 
-    if (_tasks.isEmpty) {
+    if (filteredTasks.isEmpty) {
       items.add(
         Padding(
           padding: const EdgeInsets.only(top: 40),

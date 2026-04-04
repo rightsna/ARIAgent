@@ -42,13 +42,16 @@ void main() async {
   // Provider 초기화
   await ConfigProvider().init();
   await AvatarProvider().init();
-  await TaskProvider().init();
 
   // AriAgent 초기화 (Repository에서 URL 가져옴)
   AriAgent.init(url: configRepo.wsUrl);
 
   // 에이전트 시작 (비동기)
   unawaited(ServerProvider().start(version: version));
+
+  // TaskProvider는 서버 API를 사용하므로 AriAgent 이후 초기화
+  // (서버 시작 직후에는 연결이 안 될 수 있으므로 실패해도 앱이 시작되도록 함)
+  unawaited(TaskProvider().init());
 
   // window_manager 초기화
   await windowManager.ensureInitialized();

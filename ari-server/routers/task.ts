@@ -1,5 +1,5 @@
 import { router } from "../system/router";
-import { handleGetTasksWs, handleTasksSyncWs, handleTasksCrontabWs, handleTasksResultsWs } from "../services/task";
+import { handleGetTasksWs, handleTasksSyncWs, handleTasksCrontabWs, handleTasksResultsWs, handleAddTaskWs, handleDeleteTaskWs, handleToggleTaskWs, handleRunTaskWs } from "../services/task";
 import { UserSocketHandler } from "../system/ws";
 import { logger } from "../infra/logger";
 import { appendChatLog } from "../repositories/chat_log_repository";
@@ -23,6 +23,28 @@ router.on("/TASKS.CRONTAB", async (ws, params) => {
 router.on("/TASKS.RESULTS", async (ws, params) => {
   const data = await handleTasksResultsWs();
   ws.send("/TASKS.RESULTS", { ok: true, data: data });
+});
+
+// ── 개별 CRUD API ──
+
+router.on("/TASKS.ADD", async (ws, params) => {
+  const data = await handleAddTaskWs(params);
+  ws.send("/TASKS.ADD", { ok: true, data });
+});
+
+router.on("/TASKS.DELETE", async (ws, params) => {
+  const data = await handleDeleteTaskWs(params);
+  ws.send("/TASKS.DELETE", { ok: true, data });
+});
+
+router.on("/TASKS.TOGGLE", async (ws, params) => {
+  const data = await handleToggleTaskWs(params);
+  ws.send("/TASKS.TOGGLE", { ok: true, data });
+});
+
+router.on("/TASKS.RUN", async (ws, params) => {
+  const data = await handleRunTaskWs(params);
+  ws.send("/TASKS.RUN", { ok: true, data });
 });
 
 // 크론 작업(run_task.ts)으로부터 결과를 받아 모든 클라이언트에게 브로드캐스트
@@ -53,3 +75,4 @@ router.on("/TASKS.NOTIFY_RESULT", async (ws, params) => {
   logger.info(`📡 MQ: Broadcaster finished for [${params.label || "unknown"}]`);
   ws.send("/TASKS.NOTIFY_RESULT", { ok: true });
 });
+
