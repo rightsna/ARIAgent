@@ -1,9 +1,0 @@
-[submodule "ARIWeb"]
-	path = ARIWeb
-	url = https://github.com/rightsna/ARIWeb.git
-[submodule "ARIStock"]
-	path = ARIStock
-	url = https://github.com/rightsna/ARIStock.git
-[submodule "Bitnari"]
-	path = Bitnari
-	url = https://github.com/rightsna/Bitnari.git
