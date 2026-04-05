@@ -213,6 +213,8 @@ export const launchAppTool: AgentTool = {
     const stdoutFd = fs.openSync(launchLogPath, "a");
     const stderrFd = fs.openSync(launchLogPath, "a");
 
+    const defaultArgs = args || [];
+
     const bundlePath =
       process.platform === "darwin"
         ? executable.split("/Contents/MacOS/")[0]
@@ -221,10 +223,10 @@ export const launchAppTool: AgentTool = {
       process.platform === "darwin" ? "open" : executable;
     const launcherArgs =
       process.platform === "darwin" && bundlePath
-        ? args && args.length > 0
-          ? ["-n", bundlePath, "--args", ...args]
+        ? defaultArgs.length > 0
+          ? ["-n", bundlePath, "--args", ...defaultArgs]
           : ["-n", bundlePath]
-        : (args || []);
+        : defaultArgs;
 
     const child = spawn(launcherExecutable, launcherArgs, {
       detached: process.platform === "darwin" ? false : true,

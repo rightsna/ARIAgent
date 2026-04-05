@@ -156,7 +156,9 @@ router.on("/LAUNCH_APP", async (ws, params) => {
     const defaultArgs: string[] = [];
     const launcherArgs =
       process.platform === "darwin" && bundlePath
-        ? ["-n", bundlePath]
+        ? defaultArgs.length > 0
+          ? ["-n", bundlePath, "--args", ...defaultArgs]
+          : ["-n", bundlePath]
         : defaultArgs;
 
     const child = spawn(launcherExecutable, launcherArgs, {
