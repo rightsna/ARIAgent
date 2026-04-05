@@ -33,6 +33,7 @@ class AriConnectionNotifier {
   AriConnectionNotifier(this._value);
 
   final StreamController<bool> _controller = StreamController<bool>.broadcast();
+  final Set<void Function()> _listeners = <void Function()>{};
   bool _value;
 
   bool get value => _value;
@@ -42,9 +43,23 @@ class AriConnectionNotifier {
     if (_value == value) return;
     _value = value;
     _controller.add(value);
+    for (final listener in List<void Function()>.from(_listeners)) {
+      listener();
+    }
   }
 
-  Future<void> close() => _controller.close();
+  void addListener(void Function() listener) {
+    _listeners.add(listener);
+  }
+
+  void removeListener(void Function() listener) {
+    _listeners.remove(listener);
+  }
+
+  Future<void> close() async {
+    _listeners.clear();
+    await _controller.close();
+  }
 }
 
 void _logDebug(Object message) {
