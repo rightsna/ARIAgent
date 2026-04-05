@@ -207,9 +207,29 @@ export const launchAppTool: AgentTool = {
       `[AppLifecycle] Launching app '${appName}' via: ${executable} (args: ${JSON.stringify(args || [])})`,
     );
 
-    const child = spawn(executable, args || [], {
-      detached: true,
-      stdio: "ignore",
+    const launchLogDir = path.join(DATA_DIR, "launch-logs");
+    fs.mkdirSync(launchLogDir, { recursive: true });
+    const launchLogPath = path.join(launchLogDir, `${appName}.log`);
+    const stdoutFd = fs.openSync(launchLogPath, "a");
+    const stderrFd = fs.openSync(launchLogPath, "a");
+
+    const bundlePath =
+      process.platform === "darwin"
+        ? executable.split("/Contents/MacOS/")[0]
+        : null;
+    const launcherExecutable =
+      process.platform === "darwin" ? "open" : executable;
+    const launcherArgs =
+      process.platform === "darwin" && bundlePath
+        ? args && args.length > 0
+          ? ["-n", bundlePath, "--args", ...args]
+          : ["-n", bundlePath]
+        : (args || []);
+
+    const child = spawn(launcherExecutable, launcherArgs, {
+      detached: process.platform === "darwin" ? false : true,
+      stdio: ["ignore", stdoutFd, stderrFd],
+      cwd: path.dirname(executable),
       env: {
         ...process.env,
         HOME: process.env.HOME ?? os.homedir(),
@@ -220,6 +240,16 @@ export const launchAppTool: AgentTool = {
 
     child.on("error", (error: any) => {
       logger.error(`[AppLifecycle] ${appName} 실행 실패: ${error.message}`);
+    });
+    child.on("spawn", () => {
+      logger.info(
+        `[AppLifecycle] ${appName} spawned (pid: ${child.pid ?? "unknown"}) log: ${launchLogPath}`,
+      );
+    });
+    child.on("exit", (code, signal) => {
+      logger.warn(
+        `[AppLifecycle] ${appName} exited (code: ${code ?? "null"}, signal: ${signal ?? "null"})`,
+      );
     });
     child.unref();
 

@@ -131,6 +131,7 @@ router.on("/LAUNCH_APP", async (ws, params) => {
     // 2. 실행 권한 및 경로 확인 후 spawn
     const { spawn } = require("child_process");
     const { getBundleRoots, findAppExecutable } = require("../infra/runtime_paths");
+    const { DATA_DIR } = require("../infra/data");
     const fs = require("fs");
     const path = require("path");
     const os = require("os");
@@ -141,14 +142,45 @@ router.on("/LAUNCH_APP", async (ws, params) => {
       throw new Error(`실행 파일을 찾을 수 없습니다: ${appId}`);
     }
 
-    const child = spawn(executable, [], {
-      detached: true,
-      stdio: "ignore",
+    const launchLogDir = path.join(DATA_DIR, "launch-logs");
+    fs.mkdirSync(launchLogDir, { recursive: true });
+    const launchLogPath = path.join(launchLogDir, `${appId}.log`);
+    const stdoutFd = fs.openSync(launchLogPath, "a");
+    const stderrFd = fs.openSync(launchLogPath, "a");
+
+    const bundlePath = process.platform === "darwin"
+      ? executable.split("/Contents/MacOS/")[0]
+      : null;
+    const launcherExecutable =
+      process.platform === "darwin" ? "open" : executable;
+    const defaultArgs: string[] = [];
+    const launcherArgs =
+      process.platform === "darwin" && bundlePath
+        ? ["-n", bundlePath]
+        : defaultArgs;
+
+    const child = spawn(launcherExecutable, launcherArgs, {
+      detached: process.platform === "darwin" ? false : true,
+      stdio: ["ignore", stdoutFd, stderrFd],
+      cwd: path.dirname(executable),
       env: {
         ...process.env,
         HOME: process.env.HOME ?? os.homedir(),
         USERPROFILE: process.env.USERPROFILE ?? os.homedir(),
       },
+    });
+    child.on("spawn", () => {
+      logger.info(
+        `[Apps] Spawned ${appId} (pid: ${child.pid ?? "unknown"}) log: ${launchLogPath}`,
+      );
+    });
+    child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      logger.warn(
+        `[Apps] ${appId} exited (code: ${code ?? "null"}, signal: ${signal ?? "null"})`,
+      );
+    });
+    child.on("error", (error: any) => {
+      logger.error(`[Apps] Failed to spawn ${appId}: ${error.message}`);
     });
     child.unref();
 

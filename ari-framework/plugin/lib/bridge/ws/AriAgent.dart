@@ -1,10 +1,12 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
-
 import 'WebSocketService.dart';
 import 'settings_loader_stub.dart'
     if (dart.library.io) 'settings_loader_io.dart';
+
+void _logDebug(Object message) {
+  print(message);
+}
 
 class AriAgent {
   static final WebSocketService _webSocketService = WebSocketService();
@@ -13,7 +15,7 @@ class AriAgent {
 
   static get url => _webSocketService.url;
   static get isConnected => _webSocketService.isConnected;
-  static ValueNotifier<bool> get connectionNotifier =>
+  static AriConnectionNotifier get connectionNotifier =>
       _webSocketService.connectionNotifier;
   static Stream<bool> get connectionStream =>
       _webSocketService.connectionStream;
@@ -113,7 +115,7 @@ class AriAgent {
       progressSub = on('/AGENT.PROGRESS', (data) {
         final payload = data['data'] ?? data;
         if (payload['requestId']?.toString() == requestId) {
-          debugPrint(
+          _logDebug(
             '[AriAgent] Refreshing timeout for $requestId due to activity signal.',
           );
           resetTimer();

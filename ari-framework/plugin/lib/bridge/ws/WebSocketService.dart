@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter/material.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -31,7 +29,34 @@ class _CommandEventBus {
   }
 }
 
-class WebSocketService with WidgetsBindingObserver {
+class AriConnectionNotifier {
+  AriConnectionNotifier(this._value);
+
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
+  bool _value;
+
+  bool get value => _value;
+  Stream<bool> get stream => _controller.stream;
+
+  void update(bool value) {
+    if (_value == value) return;
+    _value = value;
+    _controller.add(value);
+  }
+
+  Future<void> close() => _controller.close();
+}
+
+void _logDebug(Object message) {
+  print(message);
+}
+
+void _logDebugStack(Object error, StackTrace stackTrace) {
+  print(error);
+  print(stackTrace);
+}
+
+class WebSocketService {
   static final WebSocketService _instance = WebSocketService._internal();
 
   factory WebSocketService() => _instance;
@@ -42,7 +67,7 @@ class WebSocketService with WidgetsBindingObserver {
   Timer? _reconnectTimer;
   bool _isManuallyClosed = false;
   int _reconnectAttempt = 0;
-  final ValueNotifier<bool> connectionNotifier = ValueNotifier<bool>(false);
+  final AriConnectionNotifier connectionNotifier = AriConnectionNotifier(false);
   final StreamController<bool> _connectionController =
       StreamController<bool>.broadcast();
 
@@ -52,7 +77,6 @@ class WebSocketService with WidgetsBindingObserver {
   bool _isRecoveringConnection = false;
 
   WebSocketChannel? _channel;
-  StreamSubscription<List<ConnectivityResult>>? _networkListener;
 
   bool get isConnected => connectionNotifier.value;
   Stream<bool> get connectionStream => _connectionController.stream;
@@ -69,7 +93,7 @@ class WebSocketService with WidgetsBindingObserver {
 
   void _setConnected(bool value) {
     if (connectionNotifier.value != value) {
-      connectionNotifier.value = value;
+      connectionNotifier.update(value);
       _connectionController.add(value);
     }
   }
@@ -106,24 +130,24 @@ class WebSocketService with WidgetsBindingObserver {
   }
 
   Future<void> _connectInternal() async {
-    debugPrint('\n>>>>> WebSocketService connect(): $_url \n');
+    _logDebug('\n>>>>> WebSocketService connect(): $_url \n');
     try {
       _channel?.sink.close(status.normalClosure);
       _channel = connectWebSocket(_url);
 
       _channel!.stream.listen(
         (message) {
-          debugPrint('WebSocketService receive(): $message');
+          _logDebug('WebSocketService receive(): $message');
           receive(message);
         },
         onDone: () {
-          debugPrint('WebSocket disconnected');
+          _logDebug('WebSocket disconnected');
           _setConnected(false);
           _channel = null;
           if (!_isManuallyClosed) _recoverConnection();
         },
         onError: (error) {
-          debugPrint('WebSocket error: $error');
+          _logDebug('WebSocket error: $error');
           _setConnected(false);
           _channel = null;
           _recoverConnection();
@@ -134,9 +158,9 @@ class WebSocketService with WidgetsBindingObserver {
       _setConnected(true);
       _isManuallyClosed = false;
       _resetReconnectState();
-      debugPrint('WebSocket connected');
+      _logDebug('WebSocket connected');
     } catch (e) {
-      debugPrint('WebSocket connect failed: $e');
+      _logDebug('WebSocket connect failed: $e');
       _setConnected(false);
       _channel = null;
       _recoverConnection();
@@ -151,11 +175,11 @@ class WebSocketService with WidgetsBindingObserver {
       try {
         final nextUrl = await _fallbackUrlResolver?.call(_url);
         if (nextUrl != null && nextUrl.isNotEmpty && nextUrl != _url) {
-          debugPrint('Switching WebSocket url to fallback: $nextUrl');
+          _logDebug('Switching WebSocket url to fallback: $nextUrl');
           _url = nextUrl;
         }
       } catch (e) {
-        debugPrint('WebSocket fallback resolution failed: $e');
+        _logDebug('WebSocket fallback resolution failed: $e');
       } finally {
         _isRecoveringConnection = false;
       }
@@ -168,63 +192,30 @@ class WebSocketService with WidgetsBindingObserver {
     if (_reconnectTimer?.isActive ?? false) return;
 
     final delay = _nextReconnectDelay();
-    debugPrint(
+    _logDebug(
       'Scheduling WebSocket reconnect in ${delay.inSeconds}s '
       '(attempt ${_reconnectAttempt + 1})...',
     );
     _reconnectTimer = Timer(delay, () {
       _reconnectTimer = null;
       if (!isConnected && !_isManuallyClosed) {
-        debugPrint('Retrying WebSocket connection...');
+        _logDebug('Retrying WebSocket connection...');
         _reconnectAttempt++;
         connect();
       }
     });
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _pauseTimer?.cancel();
-      connect();
-    } else if (state == AppLifecycleState.paused) {
-      _pauseTimer?.cancel();
-      _pauseTimer = Timer(const Duration(seconds: 60), () {
-        if (automaticallyClose) close();
-      });
-    }
-  }
-
-  Future<void> listenForNetworkChanges() async {
-    try {
-      await _networkListener?.cancel();
-      _networkListener = Connectivity().onConnectivityChanged.listen((
-        List<ConnectivityResult> result,
-      ) {
-        if (!result.contains(ConnectivityResult.none) && !_isManuallyClosed) {
-          connect();
-        }
-      });
-    } catch (e) {
-      debugPrint('Connectivity listener unavailable: $e');
-    }
-  }
-
   Future<void> initialize(String url) async {
     _url = url;
-    try {
-      WidgetsBinding.instance.addObserver(this);
-    } catch (e) {
-      debugPrint('WidgetsBinding observer registration failed: $e');
-    }
-    await listenForNetworkChanges();
   }
 
-  void destroy() {
-    WidgetsBinding.instance.removeObserver(this);
+  Future<void> destroy() async {
     _reconnectTimer?.cancel();
-    _connectionController.close();
+    _pauseTimer?.cancel();
     close();
+    await connectionNotifier.close();
+    await _connectionController.close();
   }
 
   void close() {
@@ -242,9 +233,9 @@ class WebSocketService with WidgetsBindingObserver {
     if (_channel != null && isConnected) {
       final data = '$cmd ${jsonEncode(param)}';
       _channel!.sink.add(data);
-      debugPrint('emit(): $data');
+      _logDebug('emit(): $data');
     } else {
-      debugPrint('Failed to emit: $cmd');
+      _logDebug('Failed to emit: $cmd');
     }
   }
 
@@ -267,7 +258,7 @@ class WebSocketService with WidgetsBindingObserver {
 
     final data = '$cmd ${jsonEncode(param)}';
     _channel!.sink.add(data);
-    debugPrint('send(): $data');
+    _logDebug('send(): $data');
   }
 
   void receive(String message) {
@@ -284,8 +275,7 @@ class WebSocketService with WidgetsBindingObserver {
       final map = jsonDecode(data) as Map<String, dynamic>;
       _eventBus.emit(cmd, map);
     } catch (e, stack) {
-      debugPrint('receive error = $e');
-      debugPrintStack(stackTrace: stack);
+      _logDebugStack('receive error = $e', stack);
     }
   }
 

@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  connectivity_plus: ^7.0.0
   web_socket_channel: ^3.0.3
   provider: ^6.1.5+1
   flutter_markdown: ^0.7.7+1
