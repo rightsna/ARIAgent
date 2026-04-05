@@ -6,4 +6,4 @@
 	url = https://github.com/rightsna/ARIStock.git
 [submodule "Bitnari"]
 	path = Bitnari
-	url = /Users/sewon/Desktop/Bitnari
+	url = https://github.com/rightsna/Bitnari.git
