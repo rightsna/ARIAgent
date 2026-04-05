@@ -196,19 +196,27 @@ class WebSocketService with WidgetsBindingObserver {
   }
 
   Future<void> listenForNetworkChanges() async {
-    await _networkListener?.cancel();
-    _networkListener = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> result,
-    ) {
-      if (!result.contains(ConnectivityResult.none) && !_isManuallyClosed) {
-        connect();
-      }
-    });
+    try {
+      await _networkListener?.cancel();
+      _networkListener = Connectivity().onConnectivityChanged.listen((
+        List<ConnectivityResult> result,
+      ) {
+        if (!result.contains(ConnectivityResult.none) && !_isManuallyClosed) {
+          connect();
+        }
+      });
+    } catch (e) {
+      debugPrint('Connectivity listener unavailable: $e');
+    }
   }
 
   Future<void> initialize(String url) async {
     _url = url;
-    WidgetsBinding.instance.addObserver(this);
+    try {
+      WidgetsBinding.instance.addObserver(this);
+    } catch (e) {
+      debugPrint('WidgetsBinding observer registration failed: $e');
+    }
     await listenForNetworkChanges();
   }
 

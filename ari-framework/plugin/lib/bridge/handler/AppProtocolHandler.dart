@@ -14,17 +14,32 @@ class AppProtocolHandler {
   });
 
   final List<StreamSubscription> _subscriptions = [];
+  Timer? _registerRetryTimer;
+  int _registerAttempts = 0;
+  static const int _maxRegisterAttempts = 3;
 
   void start() {
     _subscriptions.add(AriAgent.on('/APP.COMMAND', _handleAppCommand));
     _subscriptions.add(AriAgent.on('/GREETING', (_) => _registerApp()));
+    _subscriptions.add(AriAgent.on('/APP.REGISTER', _handleRegisterAck));
+    _subscriptions.add(AriAgent.connectionStream.listen((connected) {
+      if (connected) {
+        _registerAttempts = 0;
+        _registerApp();
+        _startRegisterRetry();
+      } else {
+        _stopRegisterRetry();
+      }
+    }));
 
     if (AriAgent.isConnected) {
       _registerApp();
+      _startRegisterRetry();
     }
   }
 
   void stop() {
+    _stopRegisterRetry();
     for (final sub in _subscriptions) {
       sub.cancel();
     }
@@ -33,7 +48,34 @@ class AppProtocolHandler {
 
   void _registerApp() {
     if (!AriAgent.isConnected) return;
+    _registerAttempts++;
     AriAgent.register(appId);
+  }
+
+  void _startRegisterRetry() {
+    _registerRetryTimer ??= Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!AriAgent.isConnected) {
+        _stopRegisterRetry();
+        return;
+      }
+      if (_registerAttempts >= _maxRegisterAttempts) {
+        _stopRegisterRetry();
+        return;
+      }
+      _registerApp();
+    });
+  }
+
+  void _stopRegisterRetry() {
+    _registerRetryTimer?.cancel();
+    _registerRetryTimer = null;
+  }
+
+  void _handleRegisterAck(Map<String, dynamic> data) {
+    final ackAppId = data['data']?['appId'] ?? data['appId'];
+    if (ackAppId == appId) {
+      _stopRegisterRetry();
+    }
   }
 
   Future<void> _handleAppCommand(Map<String, dynamic> data) async {
