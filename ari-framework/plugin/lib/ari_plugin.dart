@@ -16,3 +16,6 @@ export 'tasks/providers/ari_task_provider.dart';
 export 'avatar/models/agent_info.dart';
 export 'avatar/repositories/avatar_repository.dart';
 export 'avatar/providers/avatar_provider.dart';
+
+export 'update/app_update_service.dart';
+export 'update/widgets/ari_update_banner.dart';
