@@ -1,11 +1,9 @@
 import handlebars from "handlebars";
-import { readTextSync } from "./data.js";
+import { fileExistsSync, readTextSync } from "./data.js";
 import path from "path";
 import nodemailer from "nodemailer";
 import { logger } from "./logger.js";
-import { moduleDir } from "./module_paths.js";
-
-const CURRENT_DIR = moduleDir(import.meta.url);
+import { resolveServerPath } from "./runtime_paths.js";
 
 export namespace Mailer {
   export const sendMail = async (email: string, htmlfile: string, title: string, replacements: any) => {
@@ -14,7 +12,14 @@ export namespace Mailer {
       throw new Error("수신자 이메일이 정의되지 않았습니다.");
     }
 
-    const filePath = path.join(CURRENT_DIR, htmlfile);
+    const filePath = [
+      resolveServerPath("infra", htmlfile),
+      resolveServerPath("template", htmlfile),
+      path.join(process.cwd(), "infra", htmlfile),
+      path.join(process.cwd(), "template", htmlfile),
+      path.join(process.cwd(), "ari-server", "infra", htmlfile),
+      path.join(process.cwd(), "ari-server", "template", htmlfile),
+    ].find((candidate) => fileExistsSync(candidate)) ?? resolveServerPath("infra", htmlfile);
     const source = readTextSync(filePath);
     const template = handlebars.compile(source);
     const htmlToSend = template(replacements);

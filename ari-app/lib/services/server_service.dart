@@ -351,18 +351,37 @@ class ServerService {
       final serverDir = bundledServerExecutable != null
           ? File(bundledServerExecutable).parent.path
           : '$root${Platform.pathSeparator}$_serverFolder';
+      final rootPackageJson = File(
+        '$serverDir${Platform.pathSeparator}package.json',
+      );
+      final distDir = Directory(
+        '$serverDir${Platform.pathSeparator}dist',
+      );
+      final distEntrypoint = File(
+        '$serverDir${Platform.pathSeparator}dist${Platform.pathSeparator}index.js',
+      );
+      final distPackageJson = File(
+        '$serverDir${Platform.pathSeparator}dist${Platform.pathSeparator}package.json',
+      );
+      final hasRootPackageJson = rootPackageJson.existsSync();
+      final hasDistEntrypoint = distEntrypoint.existsSync();
+      final hasDistPackageJson = distPackageJson.existsSync();
+      final isDistOnlyRuntime =
+          !hasRootPackageJson && hasDistEntrypoint && hasDistPackageJson;
       onLog('Starting local server... ($_serverFolder)');
 
       if (bundledServerExecutable == null &&
-          !File(
-            '$serverDir${Platform.pathSeparator}package.json',
-          ).existsSync()) {
-        onLog('package.json not found: $serverDir');
+          !hasRootPackageJson &&
+          !isDistOnlyRuntime) {
+        onLog(
+          'package.json not found and dist runtime is incomplete: $serverDir',
+        );
         return false;
       }
 
       // Only install and build if strictly necessary (usually dev environments)
       if (bundledServerExecutable == null &&
+          !isDistOnlyRuntime &&
           !Directory(
             '$serverDir${Platform.pathSeparator}node_modules',
           ).existsSync()) {
@@ -381,6 +400,7 @@ class ServerService {
       }
 
       if (bundledServerExecutable == null &&
+          !isDistOnlyRuntime &&
           (kDebugMode ||
               !Directory(
                 '$serverDir${Platform.pathSeparator}dist',
@@ -419,9 +439,8 @@ class ServerService {
           },
         );
       } else {
-        final serverScript =
-            '$serverDir${Platform.pathSeparator}dist${Platform.pathSeparator}index.js';
-        if (!File(serverScript).existsSync()) {
+        final serverScript = distEntrypoint.path;
+        if (!hasDistEntrypoint) {
           onErrorLog('Built entrypoint not found: $serverScript');
           return false;
         }
@@ -434,6 +453,8 @@ class ServerService {
             'PORT': ConfigRepository().port.toString(),
             'MODE': mode ?? (kDebugMode ? 'development' : 'production'),
             'VERSION': version ?? '0.0.0',
+            'ARI_SERVER_ROOT': serverDir,
+            'ARI_WORKSPACE_ROOT': root,
             ...Platform.environment,
           },
         );

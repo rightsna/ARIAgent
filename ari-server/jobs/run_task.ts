@@ -2,7 +2,6 @@ import fs from "fs";
 import { Task } from "../models/task.js";
 import { getSettings } from "../repositories/setting_repository.js";
 import { getTasks, saveTasks } from "../repositories/task_repository.js";
-import { isMainModule } from "../infra/module_paths.js";
 import { getTaskScheduler } from "../services/scheduler/runtime.js";
 
 function timestamp() {
@@ -191,7 +190,12 @@ async function cleanupOneOffTask(taskId: string, tasks: Task[]) {
   logger.info("  🗓️ 로컬 스케줄러 갱신 완료");
 }
 
-if (isMainModule(import.meta.url)) {
+function isDirectRunTaskEntry(): boolean {
+  const entryFile = process.argv[1];
+  return entryFile ? /(?:^|[\\/])run_task\.(?:[cm]?js|ts)$/.test(entryFile) : false;
+}
+
+if (isDirectRunTaskEntry()) {
   main().catch((error) => {
     logger.error(error);
     process.exit(1);

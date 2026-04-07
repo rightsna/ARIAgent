@@ -1,10 +1,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { isSea } from "node:sea";
-import { moduleDir } from "./module_paths.js";
-
-const CURRENT_DIR = moduleDir(import.meta.url);
+let cachedIsSeaFn: (() => boolean) | null | undefined;
 
 function uniquePaths(paths: string[]): string[] {
   return Array.from(new Set(paths.filter(Boolean).map((entry) => path.resolve(entry))));
@@ -21,9 +18,37 @@ function hasWorkspaceMarkers(dirPath: string): boolean {
     fs.existsSync(path.join(dirPath, "ari-app", "pubspec.yaml"));
 }
 
+function getEntryDir(): string {
+  const entryFile = process.argv[1];
+  if (entryFile) {
+    return path.dirname(path.resolve(entryFile));
+  }
+
+  return path.dirname(process.execPath);
+}
+
 export function isBundledServer(): boolean {
+  if (cachedIsSeaFn === undefined) {
+    cachedIsSeaFn = null;
+    try {
+      // Older Node runtimes may not provide node:sea at all.
+      const dynamicRequire = Function(
+        "return typeof require !== 'undefined' ? require : null;",
+      )() as ((specifier: string) => unknown) | null;
+
+      const seaModule = dynamicRequire?.("node:sea") as
+        | { isSea?: () => boolean }
+        | undefined;
+      if (typeof seaModule?.isSea === "function") {
+        cachedIsSeaFn = seaModule.isSea;
+      }
+    } catch {
+      cachedIsSeaFn = null;
+    }
+  }
+
   try {
-    return isSea();
+    return cachedIsSeaFn?.() ?? false;
   } catch {
     return false;
   }
@@ -36,6 +61,7 @@ export function getServerRootDir(): string {
   }
 
   const execDir = path.dirname(process.execPath);
+  const entryDir = getEntryDir();
   const candidates = isBundledServer()
     ? uniquePaths([
         execDir,
@@ -44,8 +70,9 @@ export function getServerRootDir(): string {
     : uniquePaths([
         process.cwd(),
         path.join(process.cwd(), "ari-server"),
-        path.resolve(CURRENT_DIR, ".."),
-        path.resolve(CURRENT_DIR, "..", ".."),
+        entryDir,
+        path.resolve(entryDir, ".."),
+        path.resolve(entryDir, "..", ".."),
       ]);
 
   for (const candidate of candidates) {
@@ -54,7 +81,7 @@ export function getServerRootDir(): string {
     }
   }
 
-  return isBundledServer() ? execDir : path.resolve(CURRENT_DIR, "..");
+  return isBundledServer() ? execDir : path.resolve(entryDir, "..");
 }
 
 export function getWorkspaceRoot(): string {

@@ -109,6 +109,13 @@ function buildTypeScript() {
 
   cleanDir(distDir);
   runCommand(tscCommand, tscArgs);
+  fs.writeFileSync(
+    path.join(distDir, "package.json"),
+    JSON.stringify({
+      type: "module",
+      main: "index.js",
+    }, null, 2),
+  );
   copyDirIfExists("template", distDir);
   copySkills(distDir);
 }

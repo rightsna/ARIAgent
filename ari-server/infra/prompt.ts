@@ -4,9 +4,6 @@ import * as path from "path";
 import { fileExistsSync, readTextSync } from "./data.js";
 import { logger } from "./logger.js";
 import { resolveServerPath } from "./runtime_paths.js";
-import { moduleDir } from "./module_paths.js";
-
-const CURRENT_DIR = moduleDir(import.meta.url);
 
 export namespace Prompt {
   // 🔑 캐시: 템플릿 이름 → 마지막 수정 시각과 컴파일된 핸들바 함수
@@ -16,8 +13,7 @@ export namespace Prompt {
     const candidates = [
       resolveServerPath("template", templateName),
       path.join(process.cwd(), "template", templateName),
-      path.join(CURRENT_DIR, "..", "template", templateName),
-      path.join(CURRENT_DIR, "..", "..", "template", templateName),
+      path.join(process.cwd(), "ari-server", "template", templateName),
     ];
 
     for (const candidate of candidates) {

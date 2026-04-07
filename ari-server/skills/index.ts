@@ -1,10 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { readDirSyncSafe, DATA_DIR, ensureDirSync } from "../infra/data.js";
-import { moduleDir } from "../infra/module_paths.js";
 import { getBundleRoots, resolveServerPath } from "../infra/runtime_paths.js";
-
-const CURRENT_DIR = moduleDir(import.meta.url);
 
 export interface SkillDefinition {
   name: string;
@@ -104,9 +101,8 @@ export async function loadAllSkills(): Promise<SkillDefinition[]> {
   // 1. 기본 제공 스킬 후보지들
   const builtInDirs = [
     resolveServerPath("skills"),
-    CURRENT_DIR,
-    path.join(CURRENT_DIR, "..", "..", "skills"), // dist 환경 등 대비
     path.join(process.cwd(), "skills"),
+    path.join(process.cwd(), "ari-server", "skills"),
   ];
 
   // 기본 스킬 로드 (중복 발생 시 덮어쓰기 위해 순차 로드)
