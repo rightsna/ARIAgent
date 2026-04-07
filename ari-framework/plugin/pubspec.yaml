@@ -1,6 +1,6 @@
 name: ari_plugin
 description: Shared ARI bridge package for Flutter desktop apps.
-version: 0.2.6
+version: 0.2.7
 publish_to: "none"
 
 environment:
