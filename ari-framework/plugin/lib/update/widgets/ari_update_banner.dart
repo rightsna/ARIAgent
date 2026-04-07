@@ -58,6 +58,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
   AppUpdateInfo? _selfUpdateInfo;
   Timer? _updateTimer;
   AppUpdateService? _service;
+  bool _isDismissed = false;
 
   AppUpdateInfo? get _effectiveInfo => widget.updateInfo ?? _selfUpdateInfo;
 
@@ -141,6 +142,24 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
       }
     } catch (e) {
       debugPrint('[AriUpdateBanner] Update message sending failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isDismissed = true);
+        
+        // 사용자에게 업데이트 시작 알림 (토스트 형태)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다.',
+              style: const TextStyle(fontSize: 13, color: Colors.white),
+            ),
+            backgroundColor: const Color(0xFF1E3A8A),
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
@@ -153,7 +172,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
   @override
   Widget build(BuildContext context) {
     final info = _effectiveInfo;
-    if (info == null) return const SizedBox.shrink();
+    if (info == null || _isDismissed) return const SizedBox.shrink();
 
     // 테마 색상 결정 (사용자 커스텀 또는 기본 ARI 블루 테마)
     final effectiveAccentColor = widget.accentColor ??
