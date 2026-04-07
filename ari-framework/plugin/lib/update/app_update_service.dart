@@ -23,14 +23,20 @@ class AppUpdateInfo {
     this.windowsUrl,
   });
 
-  String? downloadUrlForCurrentPlatform() {
+  static const String ariCdnBaseUrl = 'https://d34z72svq84n71.cloudfront.net';
+
+  String? downloadUrlForCurrentPlatform({bool full = true}) {
+    String? url;
     if (Platform.isMacOS) {
-      return macosUrl;
+      url = macosUrl;
+    } else if (Platform.isWindows) {
+      url = windowsUrl;
     }
-    if (Platform.isWindows) {
-      return windowsUrl;
+
+    if (url != null && full && !url.startsWith('http')) {
+      return '$ariCdnBaseUrl/${url.startsWith('/') ? url.substring(1) : url}';
     }
-    return null;
+    return url;
   }
 }
 
