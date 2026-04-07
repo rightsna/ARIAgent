@@ -1,0 +1,69 @@
+import { router } from "../system/router.js";
+import { saveSettings } from "../repositories/setting_repository.js";
+import { initAgent, getPluginsInfo } from "../services/agent/index.js";
+import { getCurrentState } from "../services/agent/index.js";
+import { logger } from "../infra/logger.js";
+
+router.on("/SETTINGS", async (ws, params) => {
+  logger.info(`[Settings] Update requested by ${ws.uuid}`);
+  const state = getCurrentState();
+  if (params.providers) {
+    logger.info(`[Settings] Updating providers: ${params.providers.length} items`);
+    const incoming = (params.providers as any[]).filter((p) => !!p.provider && !!p.model);
+    const existing = state.providers || [];
+
+    const nextProviders = incoming.map((inc) => {
+      if (!inc.apiKey || inc.apiKey.includes("••")) {
+        const matched = existing.find((ex: any) => ex.provider === inc.provider);
+        inc.apiKey = matched?.apiKey || "";
+      }
+      return inc;
+    });
+
+    state.setProviders(nextProviders);
+    saveSettings({ PROVIDERS: state.providers as any });
+    await initAgent(state);
+    return ws.send("/SETTINGS", { ok: true, data: { success: true, providers: state.providers } });
+  }
+
+  if (params.apiKey) {
+    logger.info(`[Settings] Updating API Key`);
+    state.currentApiKey = params.apiKey;
+  }
+  if (params.model) {
+    logger.info(`[Settings] Changing model to: ${params.model}`);
+    state.currentModel = params.model;
+  }
+  if (params.provider) {
+    logger.info(`[Settings] Changing provider to: ${params.provider}`);
+    state.currentProvider = params.provider;
+  }
+
+  if (params.port) {
+    logger.info(`[Settings] Changing port to: ${params.port}`);
+    saveSettings({ PORT: Number(params.port) });
+  }
+
+  if (params.apiKey || params.model || params.provider) {
+    saveSettings({
+      OPENAI_API_KEY: state.currentApiKey,
+      OPENAI_MODEL: state.currentModel,
+      PROVIDER: state.currentProvider,
+    });
+    await initAgent();
+  }
+
+  ws.send("/SETTINGS", { ok: true, data: { success: true, model: state.currentModel, provider: state.currentProvider } });
+});
+
+router.on("/PLUGINS", async (ws, params) => {
+  logger.info(`[Plugins] Requesting list from ${ws.uuid}`);
+  const plugins = await getPluginsInfo();
+  ws.send("/PLUGINS", {
+    ok: true,
+    data: {
+      tools: plugins.tools.map((t) => ({ name: t.name, description: t.description })),
+      skills: plugins.skills,
+    },
+  });
+});

@@ -1,0 +1,40 @@
+{
+  "name": "ari-agent-server-pi",
+  "version": "0.1.0",
+  "description": "ARI Agent Backend Server - pi.dev (pi-agent-core) 기반",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "build:standalone": "node ./scripts/build.mjs standalone",
+    "start": "node dist/index.js",
+    "dev": "tsx index.ts"
+  },
+  "dependencies": {
+    "@mariozechner/pi-agent-core": "latest",
+    "@mariozechner/pi-ai": "latest",
+    "@sinclair/typebox": "^0.34.0",
+    "@tuya/tuya-connector-nodejs": "^2.1.2",
+    "axios": "^1.7.9",
+    "handlebars": "^4.7.9",
+    "luxon": "^3.7.1",
+    "moment": "^2.30.1",
+    "node-schedule": "^2.1.1",
+    "nodemailer": "^7.0.4",
+    "playwright": "^1.58.2",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^20.19.33",
+    "@types/nodemailer": "^7.0.11",
+    "@types/ws": "^8.5.0",
+    "esbuild": "^0.27.3",
+    "postject": "^1.0.0-alpha.6",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}

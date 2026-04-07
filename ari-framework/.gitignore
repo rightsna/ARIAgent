@@ -1,0 +1,9 @@
+.DS_Store
+
+# Flutter / Dart generated files
+.dart_tool/
+.flutter-plugins-dependencies
+build/
+
+# Local environment files
+.env

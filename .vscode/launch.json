@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ARIAgent (Flutter)",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/ari-app/lib/main.dart",
+      "cwd": "${workspaceFolder}/ari-app",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "ARI Server (Node Dev)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/ari-server/index.ts",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--loader",
+        "ts-node/esm"
+      ],
+      "cwd": "${workspaceFolder}/ari-server",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    }
+  ]
+}
