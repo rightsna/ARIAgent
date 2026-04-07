@@ -125,7 +125,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
         messenger.showSnackBar(
           SnackBar(
             content: Text(
-              '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다.',
+              '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다. (자동으로 시작되지 않으면 직접 앱을 다시 켜주세요.)',
               style: const TextStyle(
                 fontSize: 13, 
                 color: Colors.white,
