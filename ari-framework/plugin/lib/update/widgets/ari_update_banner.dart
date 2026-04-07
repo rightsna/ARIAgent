@@ -147,18 +147,28 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
         setState(() => _isDismissed = true);
         
         // 사용자에게 업데이트 시작 알림 (토스트 형태)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다.',
-              style: const TextStyle(fontSize: 13, color: Colors.white),
+        // rootMessenger: true를 통해 어디서든 스낵바를 띄우도록 설정
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        if (messenger != null) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다.',
+                style: const TextStyle(
+                  fontSize: 13, 
+                  color: Colors.white,
+                  decoration: TextDecoration.none, // 혹시 모를 밑줄 제거
+                ),
+              ),
+              backgroundColor: const Color(0xFF1E3A8A),
+              duration: const Duration(seconds: 5),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            backgroundColor: const Color(0xFF1E3A8A),
-            duration: const Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        );
+          );
+        } else {
+          debugPrint('[AriUpdateBanner] ScaffoldMessenger not found.');
+        }
       }
     }
   }
@@ -180,6 +190,12 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
 
     final effectiveBackgroundColor = widget.backgroundColor ??
         (info.mandatory ? const Color(0xFF003366) : const Color(0xFF1E3A8A));
+
+    // Material이 없는 환경을 대비하여 TextStyle에 decoration: TextDecoration.none 추가
+    const defaultTextStyle = TextStyle(
+      decoration: TextDecoration.none,
+      fontFamily: '.AppleSystemUIFont', // Mac 시스템 기본 폰트
+    );
 
     return Material(
       type: MaterialType.transparency,
@@ -210,7 +226,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
                 children: [
                   Text(
                     '새로운 버전(${info.latestVersion})이 출시되었습니다!',
-                    style: TextStyle(
+                    style: defaultTextStyle.copyWith(
                       color: Colors.white.withOpacity(0.92),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -222,7 +238,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Text(
                         '원활한 이용을 위해 필수 업데이트가 필요합니다.',
-                        style: TextStyle(
+                        style: defaultTextStyle.copyWith(
                           color: effectiveAccentColor.withOpacity(0.8),
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
