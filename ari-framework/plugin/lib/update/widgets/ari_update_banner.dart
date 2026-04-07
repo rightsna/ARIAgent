@@ -116,14 +116,42 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
       if (result == false) return;
     }
 
-    // 2. 기본 동작: AI 채팅 전송 시도
+    // 2. 즉시 UI 반응 (배너 숨김 및 스낵바 표시)
+    if (mounted) {
+      setState(() => _isDismissed = true);
+      
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger != null) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다.',
+              style: const TextStyle(
+                fontSize: 13, 
+                color: Colors.white,
+                decoration: TextDecoration.none,
+              ),
+            ),
+            backgroundColor: const Color(0xFF1E3A8A),
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+
+    // 3. 백그라운드에서 AI 에이전트에게 명령 전송 (UI 블로킹 방지)
+    _sendUpdateCommand(info);
+  }
+
+  Future<void> _sendUpdateCommand(AppUpdateInfo info) async {
     try {
       final chatProvider = context.read<AriChatProvider?>();
       final url = info.downloadUrlForCurrentPlatform();
       if (url == null) return;
 
       final name = widget.appName ?? '애플리케이션';
-      // AI 에이전트에게 설치 후 즉시 재시작하도록 직접 지시
       final message = "Install $url ${Platform.isMacOS ? '--mac' : '--windows'}\n"
           "설치가 완료되면 현재 실행 중인 $name 앱을 종료하고 새 버전으로 다시 시작해.";
 
@@ -133,7 +161,6 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
           platform: widget.appId ?? 'client',
         );
       } else {
-        // ChatProvider가 없는 경우(예: 유튜브 플레이어) 서버에 직접 전송
         await AriAgent.call('/AGENT', {
           'message': message,
           'platform': widget.appId ?? 'client',
@@ -141,35 +168,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
         });
       }
     } catch (e) {
-      debugPrint('[AriUpdateBanner] Update message sending failed: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isDismissed = true);
-        
-        // 사용자에게 업데이트 시작 알림 (토스트 형태)
-        // rootMessenger: true를 통해 어디서든 스낵바를 띄우도록 설정
-        final messenger = ScaffoldMessenger.maybeOf(context);
-        if (messenger != null) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Text(
-                '${widget.appName ?? "애플리케이션"} 업데이트 설치를 시작합니다. 완료 후 앱이 자동으로 재시작됩니다.',
-                style: const TextStyle(
-                  fontSize: 13, 
-                  color: Colors.white,
-                  decoration: TextDecoration.none, // 혹시 모를 밑줄 제거
-                ),
-              ),
-              backgroundColor: const Color(0xFF1E3A8A),
-              duration: const Duration(seconds: 5),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          );
-        } else {
-          debugPrint('[AriUpdateBanner] ScaffoldMessenger not found.');
-        }
-      }
+      debugPrint('[AriUpdateBanner] Background update command failed: $e');
     }
   }
 
