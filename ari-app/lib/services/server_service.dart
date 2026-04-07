@@ -93,6 +93,10 @@ class ServerService {
   String findProjectRoot() {
     final exePath = Platform.resolvedExecutable;
     final candidates = <String>{};
+    final exeDir = File(exePath).parent.path;
+
+    candidates.add(exeDir);
+    candidates.add(Directory(exeDir).parent.path);
 
     if (exePath.contains(
       '.app${Platform.pathSeparator}Contents${Platform.pathSeparator}',

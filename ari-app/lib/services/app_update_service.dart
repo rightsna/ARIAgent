@@ -4,10 +4,19 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
-const String kUpdateFeedUrl = String.fromEnvironment(
+const String _kConfiguredUpdateFeedUrl = String.fromEnvironment(
   'ARI_UPDATE_FEED_URL',
-  defaultValue: 'https://ariwith.me/version.json',
 );
+
+String get kUpdateFeedUrl {
+  if (_kConfiguredUpdateFeedUrl.trim().isNotEmpty) {
+    return _kConfiguredUpdateFeedUrl;
+  }
+  if (Platform.isWindows) {
+    return 'https://ariwith.me/version-windows.json';
+  }
+  return 'https://ariwith.me/version-macos.json';
+}
 
 class AppUpdateInfo {
   const AppUpdateInfo({
