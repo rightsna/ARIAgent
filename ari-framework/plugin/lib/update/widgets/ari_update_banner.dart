@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_update_service.dart';
@@ -113,16 +114,16 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
       if (result == false) return;
     }
 
-    final url = info.downloadUrlForCurrentPlatform();
-    if (url == null) return;
-
     // 2. 기본 동작: AI 채팅 전송 시도
     try {
       final chatProvider = context.read<AriChatProvider>();
+      final url = info.downloadUrlForCurrentPlatform();
+      if (url == null) return;
+
       final name = widget.appName ?? '애플리케이션';
-      final message = "$name 새로운 버전(${info.latestVersion})이 발견되었습니다.\n"
-          "다운로드 링크: $url\n"
-          "이 업데이트 파일을 다운로드하고 설치해줘.";
+      // AI 에이전트에게 설치 명령 및 후속 조치(재시작) 요청
+      final message = "Install $url ${Platform.isMacOS ? '--mac' : '--windows'}\n"
+          "$name 앱의 업데이트 설치가 완료되면, 현재 실행 중인 앱을 종료하고 새 버전으로 다시 시작해달라고 안내해줘.";
 
       await chatProvider.sendAgentMessage(
         message,
