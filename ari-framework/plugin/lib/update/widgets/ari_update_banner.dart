@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app_update_service.dart';
+import '../../bridge/ws/AriAgent.dart';
 import '../../chat/providers/chat_provider.dart';
 
 /// ARI 프레임워크 통합 업데이트 배너 위젯.
@@ -116,7 +117,7 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
 
     // 2. 기본 동작: AI 채팅 전송 시도
     try {
-      final chatProvider = context.read<AriChatProvider>();
+      final chatProvider = context.read<AriChatProvider?>();
       final url = info.downloadUrlForCurrentPlatform();
       if (url == null) return;
 
@@ -125,14 +126,21 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
       final message = "Install $url ${Platform.isMacOS ? '--mac' : '--windows'}\n"
           "설치가 완료되면 현재 실행 중인 $name 앱을 종료하고 새 버전으로 다시 시작해.";
 
-      await chatProvider.sendAgentMessage(
-        message,
-        platform: widget.appId ?? 'client',
-      );
+      if (chatProvider != null) {
+        await chatProvider.sendAgentMessage(
+          message,
+          platform: widget.appId ?? 'client',
+        );
+      } else {
+        // ChatProvider가 없는 경우(예: 유튜브 플레이어) 서버에 직접 전송
+        await AriAgent.call('/AGENT', {
+          'message': message,
+          'platform': widget.appId ?? 'client',
+          'requestId': 'update-${DateTime.now().millisecondsSinceEpoch}',
+        });
+      }
     } catch (e) {
-      debugPrint(
-          '[AriUpdateBanner] AriChatProvider not found. Update message not sent.');
-      // 에이전트 환경이 아닌 경우 에러를 던지거나 무시 (요청에 따라 에러 처리)
+      debugPrint('[AriUpdateBanner] Update message sending failed: $e');
     }
   }
 
