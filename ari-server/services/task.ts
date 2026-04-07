@@ -56,6 +56,7 @@ export async function handleAddTaskWs(params: Record<string, unknown>): Promise<
     agentId: params.agentId || "default",
     appId: params.appId,
     isOneOff: params.isOneOff || false,
+    scheduledFor: params.scheduledFor,
     enabled: true,
     createdAt: new Date().toISOString(),
   });
@@ -119,9 +120,17 @@ export async function handleRunTaskWs(params: Record<string, unknown>): Promise<
 
 // ── Agent Tool용 (기존 호환) ──
 
-export async function registerScheduledTask(taskData: { cron: string; prompt: string; label: string; agentId?: string; appId?: string; isOneOff?: boolean }): Promise<void> {
-  const { cron, prompt, label, agentId, appId, isOneOff } = taskData;
-  await handleAddTaskWs({ cron, prompt, label, agentId: agentId || "default", appId, isOneOff: isOneOff || false });
+export async function registerScheduledTask(taskData: { cron: string; prompt: string; label: string; agentId?: string; appId?: string; isOneOff?: boolean; scheduledFor?: string }): Promise<void> {
+  const { cron, prompt, label, agentId, appId, isOneOff, scheduledFor } = taskData;
+  await handleAddTaskWs({
+    cron,
+    prompt,
+    label,
+    agentId: agentId || "default",
+    appId,
+    isOneOff: isOneOff || false,
+    scheduledFor,
+  });
 }
 
 // 서버 시작 시 이미 지나간 1회성 태스크를 tasks.json에서 제거
@@ -131,12 +140,8 @@ export function cleanupExpiredOneOffTasks(): void {
 
   const expired = tasks.filter((t) => {
     if (!t.isOneOff) return false;
-    // cron: "분 시 일 월 *" 형식에서 실행 시각 파싱
-    const parts = t.cron.split(" ");
-    if (parts.length < 5) return false;
-    const [minute, hour, day, month] = parts;
-    const year = now.getFullYear();
-    const runAt = new Date(year, Number(month) - 1, Number(day), Number(hour), Number(minute));
+    const runAt = parseOneOffRunAt(t, now);
+    if (!runAt) return false;
     return runAt < now;
   });
 
@@ -145,4 +150,19 @@ export function cleanupExpiredOneOffTasks(): void {
   const remaining = tasks.filter((t) => !expired.find((e) => e.id === t.id));
   saveTasks(remaining);
   logger.info(`🧹 만료된 1회성 태스크 ${expired.length}개 정리: ${expired.map((t) => t.label).join(", ")}`);
+}
+
+function parseOneOffRunAt(task: Task, now: Date): Date | null {
+  const scheduledFor = task.scheduledFor?.trim();
+  if (scheduledFor) {
+    const parsed = new Date(scheduledFor);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parts = task.cron.split(" ");
+  if (parts.length < 5) return null;
+  const [minute, hour, day, month] = parts;
+  const year = now.getFullYear();
+  const runAt = new Date(year, Number(month) - 1, Number(day), Number(hour), Number(minute));
+  return Number.isNaN(runAt.getTime()) ? null : runAt;
 }

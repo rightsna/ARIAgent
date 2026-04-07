@@ -108,12 +108,13 @@ class _ScheduleTabState extends State<ScheduleTab> {
           task: taskMap,
           isExpanded: _expandedTaskId == task.id,
           onTap: () => setState(
-            () => _expandedTaskId = _expandedTaskId == task.id
-                ? null
-                : task.id,
+            () => _expandedTaskId = _expandedTaskId == task.id ? null : task.id,
           ),
           onDelete: () async {
             await taskProvider.deleteTask(task.id);
+          },
+          onToggle: (_) async {
+            await taskProvider.toggleTask(task.id);
           },
         ),
       );

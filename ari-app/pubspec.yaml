@@ -1,7 +1,7 @@
 name: ari_agent
 description: "ARI Avatar AI Agent - Desktop AI Assistant"
 publish_to: "none"
-version: 0.3.19+66
+version: 0.4.0+67
 
 environment:
   sdk: ^3.8.1

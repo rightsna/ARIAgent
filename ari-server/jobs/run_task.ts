@@ -120,6 +120,11 @@ export async function runScheduledTask(
           responseHandled = true;
           const response = res.data?.response || "응답 없음";
           logger.info(`[${timestamp()}] ✅ AI 응답 수신완료 (내용: ${response.substring(0, 50)}...)`);
+          persistTaskResult(taskId, {
+            lastRunAt: new Date().toISOString(),
+            lastResult: response,
+            lastError: undefined,
+          });
 
           // 2. UI 알림 요청 (동일한 커넥션 사용 - 로컬 MQ Gateway 역할)
           const notify = `/TASKS.NOTIFY_RESULT ${JSON.stringify({
@@ -144,18 +149,30 @@ export async function runScheduledTask(
         }
       } catch (err) {
         logger.error(`[${timestamp()}] ❌ 처리 중 오류:`, err);
+        persistTaskResult(taskId, {
+          lastRunAt: new Date().toISOString(),
+          lastError: err instanceof Error ? err.message : String(err),
+        });
         finish(err instanceof Error ? err : new Error(String(err)));
       }
     });
 
     ws.on("error", (err) => {
       logger.error(`❌ 에이전트 연결 실패: ${err.message}`);
+      persistTaskResult(taskId, {
+        lastRunAt: new Date().toISOString(),
+        lastError: err.message,
+      });
       finish(err);
     });
 
     // 타임아웃 방지
     timeoutId = setTimeout(() => {
       logger.error("❌ 작업 타임아웃 (30초)");
+      persistTaskResult(taskId, {
+        lastRunAt: new Date().toISOString(),
+        lastError: "작업 타임아웃 (30초)",
+      });
       finish(new Error("작업 타임아웃 (30초)"));
     }, 30000);
   });
@@ -188,6 +205,33 @@ async function cleanupOneOffTask(taskId: string, tasks: Task[]) {
 
   await scheduler.restoreFromDisk();
   logger.info("  🗓️ 로컬 스케줄러 갱신 완료");
+}
+
+function persistTaskResult(
+  taskId: string,
+  data: {
+    lastRunAt: string;
+    lastResult?: string;
+    lastError?: string;
+  },
+): void {
+  const tasks = getTasks();
+  const index = tasks.findIndex((candidate) => candidate.id === taskId);
+  if (index === -1) {
+    return;
+  }
+
+  tasks[index].lastRunAt = data.lastRunAt;
+  if (data.lastResult !== undefined) {
+    tasks[index].lastResult = data.lastResult;
+  }
+  if (data.lastError !== undefined) {
+    tasks[index].lastError = data.lastError;
+  } else {
+    delete tasks[index].lastError;
+  }
+
+  saveTasks(tasks);
 }
 
 function isDirectRunTaskEntry(): boolean {

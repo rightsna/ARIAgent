@@ -9,8 +9,12 @@ export class Task {
   agentId?: string; // 어떤 아바타의 스케줄인지 기록 (기본: default)
   appId?: string;   // 어떤 앱에서 생성한 스케줄인지 기록
   isOneOff?: boolean; // 1회성 스케줄 여부
+  scheduledFor?: string; // 1회성 스케줄의 절대 실행 시각
   enabled: boolean; // 활성화 여부
   createdAt: string; // 생성 일시
+  lastRunAt?: string; // 마지막 실행 시각
+  lastResult?: string; // 마지막 실행 결과
+  lastError?: string; // 마지막 실행 오류
 
   constructor(data: any = {}) {
     this.id = data?.id || Date.now().toString();
@@ -20,8 +24,12 @@ export class Task {
     this.agentId = data?.agentId || "default";
     this.appId = data?.appId;
     this.isOneOff = data?.isOneOff !== undefined ? data.isOneOff : false;
+    this.scheduledFor = data?.scheduledFor;
     this.enabled = data?.enabled !== undefined ? data.enabled : true;
     this.createdAt = data?.createdAt || new Date().toISOString();
+    this.lastRunAt = data?.lastRunAt;
+    this.lastResult = data?.lastResult;
+    this.lastError = data?.lastError;
   }
 
   static fromJson(jsonStr: string | any): Task {

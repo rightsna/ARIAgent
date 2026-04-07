@@ -354,9 +354,6 @@ class ServerService {
       final rootPackageJson = File(
         '$serverDir${Platform.pathSeparator}package.json',
       );
-      final distDir = Directory(
-        '$serverDir${Platform.pathSeparator}dist',
-      );
       final distEntrypoint = File(
         '$serverDir${Platform.pathSeparator}dist${Platform.pathSeparator}index.js',
       );

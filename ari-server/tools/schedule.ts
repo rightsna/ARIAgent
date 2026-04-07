@@ -47,12 +47,13 @@ export const registerOneOffScheduleTool: AgentTool = {
     const agentId = getActiveAgentId();
     const appId = getActiveAppId();
 
-    // 현재 시간에 분을 더해서 cron으로 변환
     const d = new Date(Date.now() + delayMinutes * 60000);
+    // 표시와 하위 호환을 위해 cron도 유지하지만, 실제 1회성 시각은 scheduledFor를 우선 저장한다.
     const cron = `${d.getMinutes()} ${d.getHours()} ${d.getDate()} ${d.getMonth() + 1} *`;
+    const scheduledFor = d.toISOString();
 
-    logger.info(`📅 Tool[one_off_schedule]: ${label} (${cron}) [Agent: ${agentId}, App: ${appId}] computed from +${delayMinutes}m`);
-    await registerScheduledTask({ cron, prompt, label, agentId, appId, isOneOff: true });
+    logger.info(`📅 Tool[one_off_schedule]: ${label} (${scheduledFor}) [Agent: ${agentId}, App: ${appId}] computed from +${delayMinutes}m`);
+    await registerScheduledTask({ cron, prompt, label, agentId, appId, isOneOff: true, scheduledFor });
 
     return {
       content: [
@@ -105,6 +106,7 @@ export const listSchedulesTool: AgentTool = {
           taskId: task.id,
           label: task.label,
           cron: task.cron,
+          scheduledFor: task.scheduledFor,
           agentId: task.agentId || "default",
           isOneOff: task.isOneOff === true,
           enabled: task.enabled !== false,

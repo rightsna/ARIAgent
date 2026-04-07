@@ -6,6 +6,7 @@ class TaskCard extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final ValueChanged<bool> onToggle;
 
   const TaskCard({
     super.key,
@@ -13,6 +14,7 @@ class TaskCard extends StatelessWidget {
     required this.isExpanded,
     required this.onTap,
     required this.onDelete,
+    required this.onToggle,
   });
 
   @override
@@ -67,6 +69,13 @@ class TaskCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.35),
                     fontSize: 10,
                   ),
+                ),
+                const SizedBox(width: 4),
+                Switch(
+                  value: enabled,
+                  onChanged: onToggle,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  activeThumbColor: const Color(0xFF4ADE80),
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(

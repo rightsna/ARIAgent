@@ -93,6 +93,38 @@ function copyNodeModuleIfExists(moduleName, targetRoot) {
   fs.cpSync(source, target, { recursive: true });
 }
 
+function copyNodeModuleTree(moduleName, targetRoot, visited = new Set()) {
+  if (visited.has(moduleName)) {
+    return;
+  }
+  visited.add(moduleName);
+
+  const source = path.join(rootDir, "node_modules", ...moduleName.split("/"));
+  if (!fs.existsSync(source)) {
+    console.warn(`[build] Warning: node module not found for standalone copy: ${moduleName}`);
+    return;
+  }
+
+  copyNodeModuleIfExists(moduleName, targetRoot);
+
+  const packageJsonPath = path.join(source, "package.json");
+  if (!fs.existsSync(packageJsonPath)) {
+    return;
+  }
+
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+    const dependencies = Object.keys(packageJson.dependencies ?? {});
+    for (const dependency of dependencies) {
+      copyNodeModuleTree(dependency, targetRoot, visited);
+    }
+  } catch (error) {
+    console.warn(
+      `[build] Warning: failed to inspect dependencies for ${moduleName}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 function cleanDir(targetDir) {
   console.log(`[build] Cleaning directory: ${targetDir}`);
   fs.rmSync(targetDir, { recursive: true, force: true });
@@ -203,9 +235,10 @@ async function buildStandalone() {
 
     copyDirIfExists("template", standaloneDir);
     copySkills(standaloneDir);
-    copyNodeModuleIfExists("playwright", standaloneDir);
-    copyNodeModuleIfExists("playwright-core", standaloneDir);
-    copyNodeModuleIfExists("chromium-bidi", standaloneDir);
+    copyNodeModuleTree("playwright", standaloneDir);
+    copyNodeModuleTree("playwright-core", standaloneDir);
+    copyNodeModuleTree("chromium-bidi", standaloneDir);
+    copyNodeModuleTree("node-schedule", standaloneDir);
 
     fs.rmSync(launcherFile, { force: true });
     fs.rmSync(seaConfigPath, { force: true });

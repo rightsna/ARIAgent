@@ -11,6 +11,8 @@ class AriScheduledTask {
   final String? agentId;
   final String? appId;
   final bool isOneOff;
+  final DateTime? scheduledFor;
+  final String? lastError;
 
   AriScheduledTask({
     required this.id,
@@ -24,55 +26,67 @@ class AriScheduledTask {
     this.agentId,
     this.appId,
     this.isOneOff = false,
+    this.scheduledFor,
+    this.lastError,
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'prompt': prompt,
-    'cron': cron,
-    'label': label,
-    'enabled': enabled,
-    'createdAt': createdAt.toIso8601String(),
-    'lastRunAt': lastRunAt?.toIso8601String(),
-    'lastResult': lastResult,
-    'agentId': agentId,
-    'appId': appId,
-    'isOneOff': isOneOff,
-  };
+        'id': id,
+        'prompt': prompt,
+        'cron': cron,
+        'label': label,
+        'enabled': enabled,
+        'createdAt': createdAt.toIso8601String(),
+        'lastRunAt': lastRunAt?.toIso8601String(),
+        'lastResult': lastResult,
+        'agentId': agentId,
+        'appId': appId,
+        'isOneOff': isOneOff,
+        'scheduledFor': scheduledFor?.toIso8601String(),
+        'lastError': lastError,
+      };
 
   factory AriScheduledTask.fromMap(Map<String, dynamic> m) => AriScheduledTask(
-    id: m['id'] ?? '',
-    prompt: m['prompt'] ?? '',
-    cron: m['cron'] ?? '',
-    label: m['label'] ?? '',
-    enabled: m['enabled'] ?? true,
-    createdAt: DateTime.tryParse(m['createdAt'] ?? '') ?? DateTime.now(),
-    lastRunAt: m['lastRunAt'] != null
-        ? DateTime.tryParse(m['lastRunAt'])
-        : null,
-    lastResult: m['lastResult'],
-    agentId: m['agentId'],
-    appId: m['appId'],
-    isOneOff: m['isOneOff'] ?? false,
-  );
+        id: m['id'] ?? '',
+        prompt: m['prompt'] ?? '',
+        cron: m['cron'] ?? '',
+        label: m['label'] ?? '',
+        enabled: m['enabled'] ?? true,
+        createdAt: DateTime.tryParse(m['createdAt'] ?? '') ?? DateTime.now(),
+        lastRunAt:
+            m['lastRunAt'] != null ? DateTime.tryParse(m['lastRunAt']) : null,
+        lastResult: m['lastResult'],
+        agentId: m['agentId'],
+        appId: m['appId'],
+        isOneOff: m['isOneOff'] ?? false,
+        scheduledFor: m['scheduledFor'] != null
+            ? DateTime.tryParse(m['scheduledFor'])
+            : null,
+        lastError: m['lastError'],
+      );
 
   AriScheduledTask copyWith({
     bool? enabled,
     DateTime? lastRunAt,
     String? lastResult,
-  }) => AriScheduledTask(
-    id: id,
-    prompt: prompt,
-    cron: cron,
-    label: label,
-    enabled: enabled ?? this.enabled,
-    createdAt: createdAt,
-    lastRunAt: lastRunAt ?? this.lastRunAt,
-    lastResult: lastResult ?? this.lastResult,
-    agentId: agentId,
-    appId: appId,
-    isOneOff: isOneOff,
-  );
+    DateTime? scheduledFor,
+    String? lastError,
+  }) =>
+      AriScheduledTask(
+        id: id,
+        prompt: prompt,
+        cron: cron,
+        label: label,
+        enabled: enabled ?? this.enabled,
+        createdAt: createdAt,
+        lastRunAt: lastRunAt ?? this.lastRunAt,
+        lastResult: lastResult ?? this.lastResult,
+        agentId: agentId,
+        appId: appId,
+        isOneOff: isOneOff,
+        scheduledFor: scheduledFor,
+        lastError: lastError,
+      );
 
   String get cronDescription {
     final parts = cron.split(' ');
@@ -85,6 +99,10 @@ class AriScheduledTask {
     final dow = parts[4];
 
     if (isOneOff) {
+      if (scheduledFor != null) {
+        final mm = scheduledFor!.minute.toString().padLeft(2, '0');
+        return '${scheduledFor!.month}월 ${scheduledFor!.day}일 ${scheduledFor!.hour}:$mm (1회성)';
+      }
       if (dom != '*' && month != '*') {
         return '$month월 $dom일 $hour:${minute.padLeft(2, '0')} (1회성)';
       }
