@@ -162,75 +162,78 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
     final effectiveBackgroundColor = widget.backgroundColor ??
         (info.mandatory ? const Color(0xFF003366) : const Color(0xFF1E3A8A));
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: effectiveBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: effectiveAccentColor.withOpacity(0.1),
-            width: 1,
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: effectiveBackgroundColor,
+          border: Border(
+            bottom: BorderSide(
+              color: effectiveAccentColor.withOpacity(0.1),
+              width: 1,
+            ),
           ),
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.system_update_alt_rounded,
-            size: 18,
-            color: effectiveAccentColor,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '새로운 버전(${info.latestVersion})이 출시되었습니다!',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.92),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                if (info.mandatory)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      '원활한 이용을 위해 필수 업데이트가 필요합니다.',
-                      style: TextStyle(
-                        color: effectiveAccentColor.withOpacity(0.8),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.system_update_alt_rounded,
+              size: 18,
+              color: effectiveAccentColor,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '새로운 버전(${info.latestVersion})이 출시되었습니다!',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.92),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
                     ),
                   ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          ElevatedButton(
-            onPressed: () => _handleUpdate(info),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: effectiveAccentColor,
-              foregroundColor: effectiveBackgroundColor,
-              minimumSize: const Size(0, 32),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+                  if (info.mandatory)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '원활한 이용을 위해 필수 업데이트가 필요합니다.',
+                        style: TextStyle(
+                          color: effectiveAccentColor.withOpacity(0.8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-            child: const Text('업데이트'),
-          ),
-        ],
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () => _handleUpdate(info),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: effectiveAccentColor,
+                foregroundColor: effectiveBackgroundColor,
+                minimumSize: const Size(0, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child: const Text('업데이트'),
+            ),
+          ],
+        ),
       ),
     );
   }
