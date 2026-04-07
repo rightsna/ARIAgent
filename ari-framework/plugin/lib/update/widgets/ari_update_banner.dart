@@ -121,9 +121,9 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
       if (url == null) return;
 
       final name = widget.appName ?? '애플리케이션';
-      // AI 에이전트에게 설치 명령 및 후속 조치(재시작) 요청
+      // AI 에이전트에게 설치 후 즉시 재시작하도록 직접 지시
       final message = "Install $url ${Platform.isMacOS ? '--mac' : '--windows'}\n"
-          "$name 앱의 업데이트 설치가 완료되면, 현재 실행 중인 앱을 종료하고 새 버전으로 다시 시작해달라고 안내해줘.";
+          "설치가 완료되면 현재 실행 중인 $name 앱을 종료하고 새 버전으로 다시 시작해.";
 
       await chatProvider.sendAgentMessage(
         message,
