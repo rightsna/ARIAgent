@@ -69,6 +69,9 @@ void main() async {
   );
 
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    if (Platform.isWindows) {
+      await windowManager.setAsFrameless();
+    }
     await windowManager.setAlwaysOnTop(ConfigProvider().isPinned);
     await windowManager.setHasShadow(false);
     await windowManager.setResizable(true);
@@ -101,6 +104,7 @@ class ARIApp extends StatefulWidget {
 class _ARIAppState extends State<ARIApp> with WindowListener {
   final SystemTray _systemTray = SystemTray();
   final Menu _menu = Menu();
+  bool _isShuttingDown = false;
 
   @override
   void initState() {
@@ -136,10 +140,7 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
       MenuSeparator(),
       MenuItemLabel(
         label: '종료',
-        onClicked: (menuItem) async {
-          await ServerProvider().stop();
-          exit(0);
-        },
+        onClicked: (menuItem) async => _shutdownApp(),
       ),
     ]);
 
@@ -160,13 +161,38 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
 
   @override
   void onWindowClose() async {
-    await windowManager.hide();
+    await _shutdownApp();
   }
 
   @override
   void onWindowRestore() {
     windowManager.show();
     windowManager.focus();
+  }
+
+  Future<void> _shutdownApp() async {
+    if (_isShuttingDown) {
+      return;
+    }
+    _isShuttingDown = true;
+
+    try {
+      await DesktopNotificationService.instance.dispose();
+    } catch (_) {}
+
+    try {
+      await ServerProvider().stop();
+    } catch (_) {}
+
+    try {
+      await windowManager.setPreventClose(false);
+    } catch (_) {}
+
+    try {
+      await windowManager.destroy();
+    } catch (_) {}
+
+    exit(0);
   }
 
   @override

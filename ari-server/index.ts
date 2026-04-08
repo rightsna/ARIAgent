@@ -27,6 +27,49 @@ import {
   restoreTaskScheduler,
 } from "./services/scheduler/runtime.js";
 
+let parentWatchTimer: NodeJS.Timeout | undefined;
+
+function isProcessAlive(targetPid: number): boolean {
+  if (!Number.isFinite(targetPid) || targetPid <= 0) {
+    return false;
+  }
+
+  try {
+    process.kill(targetPid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function stopWatchingParent(): void {
+  if (parentWatchTimer) {
+    clearInterval(parentWatchTimer);
+    parentWatchTimer = undefined;
+  }
+}
+
+function startParentWatch(): void {
+  const parentPid = Number.parseInt(process.env.ARI_PARENT_PID || "", 10);
+  if (!Number.isFinite(parentPid) || parentPid <= 0 || parentPid === process.pid) {
+    return;
+  }
+
+  parentWatchTimer = setInterval(() => {
+    if (isProcessAlive(parentPid)) {
+      return;
+    }
+
+    logger.warn(
+      `[ParentWatch] Parent process ${parentPid} is gone. Shutting down server.`,
+    );
+    stopWatchingParent();
+    process.exit(0);
+  }, 2000);
+
+  parentWatchTimer.unref();
+}
+
 /**
  * 상태 초기화
  */
@@ -104,6 +147,7 @@ async function main() {
   }
 
   setMaxListeners(200);
+  startParentWatch();
 
   // 전역 에러 핸들러 설정
   setupGlobalErrorHandlers();

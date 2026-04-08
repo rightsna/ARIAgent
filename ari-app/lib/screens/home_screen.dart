@@ -160,35 +160,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: gradientColors,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: borderColor,
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 20,
-              spreadRadius: 2,
+      body: DragToResizeArea(
+        resizeEdgeSize: 8,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: gradientColors,
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: borderColor,
+                width: 1,
+              ),
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
-            children: [
-              _buildDragHandle(isLight),
-              if (_availableUpdate != null) _buildUpdateBanner(),
-              _buildTabBar(isLight),
-              Expanded(child: _buildTabContent()),
-            ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Column(
+                children: [
+                  _buildDragHandle(isLight),
+                  if (_availableUpdate != null) _buildUpdateBanner(),
+                  _buildTabBar(isLight),
+                  Expanded(child: _buildTabContent()),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -196,19 +195,49 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDragHandle(bool isLight) {
-    return DragToMoveArea(
-      child: Container(
-        height: 24,
-        width: double.infinity,
-        alignment: Alignment.center,
-        child: Container(
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: (isLight ? Colors.black : Colors.white).withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(2),
+    final handleColor = (isLight ? Colors.black : Colors.white).withValues(
+      alpha: 0.2,
+    );
+
+    return SizedBox(
+      height: 32,
+      child: Stack(
+        children: [
+          DragToMoveArea(
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: handleColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
           ),
-        ),
+          if (Platform.isWindows)
+            Positioned(
+              top: 4,
+              right: 6,
+              child: IconButton(
+                tooltip: '닫기',
+                onPressed: () => windowManager.close(),
+                icon: Icon(
+                  Icons.close_rounded,
+                  size: 18,
+                  color: (isLight ? Colors.black : Colors.white).withValues(
+                    alpha: 0.75,
+                  ),
+                ),
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(24, 24),
+                  padding: const EdgeInsets.all(4),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: Colors.transparent,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

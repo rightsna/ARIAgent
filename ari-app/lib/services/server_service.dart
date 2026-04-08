@@ -430,6 +430,7 @@ class ServerService {
           [],
           workingDirectory: serverDir,
           environment: {
+            'ARI_PARENT_PID': pid.toString(),
             'PORT': ConfigRepository().port.toString(),
             'MODE': mode ?? (kDebugMode ? 'development' : 'production'),
             'VERSION': version ?? '0.0.0',
@@ -451,6 +452,7 @@ class ServerService {
           ['dist/index.js'],
           workingDirectory: serverDir,
           environment: {
+            'ARI_PARENT_PID': pid.toString(),
             'PORT': ConfigRepository().port.toString(),
             'MODE': mode ?? (kDebugMode ? 'development' : 'production'),
             'VERSION': version ?? '0.0.0',
