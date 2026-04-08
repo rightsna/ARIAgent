@@ -44,6 +44,36 @@ class NotificationSettings extends StatelessWidget {
                   },
                 ),
               ),
+              const SizedBox(height: 16),
+              _sectionTitle('Scheduled Tasks'),
+              const SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: SwitchListTile(
+                  title: const Text(
+                    '자동 작업 결과 채팅창 표시',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                  subtitle: Text(
+                    '자동 작업이 완료되면 결과를 채팅창에 표시합니다.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 11,
+                    ),
+                  ),
+                  value: configProvider.showTaskMessages,
+                  activeThumbColor: const Color(0xFF6C63FF),
+                  onChanged: (val) async {
+                    await configProvider.updateShowTaskMessages(val);
+                  },
+                ),
+              ),
             ],
           );
         },

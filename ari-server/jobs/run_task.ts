@@ -173,9 +173,13 @@ export async function runScheduledTask(
     );
 
     const result = await Promise.race([
-      chatWithAgent(task.prompt, agentProfile, (msg) =>
-        logger.info(`💬 ${msg}`),
-      ),
+      chatWithAgent(task.prompt, agentProfile, (msg) => {
+        logger.info(`💬 ${msg}`);
+        UserSocketHandler.broadcast("/AGENT.PROGRESS", {
+          ok: true,
+          data: { requestId: task.id, message: msg },
+        });
+      }),
       timeoutPromise,
     ]);
 
@@ -193,6 +197,13 @@ export async function runScheduledTask(
       label: task.label,
       result: responseText,
       agentId: task.agentId || "default",
+    });
+
+    UserSocketHandler.broadcast("/TASK_RESULT", {
+      taskId: task.id,
+      label: task.label,
+      result: responseText,
+      executedAt: new Date().toISOString(),
     });
 
     if (task.isOneOff) {

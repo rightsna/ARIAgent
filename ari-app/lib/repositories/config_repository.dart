@@ -13,6 +13,7 @@ class ConfigRepository {
   bool _isPinned = true;
   bool _isChatCollapsed = false;
   bool _isNotificationEnabled = true;
+  bool _showTaskMessages = true;
   String _avatarSize = 'medium';
   String _backgroundTheme = 'dark';
   Map<String, dynamic> _fullConfig = {};
@@ -59,6 +60,9 @@ class ConfigRepository {
           _isNotificationEnabled =
               _fullConfig['IS_NOTIFICATION_ENABLED'] == true;
         }
+        if (_fullConfig['SHOW_TASK_MESSAGES'] != null) {
+          _showTaskMessages = _fullConfig['SHOW_TASK_MESSAGES'] == true;
+        }
         if (_fullConfig['AVATAR_SIZE'] != null) {
           _avatarSize = _fullConfig['AVATAR_SIZE'].toString();
         }
@@ -93,6 +97,7 @@ class ConfigRepository {
     _fullConfig['IS_PINNED'] = _isPinned;
     _fullConfig['IS_CHAT_COLLAPSED'] = _isChatCollapsed;
     _fullConfig['IS_NOTIFICATION_ENABLED'] = _isNotificationEnabled;
+    _fullConfig['SHOW_TASK_MESSAGES'] = _showTaskMessages;
     _fullConfig['AVATAR_SIZE'] = _avatarSize;
     _fullConfig['BACKGROUND_THEME'] = _backgroundTheme;
 
@@ -139,6 +144,15 @@ class ConfigRepository {
 
   Future<void> updateIsNotificationEnabled(bool value) async {
     _isNotificationEnabled = value;
+    await _saveConfig();
+  }
+
+  bool getShowTaskMessages() {
+    return _showTaskMessages;
+  }
+
+  Future<void> updateShowTaskMessages(bool value) async {
+    _showTaskMessages = value;
     await _saveConfig();
   }
 

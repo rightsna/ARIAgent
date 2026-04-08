@@ -181,7 +181,16 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
           value: HomeAssistantProvider(),
         ),
         ChangeNotifierProvider<AriAppProvider>.value(value: AriAppProvider()),
-        ChangeNotifierProvider(create: (_) => AriChatProvider()),
+        ChangeNotifierProvider(create: (_) {
+          final chatProvider = AriChatProvider();
+          chatProvider.showTaskMessages = ConfigProvider().showTaskMessages;
+          return chatProvider;
+        }),
+        ProxyProvider<ConfigProvider, void>(
+          update: (_, config, __) {
+            AriChatProvider().showTaskMessages = config.showTaskMessages;
+          },
+        ),
       ],
       child: MaterialApp(
         title: 'ARI Agent',

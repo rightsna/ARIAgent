@@ -17,6 +17,7 @@ class ConfigProvider extends ChangeNotifier {
   String get avatarSize => _repository.getAvatarSize();
   bool get isChatCollapsed => _repository.getIsChatCollapsed();
   bool get isNotificationEnabled => _repository.getIsNotificationEnabled();
+  bool get showTaskMessages => _repository.getShowTaskMessages();
   String get backgroundTheme => _repository.getBackgroundTheme();
 
   bool _hasApiKey = true;
@@ -72,6 +73,11 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<void> updateIsNotificationEnabled(bool value) async {
     await _repository.updateIsNotificationEnabled(value);
+    notifyListeners();
+  }
+
+  Future<void> updateShowTaskMessages(bool value) async {
+    await _repository.updateShowTaskMessages(value);
     notifyListeners();
   }
 

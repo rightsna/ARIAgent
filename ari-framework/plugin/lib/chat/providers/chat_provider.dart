@@ -23,6 +23,7 @@ class AriChatProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _activeRequestId;
+  bool showTaskMessages = true;
 
   bool get isLoading => _isLoading;
   String? get activeRequestId => _activeRequestId;
@@ -174,6 +175,8 @@ class AriChatProvider extends ChangeNotifier {
     });
 
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
+      if (!showTaskMessages) return;
+
       final taskId = data['taskId']?.toString() ?? 'unknown';
 
       if (taskId != 'unknown' && _processedTaskIds.contains(taskId)) return;
