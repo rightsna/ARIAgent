@@ -1,0 +1,9 @@
+name: debug_tool
+description: ARI Framework WebSocket Debug Tool — CLI for testing ARI protocol commands
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+executables:
+  debug_tool: debug_tool

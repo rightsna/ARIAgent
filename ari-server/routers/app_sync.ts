@@ -61,6 +61,30 @@ router.on("/APP.REGISTER", (ws, params) => {
 });
 
 /**
+ * /APP.CALL
+ * 외부 클라이언트(debug tool 등)가 특정 앱에 명령을 직접 호출할 때 사용.
+ * commandApp()을 호출하고 결과를 요청자에게 돌려줍니다.
+ */
+router.on("/APP.CALL", async (ws, params) => {
+  const { appId, command, params: cmdParams = {}, requestId } = params;
+
+  if (!appId || !command) {
+    return ws.send("/APP.CALL", {
+      requestId,
+      ok: false,
+      message: "appId and command are required",
+    });
+  }
+
+  try {
+    const result = await UserSocketHandler.commandApp(appId, command, cmdParams);
+    ws.send("/APP.CALL", { requestId, ok: true, result });
+  } catch (err: any) {
+    ws.send("/APP.CALL", { requestId, ok: false, message: err.message });
+  }
+});
+
+/**
  * /APP.COMMAND_RESPONSE
  * 명령 실행 후 앱으로부터 결과를 받을 때 (동기식 commandApp 호출의 응답)
  */
