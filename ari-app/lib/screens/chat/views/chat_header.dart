@@ -30,6 +30,9 @@ class _ChatHeaderState extends State<ChatHeader> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
+      decoration: const BoxDecoration(
+        color: Color(0xFF12122A),
+      ),
       padding: EdgeInsets.only(
         top: isChatCollapsed ? 8 : 12,
         bottom: isChatCollapsed ? 8 : 12,
@@ -228,7 +231,7 @@ class _ChatHeaderState extends State<ChatHeader> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: const Color(0xFF4ADE80).withOpacity(0.15),
+                color: const Color(0xFF4ADE80).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

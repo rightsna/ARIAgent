@@ -12,6 +12,8 @@ import 'views/model_setup_view.dart';
 import 'widgets/chat_bubble.dart';
 import 'widgets/chat_input.dart';
 
+const _chatPanelBackgroundColor = Color(0xFF12122A);
+
 class ChatTab extends StatefulWidget {
   final VoidCallback? onSettingsTap;
 
@@ -60,9 +62,7 @@ class _ChatTabState extends State<ChatTab> {
       _lastAgentId = avatarId;
       _lastConnected = isConnected;
       if (isConnected) {
-        Future.microtask(
-          () => context.read<AriChatProvider>().loadServerHistory(avatarId),
-        );
+        Future.microtask(() => chatProvider.loadServerHistory(avatarId));
       }
     }
 
@@ -137,8 +137,8 @@ class _ChatTabState extends State<ChatTab> {
       followUpBannerTopOffset: -68,
       theme: const AriChatTheme(
         primaryColor: Color(0xFF6C63FF),
-        surfaceColor: Colors.transparent,
-        backgroundColor: Colors.transparent,
+        surfaceColor: _chatPanelBackgroundColor,
+        backgroundColor: _chatPanelBackgroundColor,
         textMain: Colors.white,
         textSub: Color(0xFF9E9EB8),
         borderColor: Colors.transparent,

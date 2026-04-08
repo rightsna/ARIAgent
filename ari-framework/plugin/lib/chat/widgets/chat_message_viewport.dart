@@ -37,7 +37,7 @@ class ChatMessageViewport extends StatelessWidget {
           child: overlayWidget != null
               ? overlayWidget!
               : Container(
-                  color: theme.backgroundColor.withValues(alpha: 0.3),
+                  color: theme.backgroundColor,
                   child: messages.isEmpty
                       ? (emptyStateWidget ?? ChatEmptyState(theme: theme))
                       : ListView.builder(

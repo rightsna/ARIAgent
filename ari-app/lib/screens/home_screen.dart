@@ -24,6 +24,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const String _launcherInstallFolderName = 'ARIAgent Launcher';
   static const String _launcherExecutableName = 'ARI_Launcher.exe';
+  static const double _windowRadius = 20;
+  static const double _windowResizePadding = 6;
 
   final AppUpdateService _appUpdateService = const AppUpdateService();
   int _currentTab = 0;
@@ -138,20 +140,20 @@ class _HomeScreenState extends State<HomeScreen> {
     final isWindows = Platform.isWindows;
     final isLight = theme == 'light_obsolete'; // Medium gray is dark enough for white icons
 
-    List<Color> gradientColors;
+    Color backgroundColor;
     switch (theme) {
       case 'gray':
-        gradientColors = [const Color(0xEE4B4B4B), const Color(0xEE333333)];
+        backgroundColor = const Color(0xFF3D3D3D);
         break;
       case 'blue':
-        gradientColors = [const Color(0xDD0A1931), const Color(0xEE185ADB)];
+        backgroundColor = const Color(0xFF123B78);
         break;
       case 'purple':
-        gradientColors = [const Color(0xDD240046), const Color(0xEE5A189A)];
+        backgroundColor = const Color(0xFF4A226E);
         break;
       case 'dark':
       default:
-        gradientColors = [const Color(0xDD0D0D1A), const Color(0xEE12122A)];
+        backgroundColor = const Color(0xFF12122A);
         break;
     }
 
@@ -161,12 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final windowContent = Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: gradientColors,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: backgroundColor,
         border: Border.all(
           color: borderColor,
           width: 1,
@@ -181,15 +178,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            _buildDragHandle(isLight),
-            if (_availableUpdate != null) _buildUpdateBanner(),
-            _buildTabBar(isLight),
-            Expanded(child: _buildTabContent()),
-          ],
+      child: Column(
+        children: [
+          _buildDragHandle(isLight),
+          if (_availableUpdate != null) _buildUpdateBanner(),
+          _buildTabBar(isLight),
+          Expanded(child: _buildTabContent()),
+        ],
+      ),
+    );
+
+    final windowShell = ClipRRect(
+      borderRadius: BorderRadius.circular(_windowRadius),
+      child: ColoredBox(
+        color: backgroundColor,
+        child: Padding(
+          padding: const EdgeInsets.all(_windowResizePadding),
+          child: windowContent,
         ),
       ),
     );
@@ -197,13 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: isWindows
-          ? DragToResizeArea(
-              resizeEdgeSize: 8,
-              child: Padding(
-                padding: const EdgeInsets.all(6),
-                child: windowContent,
-              ),
-            )
+          ? DragToResizeArea(resizeEdgeSize: 8, child: windowShell)
           : windowContent,
     );
   }
