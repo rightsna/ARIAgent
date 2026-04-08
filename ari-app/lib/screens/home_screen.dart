@@ -335,7 +335,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTabContent() {
-    if (_currentTab != 3 && _currentTab != 0 && _currentTab != 1) {
+    // 채팅(0)과 설정(3) 탭을 제외한 나머지 탭(플레이스, 아바타 등)은 서버 연결이 필수이므로 체크
+    if (_currentTab == 1 || _currentTab == 2) {
       return ListenableBuilder(
         listenable: ServerProvider(),
         builder: (context, _) {

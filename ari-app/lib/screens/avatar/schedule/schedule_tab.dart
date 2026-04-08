@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
-import 'package:ari_agent/screens/schedule/widgets/task_card.dart';
+import 'widgets/task_card.dart';
 
 /// 스케줄 탭 - 서버에 등록된 작업 목록
 class ScheduleTab extends StatefulWidget {

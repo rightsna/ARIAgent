@@ -123,14 +123,17 @@ class _ChatTabState extends State<ChatTab> {
         isError: msg.isError,
         isSystem: msg.isSystem,
       ),
-      inputAreaBuilder: (onSend, onCancel, isLoading) => Padding(
-        padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
-        child: ChatInput(
-          onSubmit: onSend,
-          onCancel: onCancel,
-          isLoading: isLoading,
-        ),
-      ),
+      inputAreaBuilder: (onSend, onCancel, isLoading) {
+        if (!isServerRunning) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+          child: ChatInput(
+            onSubmit: onSend,
+            onCancel: onCancel,
+            isLoading: isLoading,
+          ),
+        );
+      },
       followUpBannerTopOffset: -68,
       theme: const AriChatTheme(
         primaryColor: Color(0xFF6C63FF),

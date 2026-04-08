@@ -45,7 +45,9 @@ class SettingsTab extends StatelessWidget {
               () async {
                 final avatarId = avatar.currentAvatarId;
                 if (context.mounted) {
-                  await context.read<AriChatProvider>().clearServerHistory(avatarId);
+                  await context.read<AriChatProvider>().clearServerHistory(
+                    avatarId,
+                  );
                 }
               },
             ),

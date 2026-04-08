@@ -71,11 +71,18 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Switch(
-                  value: enabled,
-                  onChanged: onToggle,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  activeThumbColor: const Color(0xFF4ADE80),
+                SizedBox(
+                  width: 32,
+                  height: 20,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Switch(
+                      value: enabled,
+                      onChanged: onToggle,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      activeThumbColor: const Color(0xFF4ADE80),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(

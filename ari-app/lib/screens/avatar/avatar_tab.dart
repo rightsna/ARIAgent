@@ -6,7 +6,7 @@ import 'package:provider/provider.dart';
 import 'tabs/profile_tab.dart';
 import 'tabs/logs_tab.dart';
 import 'tabs/memory_tab.dart';
-import '../schedule/schedule_tab.dart';
+import 'schedule/schedule_tab.dart';
 import 'tabs/skills_tab.dart';
 import 'tabs/tools_tab.dart';
 import 'tabs/channels_tab.dart';
