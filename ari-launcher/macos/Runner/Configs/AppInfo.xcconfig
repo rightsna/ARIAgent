@@ -6,7 +6,7 @@
 
 // The application's name. By default this is also the title of the Flutter window.
 PRODUCT_NAME = AriAgent
-PRODUCT_BUNDLE_IDENTIFIER = com.ari.ariLauncher
+PRODUCT_BUNDLE_IDENTIFIER = me.ariwith.launcher
 
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
