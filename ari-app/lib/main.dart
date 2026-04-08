@@ -161,7 +161,7 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
 
   @override
   void onWindowClose() async {
-    await _shutdownApp();
+    await windowManager.hide();
   }
 
   @override

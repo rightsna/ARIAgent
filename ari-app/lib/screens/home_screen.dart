@@ -135,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final config = context.watch<ConfigProvider>();
     final theme = config.backgroundTheme;
+    final isWindows = Platform.isWindows;
     final isLight = theme == 'light_obsolete'; // Medium gray is dark enough for white icons
 
     List<Color> gradientColors;
@@ -158,39 +159,52 @@ class _HomeScreenState extends State<HomeScreen> {
         ? Colors.black.withValues(alpha: 0.05)
         : const Color(0xFF6C63FF).withValues(alpha: 0.15);
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: DragToResizeArea(
-        resizeEdgeSize: 8,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: gradientColors,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: borderColor,
-                width: 1,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Column(
-                children: [
-                  _buildDragHandle(isLight),
-                  if (_availableUpdate != null) _buildUpdateBanner(),
-                  _buildTabBar(isLight),
-                  Expanded(child: _buildTabContent()),
-                ],
-              ),
-            ),
-          ),
+    final windowContent = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: borderColor,
+          width: 1,
+        ),
+        boxShadow: isWindows
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: [
+            _buildDragHandle(isLight),
+            if (_availableUpdate != null) _buildUpdateBanner(),
+            _buildTabBar(isLight),
+            Expanded(child: _buildTabContent()),
+          ],
         ),
       ),
+    );
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: isWindows
+          ? DragToResizeArea(
+              resizeEdgeSize: 8,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: windowContent,
+              ),
+            )
+          : windowContent,
     );
   }
 
