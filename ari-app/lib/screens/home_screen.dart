@@ -6,11 +6,15 @@ import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../providers/config_provider.dart';
-
 import '../providers/server_provider.dart';
 import '../services/app_update_service.dart';
 import 'avatar/avatar_tab.dart';
 import 'chat/chat_tab.dart';
+import 'home/home_constants.dart';
+import 'home/home_drag_handle.dart';
+import 'home/home_server_required_overlay.dart';
+import 'home/home_tab_bar.dart';
+import 'home/home_update_banner.dart';
 import 'place/place_tab.dart';
 import 'settings/settings_tab.dart';
 
@@ -24,8 +28,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const String _launcherInstallFolderName = 'ARIAgent Launcher';
   static const String _launcherExecutableName = 'ARI_Launcher.exe';
-  static const double _windowRadius = 20;
-  static const double _windowResizePadding = 6;
 
   final AppUpdateService _appUpdateService = const AppUpdateService();
   int _currentTab = 0;
@@ -138,36 +140,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final config = context.watch<ConfigProvider>();
     final theme = config.backgroundTheme;
     final isWindows = Platform.isWindows;
-    final isLight = theme == 'light_obsolete'; // Medium gray is dark enough for white icons
+    final isLight =
+        theme == 'light_obsolete'; // Medium gray is dark enough for white icons
 
-    Color backgroundColor;
-    switch (theme) {
-      case 'gray':
-        backgroundColor = const Color(0xFF3D3D3D);
-        break;
-      case 'blue':
-        backgroundColor = const Color(0xFF123B78);
-        break;
-      case 'purple':
-        backgroundColor = const Color(0xFF4A226E);
-        break;
-      case 'dark':
-      default:
-        backgroundColor = const Color(0xFF12122A);
-        break;
-    }
-
-    final borderColor = isLight 
-        ? Colors.black.withValues(alpha: 0.05)
-        : const Color(0xFF6C63FF).withValues(alpha: 0.15);
+    final backgroundColor = homeBackgroundColorForTheme(theme);
 
     final windowContent = Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        border: Border.all(
-          color: borderColor,
-          width: 1,
-        ),
+        border: null,
         boxShadow: isWindows
             ? null
             : [
@@ -180,20 +161,32 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          _buildDragHandle(isLight),
-          if (_availableUpdate != null) _buildUpdateBanner(),
-          _buildTabBar(isLight),
+          HomeDragHandle(isLight: isLight),
+          if (_availableUpdate != null)
+            HomeUpdateBanner(
+              update: _availableUpdate!,
+              onUpdatePressed: _doUpdate,
+            ),
+          HomeTabBar(
+            currentTab: _currentTab,
+            isLight: isLight,
+            onTabSelected: (index) {
+              setState(() {
+                _currentTab = index;
+              });
+            },
+          ),
           Expanded(child: _buildTabContent()),
         ],
       ),
     );
 
     final windowShell = ClipRRect(
-      borderRadius: BorderRadius.circular(_windowRadius),
+      borderRadius: BorderRadius.circular(homeWindowRadius),
       child: ColoredBox(
         color: backgroundColor,
         child: Padding(
-          padding: const EdgeInsets.all(_windowResizePadding),
+          padding: const EdgeInsets.all(homeWindowResizePadding),
           child: windowContent,
         ),
       ),
@@ -207,183 +200,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDragHandle(bool isLight) {
-    final handleColor = (isLight ? Colors.black : Colors.white).withValues(
-      alpha: 0.2,
-    );
-
-    return SizedBox(
-      height: 32,
-      child: Stack(
-        children: [
-          DragToMoveArea(
-            child: Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: handleColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
-          if (Platform.isWindows)
-            Positioned(
-              top: 4,
-              right: 6,
-              child: IconButton(
-                tooltip: '닫기',
-                onPressed: () => windowManager.close(),
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: (isLight ? Colors.black : Colors.white).withValues(
-                    alpha: 0.75,
-                  ),
-                ),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(24, 24),
-                  padding: const EdgeInsets.all(4),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: Colors.transparent,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpdateBanner() {
-    final update = _availableUpdate!;
-    final accentColor = update.mandatory
-        ? Colors.orange.shade200
-        : const Color(0xFFA7A1FF);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: update.mandatory
-            ? const Color(0xFF3A2316)
-            : const Color(0xFF241C42),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.system_update_alt_rounded, size: 16, color: accentColor),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '새 버전 ${update.latestVersion} 사용 가능${update.mandatory ? " · 필수 업데이트" : ""}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.88),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: _doUpdate,
-            style: TextButton.styleFrom(
-              minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              foregroundColor: accentColor,
-            ),
-            child: Text(
-              '업데이트',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: accentColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar(bool isLight) {
-    return Container(
-      margin: const EdgeInsets.only(left: 12, right: 12, top: 10),
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: isLight ? Colors.black.withValues(alpha: 0.05) : const Color(0xFF0A0A1A),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          _tabItem(0, Icons.chat_bubble_rounded, '채팅', isLight),
-          _tabItem(1, Icons.explore_rounded, '플레이스', isLight),
-          _tabItem(2, Icons.person_rounded, '아바타', isLight),
-          _tabItem(3, Icons.settings_rounded, '설정', isLight),
-        ],
-      ),
-    );
-  }
-
-  Widget _tabItem(int index, IconData icon, String label, bool isLight) {
-    final isActive = _currentTab == index;
-    final unselectedColor = isLight ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.3);
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() {
-          _currentTab = index;
-        }),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? const Color(0xFF6C63FF).withValues(alpha: 0.2)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            border: isActive
-                ? Border.all(
-                    color: const Color(0xFF6C63FF).withValues(alpha: 0.4),
-                  )
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 14,
-                color: isActive
-                    ? const Color(0xFF6C63FF)
-                    : unselectedColor,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isActive
-                      ? const Color(0xFF6C63FF)
-                      : unselectedColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTabContent() {
-    // 채팅(0)과 설정(3) 탭을 제외한 나머지 탭(플레이스, 아바타 등)은 서버 연결이 필수이므로 체크
-    if (_currentTab == 1 || _currentTab == 2) {
+    final activeTab = homeTabs.firstWhere((tab) => tab.index == _currentTab);
+
+    if (activeTab.requiresServer) {
       return ListenableBuilder(
         listenable: ServerProvider(),
         builder: (context, _) {
           if (!ServerProvider().isRunning) {
-            return _buildServerRequiredOverlay();
+            return HomeServerRequiredOverlay(
+              onGoToSettings: () {
+                setState(() {
+                  _currentTab = 3;
+                });
+              },
+            );
           }
           return _buildActiveTabContent();
         },
@@ -417,80 +248,5 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
     }
-  }
-
-  Widget _buildServerRequiredOverlay() {
-    return Center(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF6C63FF).withValues(alpha: 0.3),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
-              blurRadius: 10,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.cloud_off_rounded,
-              size: 48,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              '에이전트 연결 필요',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '이 기능을 사용하려면 에이전트 실행이 필요합니다.\n설정 탭에서 에이전트를 켜 주세요.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _currentTab = 3;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C63FF),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-              child: const Text(
-                '설정으로 이동',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
