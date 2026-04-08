@@ -6,7 +6,6 @@ export {
   initializeTaskScheduler,
   restoreTaskScheduler,
   shutdownTaskScheduler,
-  syncTaskScheduler,
 } from "./runtime.js";
 export type {
   LocalTaskSchedulerOptions,

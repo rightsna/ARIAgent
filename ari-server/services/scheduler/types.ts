@@ -22,7 +22,6 @@ export interface SchedulerAdapter {
 export interface LocalTaskSchedulerOptions {
   adapter?: SchedulerAdapter;
   executeTask?: (task: Task) => Promise<void>;
-  autoRemoveOneOffOnSuccess?: boolean;
 }
 
 export interface ScheduleOperationResult {

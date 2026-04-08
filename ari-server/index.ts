@@ -73,7 +73,7 @@ function setupWebSocket(server: http.Server): void {
 async function bootstrapTaskScheduler(): Promise<void> {
   initializeTaskScheduler({
     executeTask: async (task) => {
-      await runScheduledTask(task.id);
+      await runScheduledTask(task);
     },
   });
 

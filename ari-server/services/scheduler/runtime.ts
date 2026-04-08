@@ -1,4 +1,3 @@
-import { Task } from "../../models/task.js";
 import { logger } from "../../infra/logger.js";
 import { LocalTaskScheduler } from "./local_task_scheduler.js";
 import { LocalTaskSchedulerOptions, RestoreResult } from "./types.js";
@@ -27,14 +26,6 @@ export async function restoreTaskScheduler(): Promise<RestoreResult | null> {
   }
 
   return scheduler.restoreFromDisk();
-}
-
-export async function syncTaskScheduler(task: Task): Promise<void> {
-  if (!scheduler) {
-    return;
-  }
-
-  await scheduler.scheduleTask(task);
 }
 
 export function cancelTaskScheduler(taskId: string): void {

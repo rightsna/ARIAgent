@@ -1,6 +1,6 @@
 import { logger } from "../../infra/logger.js";
 import { Task } from "../../models/task.js";
-import { getTasks, saveTasks } from "../../repositories/task_repository.js";
+import { getTasks } from "../../repositories/task_repository.js";
 import { NodeScheduleAdapter } from "./node_schedule_adapter.js";
 import {
   LocalTaskSchedulerOptions,
@@ -56,15 +56,12 @@ function resolveOneOffDate(
 export class LocalTaskScheduler {
   private readonly adapter: SchedulerAdapter;
   private readonly executeTask: (task: Task) => Promise<void>;
-  private readonly autoRemoveOneOffOnSuccess: boolean;
   private readonly jobs = new Map<string, ScheduledJobHandle>();
   private readonly runningTaskIds = new Set<string>();
 
   constructor(options: LocalTaskSchedulerOptions = {}) {
     this.adapter = options.adapter ?? new NodeScheduleAdapter();
     this.executeTask = options.executeTask ?? defaultTaskExecutor;
-    this.autoRemoveOneOffOnSuccess =
-      options.autoRemoveOneOffOnSuccess ?? false;
   }
 
   async restoreFromDisk(): Promise<RestoreResult> {
@@ -219,9 +216,6 @@ export class LocalTaskScheduler {
 
         if (task.isOneOff) {
           this.jobs.delete(task.id);
-          if (this.autoRemoveOneOffOnSuccess) {
-            this.removeTaskFromDisk(task.id);
-          }
         }
       } catch (error) {
         logger.error(
@@ -232,11 +226,5 @@ export class LocalTaskScheduler {
         this.runningTaskIds.delete(task.id);
       }
     };
-  }
-
-  private removeTaskFromDisk(taskId: string): void {
-    const tasks = getTasks();
-    const remaining = tasks.filter((task) => task.id !== taskId);
-    saveTasks(remaining);
   }
 }

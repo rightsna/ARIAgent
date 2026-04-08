@@ -1,238 +1,260 @@
 import fs from "fs";
+import path from "path";
+import os from "os";
+import { spawn } from "child_process";
+
 import { Task } from "../models/task.js";
+import { AgentInfo } from "../models/agent.js";
+import { Settings } from "../models/settings.js";
 import { getSettings } from "../repositories/setting_repository.js";
 import { getTasks, saveTasks } from "../repositories/task_repository.js";
 import { getTaskScheduler } from "../services/scheduler/runtime.js";
+import { chatWithAgent } from "../services/agent/index.js";
+import { UserSocketHandler } from "../system/ws.js";
+import { findAppExecutable } from "../infra/runtime_paths.js";
+import { DATA_DIR } from "../infra/data.js";
+import { logger } from "../infra/logger.js";
+
+const DEFAULT_TIMEOUT_SEC = 120;
+const APP_CONNECT_WAIT_MS = 30_000;
+const APP_CONNECT_POLL_MS = 500;
 
 function timestamp() {
   return new Date().toISOString().replace("T", " ").substring(0, 19);
 }
 
-import { WebSocket } from "ws";
+// ──────────────────────────────────────────────────────────────────────────────
+// App lifecycle helpers
+// ──────────────────────────────────────────────────────────────────────────────
 
-import { Settings } from "../models/settings.js";
-import { logger } from "../infra/logger.js";
+async function launchAppHeadless(appId: string, port: number): Promise<void> {
+  const executable = findAppExecutable(appId);
+  if (!executable) throw new Error(`실행 파일을 찾을 수 없습니다: ${appId}`);
 
-async function getServerPort() {
-  const config = getSettings(new Settings());
-  return config.PORT || 29277;
+  const launchLogDir = path.join(DATA_DIR, "launch-logs");
+  fs.mkdirSync(launchLogDir, { recursive: true });
+  const launchLogPath = path.join(launchLogDir, `${appId}.log`);
+  const stdoutFd = fs.openSync(launchLogPath, "a");
+  const stderrFd = fs.openSync(launchLogPath, "a");
+
+  const headlessArgs = [`--headless`, `--port=${port}`];
+  const bundlePath =
+    process.platform === "darwin"
+      ? executable.split("/Contents/MacOS/")[0]
+      : null;
+
+  const launcherExecutable = process.platform === "darwin" ? "open" : executable;
+  const launcherArgs =
+    process.platform === "darwin" && bundlePath
+      ? ["-n", bundlePath, "--args", ...headlessArgs]
+      : headlessArgs;
+
+  const child = spawn(launcherExecutable, launcherArgs, {
+    detached: process.platform !== "darwin",
+    stdio: ["ignore", stdoutFd, stderrFd],
+    cwd: path.dirname(executable),
+    env: {
+      ...process.env,
+      HOME: process.env.HOME ?? os.homedir(),
+      USERPROFILE: process.env.USERPROFILE ?? os.homedir(),
+    },
+  });
+
+  child.on("error", (err) =>
+    logger.error(`[AppLifecycle] ${appId} 실행 실패: ${err.message}`),
+  );
+  child.on("spawn", () =>
+    logger.info(`[AppLifecycle] ${appId} spawned (pid: ${child.pid ?? "unknown"})`),
+  );
+  child.unref();
 }
+
+async function waitForAppConnection(appId: string): Promise<void> {
+  const deadline = Date.now() + APP_CONNECT_WAIT_MS;
+  while (Date.now() < deadline) {
+    if (UserSocketHandler.isAppConnected(appId)) return;
+    await new Promise((r) => setTimeout(r, APP_CONNECT_POLL_MS));
+  }
+  throw new Error(`앱 '${appId}'이 ${APP_CONNECT_WAIT_MS / 1000}초 내에 연결되지 않았습니다.`);
+}
+
+async function checkIsHeadless(appId: string): Promise<boolean> {
+  try {
+    const status = await UserSocketHandler.commandApp(appId, "GET_APP_STATUS");
+    return status?.data?.isHeadless === true;
+  } catch {
+    return false; // 확인 실패 시 안전하게 종료하지 않음
+  }
+}
+
+async function terminateApp(appId: string): Promise<void> {
+  await new Promise<void>((resolve) => {
+    let child;
+    if (process.platform === "darwin") {
+      child = spawn("pkill", ["-x", appId], { stdio: "ignore" });
+    } else if (process.platform === "win32") {
+      child = spawn("taskkill", ["/IM", `${appId}.exe`, "/F"], {
+        stdio: "ignore",
+        windowsHide: true,
+      });
+    } else {
+      resolve();
+      return;
+    }
+    child.on("error", () => resolve());
+    child.on("exit", () => resolve());
+  });
+  await new Promise((r) => setTimeout(r, 250));
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Main entry
+// ──────────────────────────────────────────────────────────────────────────────
 
 type RunScheduledTaskOptions = {
   exitProcess?: boolean;
 };
 
 export async function runScheduledTask(
-  taskId: string,
+  taskOrId: Task | string,
   options: RunScheduledTaskOptions = {},
 ): Promise<void> {
-  const exitProcess = options.exitProcess === true;
-  fs.appendFileSync("/tmp/run_task_ari.log", `[${timestamp()}] STARTING with argv: ${JSON.stringify(process.argv)}\n`);
-  logger.info(`[${timestamp()}] 🔔 작업 실행 시작: ${taskId}`);
-
-  const tasks: Task[] = getTasks();
-  if (tasks.length === 0) {
-    logger.info("❌ tasks.json이 없거나 비어 있습니다.");
-    throw new Error("tasks.json이 없거나 비어 있습니다.");
-  }
-  const task = tasks.find((t: Task) => t.id === taskId);
-
-  if (!task) {
-    logger.info(`❌ 작업 ID ${taskId}를 찾을 수 없음`);
-    throw new Error(`작업 ID ${taskId}를 찾을 수 없음`);
+  // Task 객체 또는 ID 문자열 모두 수용
+  let task: Task | undefined;
+  if (typeof taskOrId === "string") {
+    task = getTasks().find((t: Task) => t.id === taskOrId);
+    if (!task) throw new Error(`작업 ID ${taskOrId}를 찾을 수 없음`);
+  } else {
+    task = taskOrId;
   }
 
-  if (task.enabled === false) {
+  logger.info(`[${timestamp()}] 🔔 작업 실행 시작: ${task.id} (${task.label})`);
+
+  if (!task.enabled) {
     logger.info("⏸️ 비활성 작업 — 스킵");
     return;
   }
 
-  const port = await getServerPort();
-  const requestId = `sys-task-${taskId}-${Date.now()}`;
-  let responseHandled = false;
+  const timeoutMs = (task.timeout ?? DEFAULT_TIMEOUT_SEC) * 1000;
+  const managedAppId = task.managedAppId;
+  let launchedByTask = false;
 
-  // 단일 WebSocket 연결로 모든 작업 처리 (Persistent Connection 방식)
-  await new Promise<void>((resolve, reject) => {
-    const ws = new WebSocket(`ws://localhost:${port}`);
-    let settled = false;
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const finish = (error?: Error) => {
-      if (settled) {
+  // ── 앱 라이프사이클: 실행 전 ───────────────────────────────────────────────
+  if (managedAppId) {
+    if (UserSocketHandler.isAppConnected(managedAppId)) {
+      logger.info(`[${timestamp()}] ✅ '${managedAppId}' 이미 연결됨 — 런치 스킵`);
+    } else {
+      logger.info(`[${timestamp()}] 🚀 '${managedAppId}' 연결 안됨 → 헤드리스 런치`);
+      try {
+        const config = getSettings(new Settings());
+        const port = config.PORT || 29277;
+        await launchAppHeadless(managedAppId, port);
+        await waitForAppConnection(managedAppId);
+        launchedByTask = true;
+        logger.info(`[${timestamp()}] ✅ '${managedAppId}' 연결 완료`);
+      } catch (err: any) {
+        const errorMsg = `앱 런치 실패: ${err.message}`;
+        logger.error(`[${timestamp()}] ❌ ${errorMsg}`);
+        persistTaskResult(task.id, { lastRunAt: new Date().toISOString(), lastError: errorMsg });
+        if (options.exitProcess) process.exit(1);
         return;
       }
-      settled = true;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
+    }
+  }
 
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close();
-      }
+  // ── AI 에이전트 직접 호출 ────────────────────────────────────────────────
+  try {
+    const agentProfile = new AgentInfo({
+      id: task.agentId || "default",
+      ...(task.appId ? { appId: task.appId } : {}),
+    });
 
-      if (error) {
-        reject(error);
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`작업 타임아웃 (${task.timeout ?? DEFAULT_TIMEOUT_SEC}초)`)),
+        timeoutMs,
+      ),
+    );
+
+    const result = await Promise.race([
+      chatWithAgent(task.prompt, agentProfile, (msg) =>
+        logger.info(`[${timestamp()}] 💬 ${msg}`),
+      ),
+      timeoutPromise,
+    ]);
+
+    const responseText = result.responseText || "응답 없음";
+    logger.info(`[${timestamp()}] ✅ 완료: ${responseText.substring(0, 80)}...`);
+
+    persistTaskResult(task.id, {
+      lastRunAt: new Date().toISOString(),
+      lastResult: responseText,
+      lastError: undefined,
+    });
+
+    UserSocketHandler.broadcast("/TASKS.NOTIFY_RESULT", {
+      taskId: task.id,
+      label: task.label,
+      result: responseText,
+      agentId: task.agentId || "default",
+    });
+
+    if (task.isOneOff) {
+      await cleanupOneOffTask(task.id);
+    }
+  } catch (err: any) {
+    logger.error(`[${timestamp()}] ❌ 실행 오류: ${err.message}`);
+    persistTaskResult(task.id, {
+      lastRunAt: new Date().toISOString(),
+      lastError: err.message,
+    });
+  } finally {
+    // ── 앱 라이프사이클: 실행 후 ─────────────────────────────────────────────
+    if (launchedByTask && managedAppId) {
+      const isHeadless = await checkIsHeadless(managedAppId);
+      if (isHeadless) {
+        logger.info(`[${timestamp()}] 🛑 헤드리스 앱 '${managedAppId}' 종료`);
+        await terminateApp(managedAppId).catch((err) =>
+          logger.warn(`[${timestamp()}] ⚠️ 앱 종료 실패: ${err.message}`),
+        );
       } else {
-        resolve();
+        logger.info(`[${timestamp()}] ℹ️ '${managedAppId}' UI 모드로 전환됨 — 종료 스킵`);
       }
-    };
-
-    ws.on("open", () => {
-      logger.info(`[${timestamp()}] 🔌 에이전트 연결 성공 (Port: ${port})`);
-
-      // 1. AI 응답 요청 (COMMAND {JSON} 형식)
-      const request = `/AGENT ${JSON.stringify({
-        message: task.prompt,
-        requestId,
-        agentId: task.agentId || "default",
-        ...(task.appId ? { appId: task.appId } : {}),
-      })}`;
-      logger.info(`[${timestamp()}] 📤 AI 응답 요청 전송: ${request.substring(0, 100)}...`);
-      ws.send(request);
-    });
-
-    ws.on("message", async (data) => {
-      const dataStr = data.toString();
-      logger.info(`[${timestamp()}] 📥 에이전트 응답 수신 raw: ${dataStr.substring(0, 100)}...`);
-      try {
-        const firstSpace = dataStr.indexOf(" ");
-        if (firstSpace === -1) {
-          logger.info(`[${timestamp()}] ⚠️ 명령어 없음: ${dataStr}`);
-          return;
-        }
-
-        const cmd = dataStr.substring(0, firstSpace);
-        const res = JSON.parse(dataStr.substring(firstSpace + 1));
-
-        if (cmd === "/AGENT" && res.ok === false) {
-          throw new Error(res.message || "스케줄 작업 실행 중 오류가 발생했습니다.");
-        }
-
-        if (
-          cmd === "/APP.PUSH" &&
-          res.ok === true &&
-          res.data?.requestId === requestId &&
-          !responseHandled
-        ) {
-          responseHandled = true;
-          const response = res.data?.response || "응답 없음";
-          logger.info(`[${timestamp()}] ✅ AI 응답 수신완료 (내용: ${response.substring(0, 50)}...)`);
-          persistTaskResult(taskId, {
-            lastRunAt: new Date().toISOString(),
-            lastResult: response,
-            lastError: undefined,
-          });
-
-          // 2. UI 알림 요청 (동일한 커넥션 사용 - 로컬 MQ Gateway 역할)
-          const notify = `/TASKS.NOTIFY_RESULT ${JSON.stringify({
-            taskId,
-            label: task.label,
-            result: response,
-            agentId: task.agentId || "default",
-          })}`;
-          logger.info(`[${timestamp()}] 📤 UI 알림 전송: ${notify}`);
-          ws.send(notify);
-
-          // 마지막 단계: 1회성 스케줄러 삭제 및 마무리
-          if (task.isOneOff) {
-            await cleanupOneOffTask(taskId, tasks);
-          }
-        }
-
-        // UI 알림 요청에 대한 확인이 오면 종료 (/TASKS.NOTIFY_RESULT)
-        if (cmd === "/TASKS.NOTIFY_RESULT") {
-          logger.info(`[${timestamp()}] ✅ 모든 작업 완료 및 UI 알림 전송됨.`);
-          finish();
-        }
-      } catch (err) {
-        logger.error(`[${timestamp()}] ❌ 처리 중 오류:`, err);
-        persistTaskResult(taskId, {
-          lastRunAt: new Date().toISOString(),
-          lastError: err instanceof Error ? err.message : String(err),
-        });
-        finish(err instanceof Error ? err : new Error(String(err)));
-      }
-    });
-
-    ws.on("error", (err) => {
-      logger.error(`❌ 에이전트 연결 실패: ${err.message}`);
-      persistTaskResult(taskId, {
-        lastRunAt: new Date().toISOString(),
-        lastError: err.message,
-      });
-      finish(err);
-    });
-
-    // 타임아웃 방지
-    timeoutId = setTimeout(() => {
-      logger.error("❌ 작업 타임아웃 (30초)");
-      persistTaskResult(taskId, {
-        lastRunAt: new Date().toISOString(),
-        lastError: "작업 타임아웃 (30초)",
-      });
-      finish(new Error("작업 타임아웃 (30초)"));
-    }, 30000);
-  });
-
-  if (exitProcess) {
-    process.exit(0);
-  }
-}
-
-async function main() {
-  if (process.argv.length < 3) {
-    logger.info("Usage: node run_task.js <task_id>");
-    process.exit(1);
+    }
   }
 
-  const taskId = process.argv[2];
-  await runScheduledTask(taskId, { exitProcess: true });
+  if (options.exitProcess) process.exit(0);
 }
 
-async function cleanupOneOffTask(taskId: string, tasks: Task[]) {
-  logger.info(`[${timestamp()}] 🗑️ 1회성 스케줄러 삭제 처리 중...`);
-  const remainingTasks = tasks.filter((t: Task) => t.id !== taskId);
-  saveTasks(remainingTasks);
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────────────────
 
+async function cleanupOneOffTask(taskId: string) {
+  saveTasks(getTasks().filter((t: Task) => t.id !== taskId));
   const scheduler = getTaskScheduler();
-  if (!scheduler) {
-    logger.warn("  ⚠️ 로컬 스케줄러가 초기화되지 않아 즉시 동기화하지 못했습니다.");
-    return;
-  }
-
-  await scheduler.restoreFromDisk();
-  logger.info("  🗓️ 로컬 스케줄러 갱신 완료");
+  if (scheduler) await scheduler.restoreFromDisk();
 }
 
 function persistTaskResult(
   taskId: string,
-  data: {
-    lastRunAt: string;
-    lastResult?: string;
-    lastError?: string;
-  },
+  data: { lastRunAt: string; lastResult?: string; lastError?: string },
 ): void {
   const tasks = getTasks();
-  const index = tasks.findIndex((candidate) => candidate.id === taskId);
-  if (index === -1) {
-    return;
-  }
+  const index = tasks.findIndex((t) => t.id === taskId);
+  if (index === -1) return;
 
   tasks[index].lastRunAt = data.lastRunAt;
-  if (data.lastResult !== undefined) {
-    tasks[index].lastResult = data.lastResult;
-  }
-  if (data.lastError !== undefined) {
-    tasks[index].lastError = data.lastError;
-  } else {
-    delete tasks[index].lastError;
-  }
+  if (data.lastResult !== undefined) tasks[index].lastResult = data.lastResult;
+  if (data.lastError !== undefined) tasks[index].lastError = data.lastError;
+  else delete tasks[index].lastError;
 
   saveTasks(tasks);
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// CLI entry (하위 호환 — 직접 실행 시)
+// ──────────────────────────────────────────────────────────────────────────────
 
 function isDirectRunTaskEntry(): boolean {
   const entryFile = process.argv[1];
@@ -240,8 +262,13 @@ function isDirectRunTaskEntry(): boolean {
 }
 
 if (isDirectRunTaskEntry()) {
-  main().catch((error) => {
-    logger.error(error);
+  const taskId = process.argv[2];
+  if (!taskId) {
+    logger.info("Usage: node run_task.js <task_id>");
+    process.exit(1);
+  }
+  runScheduledTask(taskId, { exitProcess: true }).catch((err) => {
+    logger.error(err);
     process.exit(1);
   });
 }
