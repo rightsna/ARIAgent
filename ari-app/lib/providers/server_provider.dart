@@ -36,15 +36,15 @@ class ServerProvider extends ChangeNotifier {
       version: _version,
       mode: _mode,
       onLog: (msg) {
-        debugPrint('[ServerProvider] $msg');
+        debugPrint('[SP] $msg');
         _addLog(msg);
       },
       onErrorLog: (msg) {
-        debugPrint('[ServerProvider ERR] $msg');
+        debugPrint('[SP ERR] $msg');
         _addLog(msg);
       },
       onExit: (code) {
-        debugPrint('[ServerProvider] 프로세스 종료 (코드: $code)');
+        debugPrint('[SP] 프로세스 종료 (코드: $code)');
         _addLog('프로세스 종료 (코드: $code)');
         if (_status != ServerStatus.stopping) {
           _setStatus(ServerStatus.stopped);
@@ -67,7 +67,7 @@ class ServerProvider extends ChangeNotifier {
     _setStatus(ServerStatus.stopping);
     AriAgent.close(); // 에이전트 종료 시 웹소켓 먼저 닫기
     await _service.stopServer((msg) {
-      debugPrint('[ServerProvider] $msg');
+      debugPrint('[SP] $msg');
       _addLog(msg);
     });
     _setStatus(ServerStatus.stopped);
@@ -81,7 +81,7 @@ class ServerProvider extends ChangeNotifier {
   }
 
   void _setStatus(ServerStatus newStatus) {
-    debugPrint('[ServerProvider] $_status → $newStatus');
+    debugPrint('[SP] $_status → $newStatus');
     _status = newStatus;
     notifyListeners();
   }
@@ -98,7 +98,7 @@ class ServerProvider extends ChangeNotifier {
       await AriAgent.call('/SETTINGS', {'port': port});
       return true;
     } catch (e) {
-      debugPrint('[ServerProvider] savePortToServer failed: $e');
+      debugPrint('[SP] savePortToServer failed: $e');
       return false;
     }
   }

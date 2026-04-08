@@ -19,10 +19,6 @@ const DEFAULT_TIMEOUT_SEC = 120;
 const APP_CONNECT_WAIT_MS = 30_000;
 const APP_CONNECT_POLL_MS = 500;
 
-function timestamp() {
-  return new Date().toISOString().replace("T", " ").substring(0, 19);
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // App lifecycle helpers
 // ──────────────────────────────────────────────────────────────────────────────
@@ -128,7 +124,7 @@ export async function runScheduledTask(
     task = taskOrId;
   }
 
-  logger.info(`[${timestamp()}] 🔔 작업 실행 시작: ${task.id} (${task.label})`);
+  logger.info(`🔔 작업 실행 시작: ${task.id} (${task.label})`);
 
   if (!task.enabled) {
     logger.info("⏸️ 비활성 작업 — 스킵");
@@ -142,19 +138,19 @@ export async function runScheduledTask(
   // ── 앱 라이프사이클: 실행 전 ───────────────────────────────────────────────
   if (managedAppId) {
     if (UserSocketHandler.isAppConnected(managedAppId)) {
-      logger.info(`[${timestamp()}] ✅ '${managedAppId}' 이미 연결됨 — 런치 스킵`);
+      logger.info(`✅ '${managedAppId}' 이미 연결됨 — 런치 스킵`);
     } else {
-      logger.info(`[${timestamp()}] 🚀 '${managedAppId}' 연결 안됨 → 헤드리스 런치`);
+      logger.info(`🚀 '${managedAppId}' 연결 안됨 → 헤드리스 런치`);
       try {
         const config = getSettings(new Settings());
         const port = config.PORT || 29277;
         await launchAppHeadless(managedAppId, port);
         await waitForAppConnection(managedAppId);
         launchedByTask = true;
-        logger.info(`[${timestamp()}] ✅ '${managedAppId}' 연결 완료`);
+        logger.info(`✅ '${managedAppId}' 연결 완료`);
       } catch (err: any) {
         const errorMsg = `앱 런치 실패: ${err.message}`;
-        logger.error(`[${timestamp()}] ❌ ${errorMsg}`);
+        logger.error(`❌ ${errorMsg}`);
         persistTaskResult(task.id, { lastRunAt: new Date().toISOString(), lastError: errorMsg });
         if (options.exitProcess) process.exit(1);
         return;
@@ -178,13 +174,13 @@ export async function runScheduledTask(
 
     const result = await Promise.race([
       chatWithAgent(task.prompt, agentProfile, (msg) =>
-        logger.info(`[${timestamp()}] 💬 ${msg}`),
+        logger.info(`💬 ${msg}`),
       ),
       timeoutPromise,
     ]);
 
     const responseText = result.responseText || "응답 없음";
-    logger.info(`[${timestamp()}] ✅ 완료: ${responseText.substring(0, 80)}...`);
+    logger.info(`✅ 완료: ${responseText.substring(0, 80)}...`);
 
     persistTaskResult(task.id, {
       lastRunAt: new Date().toISOString(),
@@ -203,7 +199,7 @@ export async function runScheduledTask(
       await cleanupOneOffTask(task.id);
     }
   } catch (err: any) {
-    logger.error(`[${timestamp()}] ❌ 실행 오류: ${err.message}`);
+    logger.error(`❌ 실행 오류: ${err.message}`);
     persistTaskResult(task.id, {
       lastRunAt: new Date().toISOString(),
       lastError: err.message,
@@ -213,12 +209,12 @@ export async function runScheduledTask(
     if (launchedByTask && managedAppId) {
       const isHeadless = await checkIsHeadless(managedAppId);
       if (isHeadless) {
-        logger.info(`[${timestamp()}] 🛑 헤드리스 앱 '${managedAppId}' 종료`);
+        logger.info(`🛑 헤드리스 앱 '${managedAppId}' 종료`);
         await terminateApp(managedAppId).catch((err) =>
-          logger.warn(`[${timestamp()}] ⚠️ 앱 종료 실패: ${err.message}`),
+          logger.warn(`⚠️ 앱 종료 실패: ${err.message}`),
         );
       } else {
-        logger.info(`[${timestamp()}] ℹ️ '${managedAppId}' UI 모드로 전환됨 — 종료 스킵`);
+        logger.info(`ℹ️ '${managedAppId}' UI 모드로 전환됨 — 종료 스킵`);
       }
     }
   }
