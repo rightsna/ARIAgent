@@ -164,6 +164,12 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
   }
 
   @override
+  void onWindowRestore() {
+    windowManager.show();
+    windowManager.focus();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
