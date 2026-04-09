@@ -21,7 +21,7 @@ import "./routers/app_control.js";
 import "./routers/chat.js";
 import "./routers/homeassistant.js";
 import { logger } from "./infra/logger.js";
-import { runScheduledTask } from "./jobs/run_task.js";
+import { runScheduledTask } from "./services/jobs/run_task.js";
 import {
   initializeTaskScheduler,
   restoreTaskScheduler,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import '../../bridge/ws/AriAgent.dart';
 import '../models/ari_scheduled_task.dart';
@@ -26,7 +28,17 @@ class AriTaskProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _tasksCache = [];
   bool _initialized = false;
 
+  /// taskId → 진행 중인 progress 메시지 목록
+  final Map<String, List<String>> _progressMessages = {};
+
+  StreamSubscription? _taskResultSub;
+  StreamSubscription? _progressSub;
+
   bool get isInitialized => _initialized;
+
+  /// 특정 task의 progress 메시지 목록
+  List<String> progressFor(String taskId) =>
+      List.unmodifiable(_progressMessages[taskId] ?? []);
 
   /// 서버 응답을 AriScheduledTask 모델로 변환하여 반환
   List<AriScheduledTask> get tasks =>
@@ -37,11 +49,31 @@ class AriTaskProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get tasksRaw =>
       List.unmodifiable(_tasksCache);
 
-  /// 초기화: 서버에서 작업 목록을 가져옵니다
+  /// 초기화: 서버에서 작업 목록을 가져오고 WebSocket 이벤트를 구독합니다
   Future<void> init() async {
     if (_initialized) return;
     await refresh();
+    _subscribeToEvents();
     _initialized = true;
+  }
+
+  void _subscribeToEvents() {
+    // 작업 완료 시 서버 데이터로 갱신
+    _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
+      final taskId = data['taskId']?.toString();
+      if (taskId != null) _progressMessages.remove(taskId);
+      refresh();
+    });
+
+    // 진행 메시지를 provider에 저장
+    _progressSub = AriAgent.on('/AGENT.PROGRESS', (data) {
+      final payload = data['data'] ?? data;
+      final taskId = payload['requestId']?.toString();
+      final message = payload['message']?.toString();
+      if (taskId == null || message == null) return;
+      _progressMessages.putIfAbsent(taskId, () => []).add(message);
+      notifyListeners();
+    });
   }
 
   /// 서버에서 전체 목록 + 결과를 다시 가져옵니다

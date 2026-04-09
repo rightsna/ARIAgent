@@ -3,17 +3,17 @@ import path from "path";
 import os from "os";
 import { spawn } from "child_process";
 
-import { Task } from "../models/task.js";
-import { AgentInfo } from "../models/agent.js";
-import { Settings } from "../models/settings.js";
-import { getSettings } from "../repositories/setting_repository.js";
-import { getTasks, saveTasks } from "../repositories/task_repository.js";
-import { getTaskScheduler } from "../services/scheduler/runtime.js";
-import { chatWithAgent } from "../services/agent/index.js";
-import { UserSocketHandler } from "../system/ws.js";
-import { findAppExecutable } from "../infra/runtime_paths.js";
-import { DATA_DIR } from "../infra/data.js";
-import { logger } from "../infra/logger.js";
+import { Task } from "../../models/task.js";
+import { AgentInfo } from "../../models/agent.js";
+import { Settings } from "../../models/settings.js";
+import { getSettings } from "../../repositories/setting_repository.js";
+import { getTasks, saveTasks } from "../../repositories/task_repository.js";
+import { getTaskScheduler } from "../scheduler/runtime.js";
+import { chatWithAgent } from "../agent/index.js";
+import { UserSocketHandler } from "../../system/ws.js";
+import { findAppExecutable } from "../../infra/runtime_paths.js";
+import { DATA_DIR } from "../../infra/data.js";
+import { logger } from "../../infra/logger.js";
 
 const DEFAULT_TIMEOUT_SEC = 120;
 const APP_CONNECT_WAIT_MS = 30_000;

@@ -18,8 +18,8 @@ class ChatSuggestions extends StatelessWidget {
           _suggestionChip('🔍 파일 찾아줘'),
           _suggestionChip('1분뒤 알려줘!'),
           _suggestionChip('🎵 감성적인 노래 들려줘!'),
-          _suggestionChip('쓰레드에 안녕이라고 포스팅해줘'),
-          _suggestionChip('메모장에 일기 써줘!'),
+          _suggestionChip('비트코인 거래앱 설치해줘!'),
+          _suggestionChip('주식 자동매매 하고 싶어!'),
         ],
       ),
     );
