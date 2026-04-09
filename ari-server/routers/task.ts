@@ -3,7 +3,7 @@ import { handleGetTasksWs, handleTasksSyncWs, handleTasksCrontabWs, handleAddTas
 import { UserSocketHandler } from "../system/ws.js";
 import { logger } from "../infra/logger.js";
 import { appendChatLog } from "../repositories/chat_log_repository.js";
-import { getActiveAgentId } from "../services/memory.js";
+import { getTasks } from "../repositories/task_repository.js";
 
 router.on("/TASKS", async (ws, params) => {
   const data = await handleGetTasksWs();
@@ -46,11 +46,19 @@ router.on("/TASKS.RUN", async (ws, params) => {
 router.on("/TASKS.NOTIFY_RESULT", async (ws, params) => {
   logger.info(`📡 Inbound: /TASKS.NOTIFY_RESULT from client [${ws.uuid}] for [${params.label || "unknown"}]`);
 
-  const agentId = (params.agentId as string | undefined) || getActiveAgentId();
+  const taskId = params.taskId as string | undefined;
+  const matchedTask = taskId
+    ? getTasks().find((task) => task.id === taskId)
+    : undefined;
+  const agentId =
+    (params.agentId as string | undefined) ||
+    matchedTask?.agentId ||
+    "default";
 
   // 브로드캐스트 데이터 구성
   const broadcastData = {
     taskId: params.taskId,
+    agentId,
     label: params.label,
     result: params.result,
     executedAt: new Date().toISOString(),

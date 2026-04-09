@@ -195,6 +195,7 @@ export async function runScheduledTask(
 
     UserSocketHandler.broadcast("/TASK_RESULT", {
       taskId: task.id,
+      agentId: task.agentId || "default",
       label: task.label,
       result: responseText,
       executedAt,

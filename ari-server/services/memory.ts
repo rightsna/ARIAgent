@@ -9,28 +9,14 @@ import {
   removeDailyMemoryDir,
 } from "../repositories/memory_repository.js";
 import { logger } from "../infra/logger.js";
+import { getExecutionContext } from "./agent/execution_context.js";
 
-let activeAgentId: string = "default";
-let activeAppId: string | undefined = undefined;
-
-export function setActiveAgentId(id: string) {
-  activeAgentId = id;
-}
-
-export function getActiveAgentId(): string {
-  return activeAgentId;
-}
-
-export function setActiveAppId(id: string | undefined) {
-  activeAppId = id;
-}
-
-export function getActiveAppId(): string | undefined {
-  return activeAppId;
+function resolveAgentId(agentId?: string): string {
+  return agentId || getExecutionContext()?.agentId || "default";
 }
 
 export function updateCoreMemory(newContent: string, agentId?: string): void {
-  const activeId = agentId || activeAgentId;
+  const activeId = resolveAgentId(agentId);
   dataWriteCoreMemory(activeId, newContent);
 }
 
@@ -38,7 +24,7 @@ export function updateCoreMemory(newContent: string, agentId?: string): void {
  * 장기 기억(MEMORY.md)을 읽어옵니다. 없으면 빈 문자열 반환.
  */
 export function readCoreMemory(agentId?: string): string {
-  const activeId = agentId || activeAgentId;
+  const activeId = resolveAgentId(agentId);
   return dataReadCoreMemory(activeId);
 }
 
@@ -69,7 +55,7 @@ function getYesterdayString(): string {
  * 오늘 날짜의 Daily Log 파일에 내용을 추가(Append)합니다.
  */
 export function appendDailyMemory(content: string, agentId?: string): void {
-  const activeId = agentId || activeAgentId;
+  const activeId = resolveAgentId(agentId);
   const todayFilename = `${getTodayString()}.md`;
 
   let prefix = "";
@@ -86,7 +72,7 @@ export function appendDailyMemory(content: string, agentId?: string): void {
  * 특정 일자의 로그를 읽어옵니다. (ex: "2026-02-26")
  */
 function readDailyLogByDate(dateStr: string, agentId?: string): string {
-  const activeId = agentId || activeAgentId;
+  const activeId = resolveAgentId(agentId);
   const content = readDailyMemory(activeId, `${dateStr}.md`);
   if (content) {
     return `### Log Data from ${dateStr}\n` + content;
@@ -112,7 +98,7 @@ export function readRecentDailyLogs(agentId?: string): string {
  * 특정 에이전트의 모든 기억(MEMORY.md 및 Daily Logs)을 초기화합니다.
  */
 export function clearAgentMemory(agentId?: string): void {
-  const activeId = agentId || activeAgentId;
+  const activeId = resolveAgentId(agentId);
   if (!hasWorkspace(activeId)) return;
 
   removeCoreMemory(activeId);

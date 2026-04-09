@@ -15,6 +15,7 @@ import 'providers/home_assistant_provider.dart';
 import 'providers/ari_app_provider.dart';
 import 'providers/server_provider.dart';
 import 'services/desktop_notification_service.dart';
+import 'screens/place/providers/place_agent_status_provider.dart';
 
 import 'package:ari_plugin/ari_plugin.dart';
 import 'package:flutter/gestures.dart';
@@ -45,6 +46,7 @@ void main() async {
   await ConfigProvider().init();
   await AvatarProvider().init();
   await AriAppProvider().init();
+  await PlaceAgentStatusProvider().init();
 
   // AriAgent 초기화 (Repository에서 URL 가져옴)
   AriAgent.init(url: configRepo.wsUrl);
@@ -204,6 +206,9 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
           value: HomeAssistantProvider(),
         ),
         ChangeNotifierProvider<AriAppProvider>.value(value: AriAppProvider()),
+        ChangeNotifierProvider<PlaceAgentStatusProvider>.value(
+          value: PlaceAgentStatusProvider(),
+        ),
         ChangeNotifierProxyProvider<ConfigProvider, AriChatProvider>(
           create: (_) {
             final chatProvider = AriChatProvider();

@@ -1,5 +1,4 @@
 import { AgentMessage } from "@mariozechner/pi-agent-core";
-import { setActiveAgentId, setActiveAppId } from "../memory.js";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { getAgentsConfig } from "../../repositories/agent_repository.js";
 import { appendChatLog } from "../../repositories/chat_log_repository.js";
@@ -19,6 +18,7 @@ import { buildSystemPrompt, pruneContext } from "./context_builder.js";
 import { extractFinalResponseText } from "./response_parser.js";
 import { getOAuthStatus } from "../oauth/index.js";
 import { Prompt } from "../../infra/prompt.js";
+import { runWithExecutionContext } from "./execution_context.js";
 import {
   clearAgentSession,
   clearAllAgentSessions,
@@ -161,8 +161,6 @@ export async function chatWithAgent(
     ...agentProfile,
     id: currentAgentId,
   });
-  setActiveAgentId(currentAgentId);
-  setActiveAppId(currentAgentProfile.appId);
 
   if (agentState.availableProviders.length === 0) {
     return {
@@ -184,11 +182,18 @@ export async function chatWithAgent(
   }
 
   const systemPrompt = await buildSystemPrompt(session.agentInfo);
-  const result = await session.runInference(
-    message,
-    systemPrompt,
-    agentState,
-    onProgress,
+  const result = await runWithExecutionContext(
+    {
+      agentId: currentAgentId,
+      appId: currentAgentProfile.appId,
+    },
+    () =>
+      session.runInference(
+        message,
+        systemPrompt,
+        agentState,
+        onProgress,
+      ),
   );
 
   if (!result.success) {
@@ -456,6 +461,8 @@ export async function executeAgentRequest(
       ok: true,
       data: {
         requestId,
+        agentId: currentAgentId,
+        appId: resolvedAppId,
         message: progressMessage,
         source,
       },

@@ -27,6 +27,7 @@ import { logger } from "../../infra/logger.js";
 import { t } from "../../infra/i18n.js";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { Settings } from "../../models/settings.js";
+import { markAgentIdle, markAgentWorking } from "./runtime_state.js";
 
 export class AgentSession {
   agent!: Agent;
@@ -157,6 +158,10 @@ export class AgentSession {
   }
 
   removeRequest(requestId: string): void {
+    const pending =
+      this.currentPendingResponse ||
+      this.pendingResponses.find((item) => item.requestId === requestId) ||
+      null;
     if (this.currentPendingResponse?.requestId === requestId) {
       this.currentPendingResponse = null;
       this.currentRequestAnnounced = false;
@@ -166,6 +171,9 @@ export class AgentSession {
     );
     if (index !== -1) {
       this.pendingResponses.splice(index, 1);
+    }
+    if (pending) {
+      markAgentIdle(pending.agentId);
     }
     this.rejectRequestWaiter(requestId, new Error("Request aborted."));
   }
@@ -195,6 +203,7 @@ export class AgentSession {
     this.currentPendingResponse = null;
     this.currentRequestAnnounced = false;
     this.resolveRequestWaiter(pending.requestId, responseText);
+    markAgentIdle(pending.agentId);
 
     if (this.shouldBroadcastPending(pending)) {
       appendChatLog(pending.agentId, {
@@ -217,6 +226,7 @@ export class AgentSession {
         data: {
           response: responseText,
           requestId: pending.requestId,
+          agentId: pending.agentId,
           appId: pending.appId,
           source: pending.source || "user",
         },
@@ -256,9 +266,16 @@ export class AgentSession {
           !this.currentRequestAnnounced &&
           this.shouldBroadcastPending(pending)
         ) {
+          markAgentWorking({
+            agentId: pending.agentId,
+            requestId: pending.requestId,
+            source: pending.source || "user",
+          });
           UserSocketHandler.broadcast("/AGENT.REQUEST", {
             message: pending.originalMessage,
             requestId: pending.requestId,
+            agentId: pending.agentId,
+            appId: pending.appId,
             source: pending.source || "user",
           });
           this.currentRequestAnnounced = true;
@@ -291,6 +308,7 @@ export class AgentSession {
       if (event.type === "agent_end" && this.currentPendingResponse != null) {
         const errorMessage = this.agent.state.error;
         if (errorMessage && errorMessage.toLowerCase().includes("abort")) {
+          markAgentIdle(this.currentPendingResponse.agentId);
           this.removeRequest(this.currentPendingResponse.requestId);
           this.currentResponseText = "";
           return;

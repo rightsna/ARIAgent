@@ -1,10 +1,18 @@
 import { AgentTool } from "@mariozechner/pi-agent-core";
 import { Type } from "@mariozechner/pi-ai";
 import { handleDeleteTaskWs, registerScheduledTask } from "../services/task.js";
-import { getActiveAgentId, getActiveAppId } from "../services/memory.js";
+import { getExecutionContext } from "../services/agent/execution_context.js";
 import { logger } from "../infra/logger.js";
 import { t } from "../infra/i18n.js";
 import { getTasks } from "../repositories/task_repository.js";
+
+function resolveExecutionContext(): { agentId: string; appId?: string } {
+  const context = getExecutionContext();
+  return {
+    agentId: context?.agentId || "default",
+    appId: context?.appId,
+  };
+}
 
 export const registerScheduleTool: AgentTool = {
   name: "register_schedule",
@@ -19,8 +27,7 @@ export const registerScheduleTool: AgentTool = {
   }),
   execute: async (_toolCallId, params, _signal, _onUpdate) => {
     const { cron, prompt, label } = params as { cron: string; prompt: string; label: string };
-    const agentId = getActiveAgentId();
-    const appId = getActiveAppId();
+    const { agentId, appId } = resolveExecutionContext();
     logger.info(`📅 Tool[schedule]: ${label} (${cron}) [Agent: ${agentId}, App: ${appId}, OneOff: false]`);
     await registerScheduledTask({ cron, prompt, label, agentId, appId, isOneOff: false });
     return {
@@ -44,8 +51,7 @@ export const registerOneOffScheduleTool: AgentTool = {
   }),
   execute: async (_toolCallId, params, _signal, _onUpdate) => {
     const { delayMinutes, prompt, label } = params as { delayMinutes: number; prompt: string; label: string };
-    const agentId = getActiveAgentId();
-    const appId = getActiveAppId();
+    const { agentId, appId } = resolveExecutionContext();
 
     const d = new Date(Date.now() + delayMinutes * 60000);
     // 표시와 하위 호환을 위해 cron도 유지하지만, 실제 1회성 시각은 scheduledFor를 우선 저장한다.
@@ -74,7 +80,7 @@ export const listSchedulesTool: AgentTool = {
     "현재 활성 에이전트에 등록된 스케줄 목록을 조회한다. 스케줄 삭제/수정 전에 어떤 taskId와 label이 있는지 먼저 확인할 때 사용한다.",
   parameters: Type.Object({}),
   execute: async () => {
-    const activeAgentId = getActiveAgentId();
+    const { agentId: activeAgentId } = resolveExecutionContext();
     const tasks = getTasks().filter(
       (task) => (task.agentId || "default") === activeAgentId,
     );
@@ -135,7 +141,7 @@ export const deleteScheduleTool: AgentTool = {
   }),
   execute: async (_toolCallId, params, _signal, _onUpdate) => {
     const { taskId, label } = params as { taskId?: string; label?: string };
-    const activeAgentId = getActiveAgentId();
+    const { agentId: activeAgentId } = resolveExecutionContext();
 
     if (!taskId && !label) {
       return {

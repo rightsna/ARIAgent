@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import 'models/place_avatar.dart';
 import 'models/ha_device_item.dart';
+import 'providers/place_agent_status_provider.dart';
 import 'widgets/agent_avatar.dart';
 import 'widgets/ha_device_icon.dart';
 import 'widgets/ha_registration_sheet.dart';
@@ -69,12 +70,8 @@ class _PlaceTabState extends State<PlaceTab> {
     final avatarProvider = context.watch<AvatarProvider>();
     final allProfiles = avatarProvider.allAvatars;
     final currentAvatarId = avatarProvider.currentAvatarId;
-    final isWorking = context.watch<AriChatProvider>().isLoading;
-    final taskProvider = context.watch<AriTaskProvider>();
+    final statusProvider = context.watch<PlaceAgentStatusProvider>();
     final appProvider = context.watch<AriAppProvider>();
-
-    // 로직 호출을 모델 클래스에서 직접 수행
-    final scheduledIds = PlaceAvatar.getScheduledWorkingIds(taskProvider);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -86,11 +83,9 @@ class _PlaceTabState extends State<PlaceTab> {
           return PlaceAvatar(
             profile: profile,
             position: _avatarPositions[profile.id]!,
-            status: PlaceAvatar.calculateStatus(
-              avatarId: profile.id,
-              currentAvatarId: currentAvatarId,
-              isWorking: isWorking,
-              scheduledWorkingIds: scheduledIds,
+            status: statusProvider.statusFor(
+              profile.id,
+              isSelected: profile.id == currentAvatarId,
             ),
           );
         }).toList();
