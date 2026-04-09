@@ -1,6 +1,6 @@
 import { AgentTool } from "@mariozechner/pi-agent-core";
 import { Type } from "@mariozechner/pi-ai";
-import { loadAllSkills } from "../skills/index.js";
+import { loadSkillsForPrompt } from "../services/tools/skill_registry.js";
 
 export const readSkillTool: AgentTool = {
   name: "read_skill",
@@ -21,7 +21,7 @@ export const readSkillTool: AgentTool = {
       };
     }
 
-    const skills = await loadAllSkills();
+    const skills = await loadSkillsForPrompt();
     const skill = skills.find((entry) => entry.name === skillName);
 
     if (!skill) {

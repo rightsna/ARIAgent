@@ -153,17 +153,17 @@ class WebSocketService {
 
       _channel!.stream.listen(
         (message) {
-          _logDebug('WebSocketService receive(): $message');
+          _logDebug('[WSS] receive(): $message');
           receive(message);
         },
         onDone: () {
-          _logDebug('WebSocket disconnected');
+          _logDebug('[WSS] disconnected');
           _setConnected(false);
           _channel = null;
           if (!_isManuallyClosed) _recoverConnection();
         },
         onError: (error) {
-          _logDebug('WebSocket error: $error');
+          _logDebug('[WSS] error: $error');
           _setConnected(false);
           _channel = null;
           _recoverConnection();
@@ -174,9 +174,9 @@ class WebSocketService {
       _setConnected(true);
       _isManuallyClosed = false;
       _resetReconnectState();
-      _logDebug('WebSocket connected');
+      _logDebug('[WSS] connected');
     } catch (e) {
-      _logDebug('WebSocket connect failed: $e');
+      _logDebug('[WSS] connect failed: $e');
       _setConnected(false);
       _channel = null;
       _recoverConnection();
@@ -191,11 +191,11 @@ class WebSocketService {
       try {
         final nextUrl = await _fallbackUrlResolver?.call(_url);
         if (nextUrl != null && nextUrl.isNotEmpty && nextUrl != _url) {
-          _logDebug('Switching WebSocket url to fallback: $nextUrl');
+          _logDebug('[WSS] Switching WebSocket url to fallback: $nextUrl');
           _url = nextUrl;
         }
       } catch (e) {
-        _logDebug('WebSocket fallback resolution failed: $e');
+        _logDebug('[WSS] fallback resolution failed: $e');
       } finally {
         _isRecoveringConnection = false;
       }

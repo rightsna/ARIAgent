@@ -13,7 +13,7 @@ import {
   findAppExecutable,
 } from "../infra/runtime_paths.js";
 import { DATA_DIR } from "../infra/data.js";
-import { loadAllSkills } from "../skills/index.js";
+import { loadAllApps } from "../skills/index.js";
 import { execPromise } from "./bash.js";
 
 function resolveAppExecutable(appName: string): string {
@@ -338,7 +338,7 @@ export const installAppTool: AgentTool = {
     logger.info(`[AppInstall] Starting installation for ${appId} from ${url}`);
 
     const tempDir = path.join(DATA_DIR, "tmp_install", appId);
-    const skillsDir = path.join(DATA_DIR, "skills", appId);
+    const skillsDir = path.join(DATA_DIR, "apps", appId);
 
     try {
       // 2. 준비
@@ -424,7 +424,7 @@ export const installAppTool: AgentTool = {
       fs.renameSync(sourceDir, skillsDir);
 
       // 8. 스킬 리로드
-      await loadAllSkills();
+      await loadAllApps();
 
       return {
         content: [

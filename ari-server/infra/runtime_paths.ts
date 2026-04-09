@@ -113,8 +113,9 @@ export function resolveServerPath(...segments: string[]): string {
 
 export function getBundleRoots(): string[] {
   const candidates = uniquePaths([
-    path.join(os.homedir(), ".ari-agent", "plugin"),
+    path.join(os.homedir(), ".ari-agent", "apps"),
     path.join(os.homedir(), ".ari-agent", "skills"),
+    path.join(os.homedir(), ".ari-agent", "plugin"),
     getWorkspaceRoot(),
     path.join(getWorkspaceRoot(), "ari-app", "build", "macos", "Build", "Products", "Debug"),
     path.join(getWorkspaceRoot(), "ari-app", "build", "macos", "Build", "Products", "Release"),
@@ -139,7 +140,6 @@ export function findAppExecutable(appId: string): string | null {
         appIdNoUnderscore,
         appId.charAt(0).toUpperCase() + appId.slice(1).replace(/_/g, ""),
         "app",
-        "AriAgent",
       ];
 
       for (const cand of candidates) {
