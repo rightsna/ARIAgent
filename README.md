@@ -25,7 +25,7 @@ ARI 에이전트는 로컬 우선(local-first) 데스크톱 AI 비서입니다.
   RPC 요청을 보내고, 채팅을 렌더링하며, 런타임 상태를 표시합니다.
 - `ari-framework`는 외부 앱 연동을 위한 규격 및 가이드라인입니다.
   새로운 기능이나 앱이 ARI 에이전트와 표준 프로토콜로 통신할 수 있도록 설정하는 도구 세트를 제공합니다.
-- 외부 앱(예: `youtube_player`, `notepad`)은 `~/.ari-agent/skills` 폴더 아래에 설치될 수 있습니다.
+- 외부 앱(예: `youtube_player`, `notepad`)은 `~/.ari-agent/apps` 폴더 아래에 설치될 수 있습니다.
   이러한 앱들은 일단 실행되면 표준화된 프로토콜을 통해 통신합니다.
 
 핵심 아키텍처 규칙:
@@ -40,7 +40,7 @@ ARI 에이전트는 로컬 우선(local-first) 데스크톱 AI 비서입니다.
 Flutter 앱 (쉘) <-> 로컬 서버 (ari-server) <-> 에이전트 런타임 (agent)
                                             \-> 표준 기능 앱 동기화 프로토콜 (REGISTER/COMMAND)
                                              \
-                                              -> 외부 앱 (~/.ari-agent/skills에 설치됨)
+                                              -> 외부 앱 (~/.ari-agent/apps에 설치됨)
 ```
 
 ### 앱 쉘 (`ari-app`)
@@ -96,7 +96,7 @@ Flutter 앱 (쉘) <-> 로컬 서버 (ari-server) <-> 에이전트 런타임 (age
 
 - 메인 도구는 `agent/tool_registry.ts`에 정의되어 있습니다.
 - **동적 로딩**:
-  - 도구와 스킬은 `~/.ari-agent/tools` 및 `~/.ari-agent/skills`에서 동적으로 로드됩니다.
+  - 도구와 스킬은 `~/.ari-agent/tools` 및 `~/.ari-agent/apps`에서 동적으로 로드됩니다.
   - `reload_skills` 도구를 사용하여 서버를 재시작하지 않고 파일 변경 사항을 동기화할 수 있습니다.
 - **주요 메인 도구**:
   - `execute_bash`: 직접적인 쉘 실행.

@@ -13,8 +13,8 @@
 작업을 시작하기 전, 에이전트는 다음 환경이 준비되어 있는지 확인해야 합니다.
 
 1.  **Flutter & Dart SDK**: 시스템에 Flutter가 설치되어 있어야 합니다. (`flutter doctor`로 확인)
-2.  **Git 및 계정 연동**: GitHub 등 원격 저장소와 계정이 연동되어 있어야 합니다. **미연동 시 작업을 즉시 중단하고 사용자에게 요청하십시오.**
-3.  **배포 타켓 확인**: 개발 시작 전, 반드시 사용자에게 **플랫폼(macOS, Windows 등)**을 질문하고 확인을 받아야 합니다.
+2.  **Git 및 계정 연동**: GitHub 등 원격 저장소를 사용하는 경우, clone/push/pull 권한과 계정 연동 상태를 먼저 확인합니다.
+3.  **배포 타겟 확인**: 개발 시작 전, 대상 플랫폼(macOS, Windows 등)을 확인하고 그에 맞는 설정과 빌드 경로를 사용합니다.
 4.  **프로젝트 생성**: 신규 프로젝트인 경우 아래 명령어로 시작합니다.
     ```bash
     flutter create --platforms=macos,windows [plugin_name]
@@ -25,7 +25,7 @@
 ## 2. 개발 표준 및 구조 (Coding Standards)
 
 1.  **단순화 & 격리**: 각 기능은 `lib/components/[feature_name]/` 하위에 완전히 독립적으로 구성합니다.
-2.  **비개발자 중심**: 모든 파일 상단과 로직에 **한글 주석**을 필수적으로 작성합니다.
+2.  **비개발자 중심**: 복잡한 로직, 프로토콜 처리, 상태 전이처럼 이해 비용이 높은 부분에는 한글 주석을 추가합니다.
 3.  **폴더 구조 규격**:
     ```text
     lib/
@@ -61,23 +61,32 @@ dependencies:
 ```
 
 ### 3.2 핵심 구현 (Implementation)
-`main.dart`에서 실행 인자를 수신하고 핸들러를 등록합니다. 규격화된 개발을 위해 `protocol_config.dart` 파일을 분리하여 관리하는 것을 권장합니다.
+`main.dart`에서 `AriAgent`를 초기화하고 연결한 뒤 핸들러를 등록합니다. 필요하면 실행 인자 또는 환경값으로 URL을 주입할 수 있으며, 규격화된 개발을 위해 `protocol_config.dart` 파일을 분리하여 관리하는 것을 권장합니다.
 
-- **실행 인자**: `--port`, `--host` (서버 접속 정보)
-- **App Protocol Handler**: 에이전트의 명령(`COMMAND`)과 상태 조회(`QUERY`)를 처리합니다.
+- **서버 접속 정보**: 기본값은 `ws://127.0.0.1:29277`이며, 필요시 `url` 또는 `host`/`port`로 초기화할 수 있습니다.
+- **App Protocol Handler**: 에이전트의 명령(`COMMAND`)과 예약 상태 조회 명령(`GET_STATE`)을 처리합니다.
 
 **추가 패턴 (ProtocolConfig)**:
 ```dart
 // lib/protocol_config.dart
+import 'package:ari_plugin/ari_plugin.dart';
+
 class ProtocolConfig {
   static const String appId = 'my_app_id';
+
   static AppProtocolHandler createHandler() => AppProtocolHandler(
     appId: appId,
-    onCommand: (cmd, params) => handleCommand(cmd, params),
+    onCommand: (command, params) => handleCommand(
+      command: command,
+      params: params,
+    ),
     onGetState: () => { 'status': 'ready' },
   );
 
-  static dynamic handleCommand(String command, Map<String, dynamic> params) {
+  static dynamic handleCommand({
+    required String command,
+    required Map<String, dynamic> params,
+  }) {
     if (command == 'MY_ACTION') return {'status': 'success'};
     return null;
   }
@@ -86,19 +95,51 @@ class ProtocolConfig {
 
 ```dart
 // lib/main.dart
+import 'package:flutter/material.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import 'protocol_config.dart';
 
-Future<void> main(List<String> args) async {
-  // 1. 연결 초기화 (args 파싱 생략)
-  AriAgent.init(host: host, port: port);
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. 연결 초기화
+  AriAgent.init();
   AriAgent.connect();
 
-  // 2. 핸들러 등록 및 시작
-  final handler = ProtocolConfig.createHandler();
-  handler.start();
-
   runApp(const MyApp());
+}
+
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final AppProtocolHandler handler;
+
+  @override
+  void initState() {
+    super.initState();
+    handler = ProtocolConfig.createHandler();
+    handler.start();
+  }
+
+  @override
+  void dispose() {
+    handler.stop();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      home: Scaffold(
+        body: Center(child: Text('ARI connected app')),
+      ),
+    );
+  }
 }
 ```
 
@@ -112,9 +153,10 @@ Future<void> main(List<String> args) async {
 2.  **명령 수신 (COMMAND)**: `/APP.COMMAND {"command": "...", "params": {...}}`
     - 명령어 중 `GET_STATE`는 앱의 현재 상태를 요청하는 예약된 명령어입니다.
 3.  **결과 응답**: `/APP.COMMAND_RESPONSE {"requestId": "...", "result": {...}}`
-4.  **자발적 보고 (REPORT)**: `/APP.REPORT {"appId": "...", "message": "...", "type": "info"}`
+4.  **자발적 보고 (REPORT)**: `AriAgent.report(...)`를 사용해 서버의 에이전트에 메시지를 전달합니다.
+    - 내부적으로는 `/AGENT` 요청을 사용합니다.
     - 앱이 스스로 서버(에이전트)에게 특정 사건을 보고할 때 사용합니다.
-    - **중요**: 이 명령을 보내면 서버의 에이전트가 내용을 분석하고 사용자에게 **자연스러운 문장**으로 답변을 생성하여 전달합니다. (역방향 소통)
+    - **중요**: 이 요청을 보내면 서버의 에이전트가 내용을 분석하고 사용자에게 **자연스러운 문장**으로 답변을 생성하여 전달할 수 있습니다.
 
 ---
 
@@ -133,8 +175,12 @@ Future<void> main(List<String> args) async {
 
 1.  **독립성**: 특정 컴포넌트 폴더 하나만 복사해도 작동할 수 있도록 외부 참조를 최소화합니다.
 2.  **SKILL.md 필수**: 에이전트가 앱을 다루는 법을 설명하는 `SKILL.md` 파일을 프로젝트 루트에 포함합니다.
-    - 내용: `appId`, 지원 명령어, 자연어 요청 대응 규칙 등 (예: `ari-framework/sample_app/SKILL.md` 참고)
+    - 내용: `appId`, 지원 명령어, 자연어 요청 대응 규칙 등 (예: `ari-framework/sample_basic/SKILL.md` 형식 참고)
 3.  **배포**: 데스크탑(macOS, Windows) 배포 규격을 따르며, 필요시 Vercel(Web) 등을 지원합니다.
+
+> [!NOTE]
+> 사용자 설치 앱의 최종 배포 경로는 최신 기준으로 `~/.ari-agent/apps/<app_id>`를 사용합니다.
+> `~/.ari-agent/skills`는 레거시 호환 경로로만 취급하세요.
 
 ---
 
