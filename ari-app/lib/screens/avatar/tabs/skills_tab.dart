@@ -39,7 +39,11 @@ class _SkillsTabState extends State<SkillsTab> {
           return _buildErrorState();
         }
 
-        final skills = snapshot.data!['skills'] as List? ?? [];
+        final allSkills = snapshot.data!['skills'] as List? ?? [];
+        final skills = allSkills
+            .whereType<Map<String, dynamic>>()
+            .where((s) => s['isApp'] != true)
+            .toList();
 
         if (skills.isEmpty) {
           return _buildEmptyState();
@@ -53,7 +57,7 @@ class _SkillsTabState extends State<SkillsTab> {
             padding: const EdgeInsets.all(20),
             itemCount: skills.length,
             itemBuilder: (context, index) {
-              final skill = skills[index] as Map<String, dynamic>;
+              final skill = skills[index];
               return _buildSkillCard(skill, _refreshPlugins);
             },
           ),

@@ -7,6 +7,7 @@ import 'tabs/profile_tab.dart';
 import 'tabs/logs_tab.dart';
 import 'tabs/memory_tab.dart';
 import 'schedule/schedule_tab.dart';
+import 'tabs/apps_tab.dart';
 import 'tabs/skills_tab.dart';
 import 'tabs/tools_tab.dart';
 import 'tabs/channels_tab.dart';
@@ -37,7 +38,7 @@ class _AvatarTabState extends State<AvatarTab>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 8, vsync: this);
+    _tabController = TabController(length: 9, vsync: this);
   }
 
   @override
@@ -87,6 +88,7 @@ class _AvatarTabState extends State<AvatarTab>
               Tab(text: 'Logs'),
               Tab(text: 'Memory'),
               Tab(text: 'Schedule'),
+              Tab(text: 'Apps'),
               Tab(text: 'Skills'),
               Tab(text: 'Tools'),
               Tab(text: 'Channels'),
@@ -104,6 +106,7 @@ class _AvatarTabState extends State<AvatarTab>
                 LogsTab(),
                 const MemoryTab(),
                 const ScheduleTab(),
+                const AppsTab(),
                 SkillsTab(),
                 ToolsTab(),
                 ChannelsTab(),
