@@ -295,6 +295,61 @@ export async function submitAgentRequest(
   return { status: "broadcasted" };
 }
 
+export async function submitAgentRequestAndWait(
+  message: string,
+  agentProfile: AgentInfo,
+  onProgress: ((message: string) => void) | undefined,
+  pendingResponse: PendingAgentResponse,
+): Promise<{
+  status: "follow_up" | "broadcasted" | "cancelled";
+  responseText?: string;
+}> {
+  const agentId = pendingResponse.agentId || agentProfile.id || "default";
+  const currentAgentProfile = new AgentInfo({
+    ...agentProfile,
+    id: agentId,
+  });
+
+  if (agentState.availableProviders.length === 0) {
+    const result = await submitAgentRequest(
+      message,
+      currentAgentProfile,
+      onProgress,
+      pendingResponse,
+    );
+    return {
+      status: result.status,
+      responseText: `[에코 모드] "${message}"\n\n⚠️ Settings에서 하나 이상의 AI Provider API Key를 추가하세요.`,
+    };
+  }
+
+  const session = getSessionForAgent(currentAgentProfile);
+  session.ensureLifecycleAttached();
+  const completion = session.waitForRequestCompletion(pendingResponse.requestId);
+
+  try {
+    const result = await submitAgentRequest(
+      message,
+      currentAgentProfile,
+      onProgress,
+      pendingResponse,
+    );
+
+    if (result.status === "cancelled") {
+      return { status: "cancelled" };
+    }
+
+    const responseText = await completion;
+    return {
+      status: result.status,
+      responseText,
+    };
+  } catch (error) {
+    dropPendingResponse(agentId, pendingResponse.requestId);
+    throw error;
+  }
+}
+
 export function dropPendingResponse(agentId: string, requestId: string): void {
   const session = getSession(agentId);
   if (!session) {

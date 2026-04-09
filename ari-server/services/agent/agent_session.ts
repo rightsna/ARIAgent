@@ -33,6 +33,13 @@ export class AgentSession {
   agentInfo: AgentInfo;
   resolvedApiKey: string;
   pendingResponses: PendingAgentResponse[] = [];
+  private requestWaiters = new Map<
+    string,
+    {
+      resolve: (responseText: string) => void;
+      reject: (error: Error) => void;
+    }
+  >();
   currentPendingResponse: PendingAgentResponse | null = null;
   currentResponseText = "";
   currentRequestAnnounced = false;
@@ -117,6 +124,30 @@ export class AgentSession {
     this.pendingResponses.push(pending);
   }
 
+  waitForRequestCompletion(requestId: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      this.requestWaiters.set(requestId, { resolve, reject });
+    });
+  }
+
+  private resolveRequestWaiter(requestId: string, responseText: string): void {
+    const waiter = this.requestWaiters.get(requestId);
+    if (!waiter) {
+      return;
+    }
+    this.requestWaiters.delete(requestId);
+    waiter.resolve(responseText);
+  }
+
+  private rejectRequestWaiter(requestId: string, error: Error): void {
+    const waiter = this.requestWaiters.get(requestId);
+    if (!waiter) {
+      return;
+    }
+    this.requestWaiters.delete(requestId);
+    waiter.reject(error);
+  }
+
   beginNextRequest(): void {
     const nextPending = this.pendingResponses[0] ?? null;
     if (this.currentPendingResponse?.requestId !== nextPending?.requestId) {
@@ -136,9 +167,13 @@ export class AgentSession {
     if (index !== -1) {
       this.pendingResponses.splice(index, 1);
     }
+    this.rejectRequestWaiter(requestId, new Error("Request aborted."));
   }
 
   resetRequestQueue(): void {
+    for (const requestId of this.requestWaiters.keys()) {
+      this.rejectRequestWaiter(requestId, new Error("Request queue reset."));
+    }
     this.pendingResponses = [];
     this.currentPendingResponse = null;
     this.currentResponseText = "";
@@ -159,6 +194,7 @@ export class AgentSession {
     }
     this.currentPendingResponse = null;
     this.currentRequestAnnounced = false;
+    this.resolveRequestWaiter(pending.requestId, responseText);
 
     if (this.shouldBroadcastPending(pending)) {
       appendChatLog(pending.agentId, {

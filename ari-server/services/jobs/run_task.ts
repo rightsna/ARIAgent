@@ -9,7 +9,7 @@ import { Settings } from "../../models/settings.js";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { getTasks, saveTasks } from "../../repositories/task_repository.js";
 import { getTaskScheduler } from "../scheduler/runtime.js";
-import { chatWithAgent } from "../agent/index.js";
+import { submitAgentRequestAndWait } from "../agent/index.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import { findAppExecutable } from "../../infra/runtime_paths.js";
 import { DATA_DIR } from "../../infra/data.js";
@@ -172,8 +172,16 @@ export async function runScheduledTask(
       ),
     );
 
+    const pendingResponse = {
+      requestId: task.id,
+      agentId: task.agentId || "default",
+      originalMessage: task.prompt,
+      appId: task.appId,
+      source: "task" as const,
+    };
+
     const result = await Promise.race([
-      chatWithAgent(
+      submitAgentRequestAndWait(
         task.prompt,
         agentProfile,
         (msg) => {
@@ -186,16 +194,14 @@ export async function runScheduledTask(
             data: { requestId: task.id, message: msg, source: "task" },
           });
         },
-        {
-          requestId: task.id,
-          agentId: task.agentId || "default",
-          originalMessage: task.prompt,
-          appId: task.appId,
-          source: "task",
-        },
+        pendingResponse,
       ),
       timeoutPromise,
     ]);
+
+    if (result.status === "cancelled") {
+      throw new Error("작업이 취소되었습니다.");
+    }
 
     const responseText = result.responseText || "응답 없음";
     logger.info(`✅ 완료: ${responseText.substring(0, 80)}...`);
