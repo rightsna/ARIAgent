@@ -145,7 +145,7 @@ class _AriChatPanelBodyState extends State<AriChatPanelBody> {
       _scrollToBottom();
       await _internalProvider?.sendAgentMessage(
         text,
-        platform: widget.appId,
+        appId: widget.appId,
       );
     }
   }

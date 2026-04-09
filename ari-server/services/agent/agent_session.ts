@@ -16,6 +16,7 @@ import {
 } from "./provider_selector.js";
 import {
   cloneActiveSkills,
+  loadSkillsForPrompt,
   mergeActiveSkill,
 } from "../tools/skill_registry.js";
 import {
@@ -75,6 +76,41 @@ export class AgentSession {
       ...nextTools,
     );
     this.agent.setTools(this.agentInfo.runtimeTools);
+  }
+
+  private async preloadCurrentAppSkill(): Promise<void> {
+    const appId = this.agentInfo.appId?.trim();
+    if (!appId) {
+      return;
+    }
+
+    const alreadyLoaded = this.agentInfo.activeSkills.some(
+      (skill) => skill.name === appId,
+    );
+    if (alreadyLoaded) {
+      return;
+    }
+
+    const skills = await loadSkillsForPrompt();
+    const currentApp = skills.find(
+      (skill) => skill.name === appId && skill.isApp,
+    );
+    if (!currentApp) {
+      return;
+    }
+
+    this.agentInfo.activeSkills = mergeActiveSkill(
+      this.agentInfo.activeSkills,
+      {
+        ok: true,
+        name: currentApp.name,
+        description: currentApp.description,
+        tools: currentApp.tools,
+        content: currentApp.content,
+        isApp: true,
+      },
+    );
+    logger.info(`[Agent] Preloaded current app skill: ${appId}`);
   }
 
   enqueueRequest(pending: PendingAgentResponse): void {
@@ -304,6 +340,7 @@ export class AgentSession {
       agent.setModel(model);
       agent.setSystemPrompt(systemPrompt);
       agent.setThinkingLevel("medium");
+      await this.preloadCurrentAppSkill();
       await this.refreshRuntimeTools();
 
       let responseText = "";

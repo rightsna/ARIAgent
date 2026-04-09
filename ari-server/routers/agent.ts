@@ -10,6 +10,7 @@ import { UserSocketHandler } from "../system/ws.js";
 import { logger } from "../infra/logger.js";
 import { getAgentsConfig } from "../repositories/agent_repository.js";
 import { AgentInfo, AgentsConfig } from "../models/agent.js";
+import { loadAllApps } from "../skills/index.js";
 
 function resolveAgentId(agentId?: string): string {
   return agentId || getAgentsConfig(new AgentsConfig()).selected || "default";
@@ -31,15 +32,28 @@ router.on("/AGENT", async (ws, params) => {
 
   let message = params.message as string;
   const currentAgentId = resolveAgentId(agentId as string | undefined);
+  const normalizedPlatform =
+    typeof platform === "string" ? platform.trim() : "";
+  let resolvedAppId =
+    (typeof appId === "string" ? appId.trim() : "") ||
+    ws.appId ||
+    undefined;
 
   if (!message) {
     return ws.send("/AGENT", { ok: false, message: "message required" });
   }
 
+  if (!resolvedAppId && normalizedPlatform) {
+    const apps = await loadAllApps();
+    if (apps.some((entry) => entry.name === normalizedPlatform)) {
+      resolvedAppId = normalizedPlatform;
+    }
+  }
+
   // 앱 소스인 경우 템플릿 적용 (동적 래핑)
   if (source === "app") {
     message = await Prompt.load("app_report.hbs", {
-      appId: appId || ws.appId || "unknown",
+      appId: resolvedAppId || "unknown",
       message,
       type: type || "info",
       detailsJson: JSON.stringify(details || {}),
@@ -53,8 +67,8 @@ router.on("/AGENT", async (ws, params) => {
         id: currentAgentId,
         name: avatarName || (source === "app" ? "ARI" : "ARI"),
         persona,
-        platform: platform || (source === "app" ? "system" : undefined),
-        appId: appId || ws.appId || undefined,
+        platform: normalizedPlatform || (source === "app" ? "system" : undefined),
+        appId: resolvedAppId,
       }),
       (progressMessage) => {
         // 프로그래스는 항상 전체 브로드캐스트
@@ -67,7 +81,7 @@ router.on("/AGENT", async (ws, params) => {
         requestId,
         agentId: currentAgentId,
         originalMessage: params.message,
-        appId: appId || ws.appId || undefined,
+        appId: resolvedAppId,
       },
     );
 
