@@ -78,6 +78,11 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<void> updateShowTaskMessages(bool value) async {
     await _repository.updateShowTaskMessages(value);
+    try {
+      await AriAgent.call('/SETTINGS', {'showTaskMessages': value});
+    } catch (e) {
+      debugPrint('[ConfigProvider] updateShowTaskMessages failed: $e');
+    }
     notifyListeners();
   }
 

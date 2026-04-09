@@ -160,6 +160,7 @@ export class Settings {
   IS_PINNED: boolean;
   AVATAR_SIZE: string;
   LANGUAGE: string;
+  SHOW_TASK_MESSAGES: boolean;
   PROVIDERS: AIProviderConfig[];
   OPENAI_API_KEY: string;
   OPENAI_MODEL: string;
@@ -170,6 +171,8 @@ export class Settings {
     this.IS_PINNED = data?.IS_PINNED !== undefined ? data.IS_PINNED : true;
     this.AVATAR_SIZE = data?.AVATAR_SIZE || "medium";
     this.LANGUAGE = data?.LANGUAGE || "ko";
+    this.SHOW_TASK_MESSAGES =
+      data?.SHOW_TASK_MESSAGES !== undefined ? data.SHOW_TASK_MESSAGES : true;
 
     if (Array.isArray(data?.PROVIDERS)) {
       this.PROVIDERS = data.PROVIDERS.map((p: any) => new AIProviderConfig(p));

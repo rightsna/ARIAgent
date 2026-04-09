@@ -24,7 +24,12 @@ import {
   getOrCreateSession,
   getSession,
 } from "./session_manager.js";
-import { clearSkillCache, loadAvailableApps, loadAvailableSkills, loadSkillsForPrompt } from "../tools/skill_registry.js";
+import {
+  clearSkillCache,
+  loadAvailableApps,
+  loadAvailableSkills,
+  loadSkillsForPrompt,
+} from "../tools/skill_registry.js";
 import { clearToolCache, loadMainTools } from "../tools/tool_registry.js";
 import { isOAuthProvider } from "./provider_selector.js";
 import { UserSocketHandler } from "../../system/ws.js";
@@ -40,16 +45,14 @@ function getSessionForAgent(agentProfile: AgentInfo) {
     pruneContext,
     (provider, error) => {
       logger.warn(
-        `[AgentPi] Invalid model config (${provider.provider}, ${provider.model}): `,
+        `[Agent] Invalid model config (${provider.provider}, ${provider.model}): `,
         error,
       );
     },
   );
 }
 
-export async function initAgent(
-  providersConfig?: AIProviders,
-): Promise<void> {
+export async function initAgent(providersConfig?: AIProviders): Promise<void> {
   const globalSettings = getSettings(new Settings()) || {};
   const state = agentState;
 
@@ -82,14 +85,11 @@ export async function initAgent(
   state.setAvailableProviders(
     (state.providers || []).filter((provider: AIProviderConfig) => {
       if (provider.apiKey) return true;
-      if (
-        provider.authType === "oauth" ||
-        isOAuthProvider(provider.provider)
-      ) {
+      if (provider.authType === "oauth" || isOAuthProvider(provider.provider)) {
         const oauthStatus = getOAuthStatus(provider.provider as any);
         if (!oauthStatus.loggedIn) {
           logger.warn(
-            `[AgentPi] OAuth provider ${provider.provider} is not logged in. Skipping.`,
+            `[Agent] OAuth provider ${provider.provider} is not logged in. Skipping.`,
           );
           return false;
         }
@@ -108,7 +108,7 @@ export async function initAgent(
   }
 
   logger.info(
-    `✅ AgentPi initialized. (${state.availableProviders.length} providers loaded, current: ${state.currentProvider}/${state.currentModel})`,
+    `✅ Agent initialized. (${state.availableProviders.length} providers loaded, current: ${state.currentProvider}/${state.currentModel})`,
   );
 }
 
@@ -135,7 +135,9 @@ export async function chatWithAgent(
   pendingResponse?: PendingAgentResponse,
 ): Promise<ChatWithAgentResult> {
   const currentAgentId =
-    agentProfile.id || getAgentsConfig(new AgentsConfig()).selected || "default";
+    agentProfile.id ||
+    getAgentsConfig(new AgentsConfig()).selected ||
+    "default";
   const currentAgentProfile = new AgentInfo({
     ...agentProfile,
     id: currentAgentId,
@@ -255,7 +257,7 @@ export async function submitAgentRequest(
       },
     });
     logger.info(
-      `[AgentPi] Follow-up queued for ${agentId} (${pendingResponse.requestId})`,
+      `[Agent] Follow-up queued for ${agentId} (${pendingResponse.requestId})`,
     );
     return { status: "follow_up" };
   }
@@ -265,7 +267,7 @@ export async function submitAgentRequest(
     session.currentPendingResponse.requestId !== pendingResponse.requestId
   ) {
     logger.warn(
-      `[AgentPi] Clearing stale current pending request for ${agentId}: ${session.currentPendingResponse.requestId}`,
+      `[Agent] Clearing stale current pending request for ${agentId}: ${session.currentPendingResponse.requestId}`,
     );
     session.currentPendingResponse = null;
   }
@@ -275,7 +277,7 @@ export async function submitAgentRequest(
   );
   if (stalePendingRequests.length > 0) {
     logger.warn(
-      `[AgentPi] Clearing ${stalePendingRequests.length} stale pending request(s) before immediate execution for ${agentId}.`,
+      `[Agent] Clearing ${stalePendingRequests.length} stale pending request(s) before immediate execution for ${agentId}.`,
     );
     session.pendingResponses = session.pendingResponses.filter(
       (item) => item.requestId === pendingResponse.requestId,
@@ -283,11 +285,7 @@ export async function submitAgentRequest(
   }
 
   session.beginNextRequest();
-  const result = await chatWithAgent(
-    message,
-    agentProfile,
-    onProgress,
-  );
+  const result = await chatWithAgent(message, agentProfile, onProgress);
 
   if (result.aborted) {
     session.removeRequest(pendingResponse.requestId);
@@ -308,7 +306,7 @@ export function dropPendingResponse(agentId: string, requestId: string): void {
 
 export function clearAgentInstance(agentId: string) {
   clearAgentSession(agentId);
-  logger.info(`[AgentPi] Instance cleared for: ${agentId}`);
+  logger.info(`[Agent] Instance cleared for: ${agentId}`);
 }
 
 export function abortAgent(agentId: string) {
@@ -317,8 +315,8 @@ export function abortAgent(agentId: string) {
     session.agent.clearAllQueues();
     session.resetRequestQueue();
     session.agent.abort();
-    logger.info(`[AgentPi] Thinking aborted for: ${agentId}`);
+    logger.info(`[Agent] Thinking aborted for: ${agentId}`);
   } else {
-    logger.warn(`[AgentPi] No active session to abort for: ${agentId}`);
+    logger.warn(`[Agent] No active session to abort for: ${agentId}`);
   }
 }

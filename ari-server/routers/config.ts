@@ -44,6 +44,13 @@ router.on("/SETTINGS", async (ws, params) => {
     saveSettings({ PORT: Number(params.port) });
   }
 
+  if (params.showTaskMessages !== undefined) {
+    logger.info(
+      `[Settings] Changing SHOW_TASK_MESSAGES to: ${params.showTaskMessages}`,
+    );
+    saveSettings({ SHOW_TASK_MESSAGES: params.showTaskMessages === true });
+  }
+
   if (params.apiKey || params.model || params.provider) {
     saveSettings({
       OPENAI_API_KEY: state.currentApiKey,

@@ -16,9 +16,9 @@ class AriChatProvider extends ChangeNotifier {
   StreamSubscription? _cancelSub;
   StreamSubscription? _taskResultSub;
   final List<StreamSubscription> _customSubs = [];
-  final Set<String> _processedTaskIds = {};
   final Set<String> _inFlightRequestIds = {};
   final Set<String> _backgroundRequestIds = {};
+  final Set<String> _taskRequestIds = {};
   final List<AriQueuedFollowUp> _queuedFollowUps = [];
 
   bool _isLoading = false;
@@ -76,8 +76,12 @@ class AriChatProvider extends ChangeNotifier {
     _agentRequestSub = AriAgent.on('/AGENT.REQUEST', (data) {
       final requestId = data['requestId']?.toString() ?? '';
       final message = data['message']?.toString() ?? '';
+      final source = data['source']?.toString() ?? 'user';
 
       if (message.isEmpty) return;
+      if (source == 'task') {
+        _taskRequestIds.add(requestId);
+      }
       if (requestId.isNotEmpty &&
           _messages.any((m) => m.isUser && m.requestId == requestId)) return;
 
@@ -94,11 +98,16 @@ class AriChatProvider extends ChangeNotifier {
       final payload = data['data'] is Map ? data['data'] as Map : data;
       final response = payload['response']?.toString() ?? '';
       final requestId = payload['requestId']?.toString() ?? '';
+      final source = payload['source']?.toString() ?? 'user';
 
       if (response.isEmpty) return;
 
+      if (source == 'task') {
+        _taskRequestIds.add(requestId);
+      }
       if (requestId.isNotEmpty) removeSystemMessage(requestId);
       final removedFollowUp = _removeFollowUpByRequestId(requestId);
+      onResponseReceived(requestId);
 
       if (requestId.isNotEmpty &&
           _messages.any(
@@ -112,7 +121,6 @@ class AriChatProvider extends ChangeNotifier {
         requestId: requestId,
       ));
 
-      onResponseReceived(requestId);
       notifyListeners();
       if (removedFollowUp) {
         notifyListeners();
@@ -123,14 +131,20 @@ class AriChatProvider extends ChangeNotifier {
       final payload = data['data'] is Map ? data['data'] as Map : data;
       final progressMessage = payload['message']?.toString() ?? '';
       final requestId = payload['requestId']?.toString() ?? '';
+      final source = payload['source']?.toString() ?? '';
 
       if (progressMessage.isEmpty) return;
 
       if (requestId.isNotEmpty) {
         _inFlightRequestIds.add(requestId);
       }
-      if (requestId.startsWith('report-') || requestId.startsWith('sys-')) {
+      if (source == 'task') {
+        _taskRequestIds.add(requestId);
+      } else if (requestId.startsWith('report-') ||
+          requestId.startsWith('sys-')) {
         _backgroundRequestIds.add(requestId);
+      } else if (requestId.isNotEmpty && requestId != _activeRequestId) {
+        _taskRequestIds.add(requestId);
       }
       _syncLoadingState();
       final removedFollowUp = _removeFollowUpByRequestId(requestId);
@@ -175,22 +189,15 @@ class AriChatProvider extends ChangeNotifier {
     });
 
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
-      if (!showTaskMessages) return;
-
       final taskId = data['taskId']?.toString() ?? 'unknown';
-
-      if (taskId != 'unknown' && _processedTaskIds.contains(taskId)) return;
-      _processedTaskIds.add(taskId);
-
-      final label = data['label'] ?? '시스템 작업';
-      final result = data['result'] ?? '';
-
-      _messages.add(AriChatMessage(
-        text: '🕒 [$label] 실행 결과:\n$result',
-        isUser: false,
-        createdAt: DateTime.now(),
-      ));
-      notifyListeners();
+      if (taskId != 'unknown') {
+        _taskRequestIds.remove(taskId);
+        _inFlightRequestIds.remove(taskId);
+        _backgroundRequestIds.remove(taskId);
+        removeSystemMessage(taskId);
+        _syncLoadingState();
+        notifyListeners();
+      }
     });
   }
 
@@ -314,7 +321,9 @@ class AriChatProvider extends ChangeNotifier {
         _activeRequestId != null && requestId == _activeRequestId;
     bool isBackgroundRequest =
         requestId.startsWith('report-') || requestId.startsWith('sys-');
-    if (!isMyRequest && !isBackgroundRequest) return;
+    bool isScheduledTaskRequest =
+        showTaskMessages && _taskRequestIds.contains(requestId);
+    if (!isMyRequest && !isBackgroundRequest && !isScheduledTaskRequest) return;
 
     final idx = _messages.lastIndexWhere(
       (m) => m.isSystem && m.requestId == requestId,
@@ -376,9 +385,9 @@ class AriChatProvider extends ChangeNotifier {
 
   void clearMessages() {
     _messages.clear();
-    _processedTaskIds.clear();
     _inFlightRequestIds.clear();
     _backgroundRequestIds.clear();
+    _taskRequestIds.clear();
     _queuedFollowUps.clear();
     _activeRequestId = null;
     _syncLoadingState();

@@ -138,10 +138,7 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
         onClicked: (menuItem) => windowManager.hide(),
       ),
       MenuSeparator(),
-      MenuItemLabel(
-        label: '종료',
-        onClicked: (menuItem) async => _shutdownApp(),
-      ),
+      MenuItemLabel(label: '종료', onClicked: (menuItem) async => _shutdownApp()),
     ]);
 
     await _systemTray.setContextMenu(_menu);
@@ -207,14 +204,16 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
           value: HomeAssistantProvider(),
         ),
         ChangeNotifierProvider<AriAppProvider>.value(value: AriAppProvider()),
-        ChangeNotifierProvider(create: (_) {
-          final chatProvider = AriChatProvider();
-          chatProvider.showTaskMessages = ConfigProvider().showTaskMessages;
-          return chatProvider;
-        }),
-        ProxyProvider<ConfigProvider, void>(
-          update: (_, config, __) {
-            AriChatProvider().showTaskMessages = config.showTaskMessages;
+        ChangeNotifierProxyProvider<ConfigProvider, AriChatProvider>(
+          create: (_) {
+            final chatProvider = AriChatProvider();
+            chatProvider.showTaskMessages = ConfigProvider().showTaskMessages;
+            return chatProvider;
+          },
+          update: (_, config, chatProvider) {
+            final provider = chatProvider ?? AriChatProvider();
+            provider.showTaskMessages = config.showTaskMessages;
+            return provider;
           },
         ),
       ],

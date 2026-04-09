@@ -16,6 +16,7 @@ export interface PendingAgentResponse {
   agentId: string;
   originalMessage: string;
   appId?: string;
+  source?: "user" | "app" | "task";
 }
 
 export interface AgentPassResult {

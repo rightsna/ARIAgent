@@ -173,37 +173,45 @@ export async function runScheduledTask(
     );
 
     const result = await Promise.race([
-      chatWithAgent(task.prompt, agentProfile, (msg) => {
-        logger.info(`💬 ${msg}`);
-        UserSocketHandler.broadcast("/AGENT.PROGRESS", {
-          ok: true,
-          data: { requestId: task.id, message: msg },
-        });
-      }),
+      chatWithAgent(
+        task.prompt,
+        agentProfile,
+        (msg) => {
+          logger.info(`💬 ${msg}`);
+          if (!getSettings(new Settings()).SHOW_TASK_MESSAGES) {
+            return;
+          }
+          UserSocketHandler.broadcast("/AGENT.PROGRESS", {
+            ok: true,
+            data: { requestId: task.id, message: msg, source: "task" },
+          });
+        },
+        {
+          requestId: task.id,
+          agentId: task.agentId || "default",
+          originalMessage: task.prompt,
+          appId: task.appId,
+          source: "task",
+        },
+      ),
       timeoutPromise,
     ]);
 
     const responseText = result.responseText || "응답 없음";
     logger.info(`✅ 완료: ${responseText.substring(0, 80)}...`);
+    const executedAt = new Date().toISOString();
 
     persistTaskResult(task.id, {
-      lastRunAt: new Date().toISOString(),
+      lastRunAt: executedAt,
       lastResult: responseText,
       lastError: undefined,
-    });
-
-    UserSocketHandler.broadcast("/TASKS.NOTIFY_RESULT", {
-      taskId: task.id,
-      label: task.label,
-      result: responseText,
-      agentId: task.agentId || "default",
     });
 
     UserSocketHandler.broadcast("/TASK_RESULT", {
       taskId: task.id,
       label: task.label,
       result: responseText,
-      executedAt: new Date().toISOString(),
+      executedAt,
     });
 
     if (task.isOneOff) {

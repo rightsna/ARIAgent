@@ -24,6 +24,8 @@ import {
 } from "../tools/tool_registry.js";
 import { logger } from "../../infra/logger.js";
 import { t } from "../../infra/i18n.js";
+import { getSettings } from "../../repositories/setting_repository.js";
+import { Settings } from "../../models/settings.js";
 
 export class AgentSession {
   agent!: Agent;
@@ -44,8 +46,17 @@ export class AgentSession {
     this.agentInfo.resetTurnScopedSkills();
   }
 
+  private shouldBroadcastPending(pending: PendingAgentResponse): boolean {
+    if (pending.source !== "task") {
+      return true;
+    }
+    return getSettings(new Settings()).SHOW_TASK_MESSAGES === true;
+  }
+
   private async refreshRuntimeTools(): Promise<void> {
-    const nextTools = await buildSessionTools(this.agentInfo.activeSkillToolNames);
+    const nextTools = await buildSessionTools(
+      this.agentInfo.activeSkillToolNames,
+    );
     this.agentInfo.runtimeTools.splice(
       0,
       this.agentInfo.runtimeTools.length,
@@ -55,7 +66,9 @@ export class AgentSession {
   }
 
   private refreshRuntimeToolsSync(): void {
-    const nextTools = buildSessionToolsSync(this.agentInfo.activeSkillToolNames);
+    const nextTools = buildSessionToolsSync(
+      this.agentInfo.activeSkillToolNames,
+    );
     this.agentInfo.runtimeTools.splice(
       0,
       this.agentInfo.runtimeTools.length,
@@ -111,27 +124,32 @@ export class AgentSession {
     this.currentPendingResponse = null;
     this.currentRequestAnnounced = false;
 
-    appendChatLog(pending.agentId, {
-      type: "chat",
-      isUser: true,
-      message: pending.originalMessage,
-      requestId: pending.requestId,
-    });
-    appendChatLog(pending.agentId, {
-      type: "chat",
-      isUser: false,
-      message: responseText,
-      requestId: pending.requestId,
-    });
-
-    UserSocketHandler.broadcast("/APP.PUSH", {
-      ok: true,
-      data: {
-        response: responseText,
+    if (this.shouldBroadcastPending(pending)) {
+      appendChatLog(pending.agentId, {
+        type: "chat",
+        isUser: true,
+        message: pending.originalMessage,
         requestId: pending.requestId,
-        appId: pending.appId,
-      },
-    });
+        source: pending.source || "user",
+      });
+      appendChatLog(pending.agentId, {
+        type: "chat",
+        isUser: false,
+        message: responseText,
+        requestId: pending.requestId,
+        source: pending.source || "user",
+      });
+
+      UserSocketHandler.broadcast("/APP.PUSH", {
+        ok: true,
+        data: {
+          response: responseText,
+          requestId: pending.requestId,
+          appId: pending.appId,
+          source: pending.source || "user",
+        },
+      });
+    }
   }
 
   private finalizeCurrentRequest(responseText?: string): void {
@@ -161,10 +179,15 @@ export class AgentSession {
       if (event.type === "turn_start") {
         this.beginNextRequest();
         const pending = this.currentPendingResponse;
-        if (pending && !this.currentRequestAnnounced) {
+        if (
+          pending &&
+          !this.currentRequestAnnounced &&
+          this.shouldBroadcastPending(pending)
+        ) {
           UserSocketHandler.broadcast("/AGENT.REQUEST", {
             message: pending.originalMessage,
             requestId: pending.requestId,
+            source: pending.source || "user",
           });
           this.currentRequestAnnounced = true;
         }
@@ -187,7 +210,8 @@ export class AgentSession {
         }
 
         this.finalizeCurrentRequest(
-          this.currentResponseText || extractTextFromAgentMessage(event.message),
+          this.currentResponseText ||
+            extractTextFromAgentMessage(event.message),
         );
         return;
       }
@@ -249,7 +273,7 @@ export class AgentSession {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
         logger.warn(
-          `[AgentPi] Invalid model config (${provider.provider}, ${provider.model}): `,
+          `[Agent] Invalid model config (${provider.provider}, ${provider.model}): `,
           error,
         );
         continue;
@@ -263,12 +287,12 @@ export class AgentSession {
             `OAuth token not available for ${provider.provider}. Please log in first.`,
           );
           logger.warn(
-            `[AgentPi] No OAuth token for ${provider.provider}, skipping.`,
+            `[Agent] No OAuth token for ${provider.provider}, skipping.`,
           );
           continue;
         }
         resolvedApiKey = oauthKey;
-        logger.info(`[AgentPi] OAuth token resolved for ${provider.provider}.`);
+        logger.info(`[Agent] OAuth token resolved for ${provider.provider}.`);
       }
 
       this.resolvedApiKey = resolvedApiKey;
@@ -315,7 +339,9 @@ export class AgentSession {
               onProgress?.(t("tool.progress.delete_schedule"));
               break;
             default:
-              onProgress?.(t("tool.progress.default", { toolName: event.toolName }));
+              onProgress?.(
+                t("tool.progress.default", { toolName: event.toolName }),
+              );
               break;
           }
         }
@@ -333,7 +359,7 @@ export class AgentSession {
             typeof event.result?.details?.name === "string"
               ? event.result.details.name
               : "unknown";
-          logger.info(`[AgentPi] Applying skill instructions: ${skillName}`);
+          logger.info(`[Agent] Applying skill instructions: ${skillName}`);
           onProgress?.(`스킬 지침을 반영하는 중... (${skillName})`);
         }
       });
@@ -348,13 +374,13 @@ export class AgentSession {
           lastError.message?.toLowerCase().includes("abort")
         ) {
           logger.info(
-            `[AgentPi] Inference aborted by user for ${provider.provider}. Stopping retry.`,
+            `[Agent] Inference aborted by user for ${provider.provider}. Stopping retry.`,
           );
           break;
         }
         onProgress?.("다른 모델로 다시 시도하는 중...");
         logger.warn(
-          `❌ [AgentPi] Provider ${provider.provider} threw before completion: ${lastError.message}`,
+          `❌ [Agent] Provider ${provider.provider} threw before completion: ${lastError.message}`,
         );
         continue;
       }
@@ -365,13 +391,13 @@ export class AgentSession {
         lastError = new Error(agent.state.error);
         if (String(agent.state.error).toLowerCase().includes("abort")) {
           logger.info(
-            `[AgentPi] Inference aborted (state.error) for ${provider.provider}. Stopping retry.`,
+            `[Agent] Inference aborted (state.error) for ${provider.provider}. Stopping retry.`,
           );
           break;
         }
         onProgress?.("다른 모델로 다시 시도하는 중...");
         logger.warn(
-          `❌ [AgentPi] Provider ${provider.provider} failed: ${agent.state.error}. Trying next provider if available.`,
+          `❌ [Agent] Provider ${provider.provider} failed: ${agent.state.error}. Trying next provider if available.`,
         );
         continue;
       }
@@ -381,7 +407,7 @@ export class AgentSession {
       }
 
       logger.info(
-        `✅ [AgentPi] Response success (${provider.provider}/${provider.model})`,
+        `✅ [Agent] Response success (${provider.provider}/${provider.model})`,
       );
       this.resetTurnScopedSkills();
       return {
