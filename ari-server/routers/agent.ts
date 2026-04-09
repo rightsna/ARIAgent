@@ -3,14 +3,11 @@ import {
   abortAgent,
   clearAgentInstance,
   dropPendingResponse,
-  submitAgentRequest,
+  executeAgentRequest,
 } from "../services/agent/index.js";
-import { Prompt } from "../infra/prompt.js";
-import { UserSocketHandler } from "../system/ws.js";
 import { logger } from "../infra/logger.js";
 import { getAgentsConfig } from "../repositories/agent_repository.js";
-import { AgentInfo, AgentsConfig } from "../models/agent.js";
-import { loadAllApps } from "../skills/index.js";
+import { AgentsConfig } from "../models/agent.js";
 
 function resolveAgentId(agentId?: string): string {
   return agentId || getAgentsConfig(new AgentsConfig()).selected || "default";
@@ -18,94 +15,26 @@ function resolveAgentId(agentId?: string): string {
 
 // /AGENT
 router.on("/AGENT", async (ws, params) => {
-  const {
-    requestId = "",
-    persona = "",
-    avatarName = "",
-    platform = "",
-    agentId,
-    source = "user", // 'user' | 'app' — 앱 소스일 경우 메시지 템플릿 래핑에 사용
-    appId,
-    type,
-    details,
-  } = params;
-
-  let message = params.message as string;
-  const currentAgentId = resolveAgentId(agentId as string | undefined);
-  const normalizedPlatform =
-    typeof platform === "string" ? platform.trim() : "";
-  let resolvedAppId =
-    (typeof appId === "string" ? appId.trim() : "") ||
-    ws.appId ||
-    undefined;
-
-  if (!message) {
-    return ws.send("/AGENT", { ok: false, message: "message required" });
-  }
-
-  if (!resolvedAppId && normalizedPlatform) {
-    const apps = await loadAllApps();
-    if (apps.some((entry) => entry.name === normalizedPlatform)) {
-      resolvedAppId = normalizedPlatform;
-    }
-  }
-
-  if (source !== "app") {
-    const detailEntries =
-      details && typeof details === "object" && !Array.isArray(details)
-        ? Object.entries(details)
-            .filter(([, value]) => value != null)
-            .map(([key, value]) => ({
-              key,
-              value:
-                typeof value === "string" ? value : JSON.stringify(value),
-            }))
-        : [];
-
-    if (resolvedAppId || normalizedPlatform || detailEntries.length > 0) {
-      message = await Prompt.load("app_user_context.hbs", {
-        appId: resolvedAppId,
-        platform: normalizedPlatform,
-        details: detailEntries,
-        message,
-      });
-    }
-  }
-
-  // 앱 소스인 경우 템플릿 적용 (동적 래핑)
-  if (source === "app") {
-    message = await Prompt.load("app_report.hbs", {
-      appId: resolvedAppId || "unknown",
-      message,
-      type: type || "info",
-      detailsJson: JSON.stringify(details || {}),
-    });
-  }
+  const requestId = (params.requestId as string | undefined) || "";
+  const currentAgentId = resolveAgentId(params.agentId as string | undefined);
 
   try {
-    const result = await submitAgentRequest(
-      message,
-      new AgentInfo({
-        id: currentAgentId,
-        name: avatarName || (source === "app" ? "ARI" : "ARI"),
-        persona,
-        platform: normalizedPlatform || (source === "app" ? "system" : undefined),
-        appId: resolvedAppId,
-      }),
-      (progressMessage) => {
-        // 프로그래스는 항상 전체 브로드캐스트
-        UserSocketHandler.broadcast("/AGENT.PROGRESS", {
-          ok: true,
-          data: { requestId, message: progressMessage },
-        });
-      },
-      {
-        requestId,
-        agentId: currentAgentId,
-        originalMessage: params.message,
-        appId: resolvedAppId,
-      },
-    );
+    const result = await executeAgentRequest({
+      message: params.message as string,
+      requestId,
+      persona: (params.persona as string | undefined) || "",
+      avatarName: (params.avatarName as string | undefined) || "",
+      platform: (params.platform as string | undefined) || "",
+      agentId: currentAgentId,
+      source: (params.source as "user" | "app" | "task" | undefined) || "user",
+      appId: params.appId as string | undefined,
+      socketAppId: ws.appId,
+      type: params.type as string | undefined,
+      details:
+        params.details && typeof params.details === "object" && !Array.isArray(params.details)
+          ? (params.details as Record<string, unknown>)
+          : undefined,
+    });
 
     if (result.status === "cancelled") {
       dropPendingResponse(currentAgentId, requestId);

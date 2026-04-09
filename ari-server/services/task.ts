@@ -2,6 +2,7 @@ import { Task } from "../models/task.js";
 import { initTasksFileIfMissing, getTasks, saveTasks } from "../repositories/task_repository.js";
 import { logger } from "../infra/logger.js";
 import { getTaskScheduler } from "./scheduler/runtime.js";
+import { runScheduledTask } from "./jobs/run_task.js";
 
 // 초기 다운 방지: tasks.json이 없으면 빈 배열로 자동 생성
 initTasksFileIfMissing();
@@ -105,7 +106,9 @@ export async function handleToggleTaskWs(params: Record<string, unknown>): Promi
   return { task: tasks[idx] };
 }
 
-export async function handleRunTaskWs(params: Record<string, unknown>): Promise<{ taskId: string }> {
+export async function handleRunTaskWs(
+  params: Record<string, unknown>,
+): Promise<{ taskId: string; started: boolean }> {
   const taskId = params.taskId as string;
   const tasks = getTasks();
   const task = tasks.find((t) => t.id === taskId);
@@ -114,8 +117,8 @@ export async function handleRunTaskWs(params: Record<string, unknown>): Promise<
     throw new Error(`Task ID ${taskId}를 찾을 수 없음`);
   }
 
-  // 수동 실행은 별도 프로세스 없이 직접 /AGENT 호출을 클라이언트가 수행하도록 taskId만 반환
-  return { taskId: task.id };
+  await runScheduledTask(task);
+  return { taskId: task.id, started: true };
 }
 
 // ── Agent Tool용 (기존 호환) ──

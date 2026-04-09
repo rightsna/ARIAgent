@@ -18,6 +18,7 @@ import { logger } from "../../infra/logger.js";
 import { buildSystemPrompt, pruneContext } from "./context_builder.js";
 import { extractFinalResponseText } from "./response_parser.js";
 import { getOAuthStatus } from "../oauth/index.js";
+import { Prompt } from "../../infra/prompt.js";
 import {
   clearAgentSession,
   clearAllAgentSessions,
@@ -33,6 +34,7 @@ import {
 import { clearToolCache, loadMainTools } from "../tools/tool_registry.js";
 import { isOAuthProvider } from "./provider_selector.js";
 import { UserSocketHandler } from "../../system/ws.js";
+import { loadAllApps } from "../../skills/index.js";
 
 const agentState = new AIProviders();
 let currentTools = [] as Awaited<ReturnType<typeof loadMainTools>>;
@@ -51,6 +53,23 @@ function getSessionForAgent(agentProfile: AgentInfo) {
     },
   );
 }
+
+type AgentRequestSource = "user" | "app" | "task";
+
+type ExecuteAgentRequestParams = {
+  message: string;
+  requestId: string;
+  agentId?: string;
+  persona?: string;
+  avatarName?: string;
+  platform?: string;
+  source?: AgentRequestSource;
+  appId?: string;
+  socketAppId?: string;
+  type?: string;
+  details?: Record<string, unknown>;
+  waitForCompletion?: boolean;
+};
 
 export async function initAgent(providersConfig?: AIProviders): Promise<void> {
   const globalSettings = getSettings(new Settings()) || {};
@@ -348,6 +367,133 @@ export async function submitAgentRequestAndWait(
     dropPendingResponse(agentId, pendingResponse.requestId);
     throw error;
   }
+}
+
+export async function executeAgentRequest(
+  params: ExecuteAgentRequestParams,
+): Promise<{
+  status: "follow_up" | "broadcasted" | "cancelled";
+  requestId: string;
+  responseText?: string;
+}> {
+  const {
+    message: originalMessage,
+    requestId,
+    persona = "",
+    avatarName = "",
+    platform = "",
+    agentId,
+    source = "user",
+    appId,
+    socketAppId,
+    type,
+    details,
+    waitForCompletion = false,
+  } = params;
+
+  let message = originalMessage;
+  const currentAgentId =
+    agentId || getAgentsConfig(new AgentsConfig()).selected || "default";
+  const normalizedPlatform =
+    typeof platform === "string" ? platform.trim() : "";
+  let resolvedAppId =
+    (typeof appId === "string" ? appId.trim() : "") ||
+    socketAppId ||
+    undefined;
+
+  if (!message) {
+    throw new Error("message required");
+  }
+
+  if (!resolvedAppId && normalizedPlatform) {
+    const apps = await loadAllApps();
+    if (apps.some((entry) => entry.name === normalizedPlatform)) {
+      resolvedAppId = normalizedPlatform;
+    }
+  }
+
+  if (source !== "app") {
+    const detailEntries =
+      details && typeof details === "object" && !Array.isArray(details)
+        ? Object.entries(details)
+            .filter(([, value]) => value != null)
+            .map(([key, value]) => ({
+              key,
+              value:
+                typeof value === "string" ? value : JSON.stringify(value),
+            }))
+        : [];
+
+    if (resolvedAppId || normalizedPlatform || detailEntries.length > 0) {
+      message = await Prompt.load("app_user_context.hbs", {
+        appId: resolvedAppId,
+        platform: normalizedPlatform,
+        details: detailEntries,
+        message,
+      });
+    }
+  }
+
+  if (source === "app") {
+    message = await Prompt.load("app_report.hbs", {
+      appId: resolvedAppId || "unknown",
+      message,
+      type: type || "info",
+      detailsJson: JSON.stringify(details || {}),
+    });
+  }
+
+  const agentProfile = new AgentInfo({
+    id: currentAgentId,
+    name: avatarName || (source === "app" ? "ARI" : "ARI"),
+    persona,
+    platform: normalizedPlatform || (source === "app" ? "system" : undefined),
+    appId: resolvedAppId,
+  });
+
+  const onProgress = (progressMessage: string) => {
+    UserSocketHandler.broadcast("/AGENT.PROGRESS", {
+      ok: true,
+      data: {
+        requestId,
+        message: progressMessage,
+        source,
+      },
+    });
+  };
+
+  const pendingResponse: PendingAgentResponse = {
+    requestId,
+    agentId: currentAgentId,
+    originalMessage,
+    appId: resolvedAppId,
+    source,
+  };
+
+  if (waitForCompletion) {
+    const result = await submitAgentRequestAndWait(
+      message,
+      agentProfile,
+      onProgress,
+      pendingResponse,
+    );
+    return {
+      status: result.status,
+      requestId,
+      responseText: result.responseText,
+    };
+  }
+
+  const result = await submitAgentRequest(
+    message,
+    agentProfile,
+    onProgress,
+    pendingResponse,
+  );
+  return {
+    status: result.status,
+    requestId,
+  };
 }
 
 export function dropPendingResponse(agentId: string, requestId: string): void {

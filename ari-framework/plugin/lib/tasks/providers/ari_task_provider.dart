@@ -149,14 +149,9 @@ class AriTaskProvider extends ChangeNotifier {
 
   /// 수동 실행
   Future<String> runTaskNow(String id) async {
-    final task = tasks.firstWhere(
-      (t) => t.id == id,
-      orElse: () => throw Exception('작업을 찾을 수 없습니다'),
-    );
-
     try {
-      final res = await AriAgent.call('/AGENT', {'message': task.prompt});
-      final response = res['response'] ?? '응답 없음';
+      final res = await AriAgent.call('/TASKS.RUN', {'taskId': id});
+      final response = res['started'] == true ? '실행 완료' : '실행되지 않음';
       await refresh();
       return response;
     } catch (e) {

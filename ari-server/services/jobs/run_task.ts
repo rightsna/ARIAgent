@@ -9,7 +9,7 @@ import { Settings } from "../../models/settings.js";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { getTasks, saveTasks } from "../../repositories/task_repository.js";
 import { getTaskScheduler } from "../scheduler/runtime.js";
-import { submitAgentRequestAndWait } from "../agent/index.js";
+import { executeAgentRequest } from "../agent/index.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import { findAppExecutable } from "../../infra/runtime_paths.js";
 import { DATA_DIR } from "../../infra/data.js";
@@ -160,11 +160,6 @@ export async function runScheduledTask(
 
   // ── AI 에이전트 직접 호출 ────────────────────────────────────────────────
   try {
-    const agentProfile = new AgentInfo({
-      id: task.agentId || "default",
-      ...(task.appId ? { appId: task.appId } : {}),
-    });
-
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
         () => reject(new Error(`작업 타임아웃 (${task.timeout ?? DEFAULT_TIMEOUT_SEC}초)`)),
@@ -172,30 +167,15 @@ export async function runScheduledTask(
       ),
     );
 
-    const pendingResponse = {
-      requestId: task.id,
-      agentId: task.agentId || "default",
-      originalMessage: task.prompt,
-      appId: task.appId,
-      source: "task" as const,
-    };
-
     const result = await Promise.race([
-      submitAgentRequestAndWait(
-        task.prompt,
-        agentProfile,
-        (msg) => {
-          logger.info(`💬 ${msg}`);
-          if (!getSettings(new Settings()).SHOW_TASK_MESSAGES) {
-            return;
-          }
-          UserSocketHandler.broadcast("/AGENT.PROGRESS", {
-            ok: true,
-            data: { requestId: task.id, message: msg, source: "task" },
-          });
-        },
-        pendingResponse,
-      ),
+      executeAgentRequest({
+        message: task.prompt,
+        requestId: task.id,
+        agentId: task.agentId || "default",
+        appId: task.appId,
+        source: "task",
+        waitForCompletion: true,
+      }),
       timeoutPromise,
     ]);
 
