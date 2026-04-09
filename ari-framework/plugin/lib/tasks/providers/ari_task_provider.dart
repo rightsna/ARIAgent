@@ -174,4 +174,11 @@ class AriTaskProvider extends ChangeNotifier {
     if (prompt.length <= 20) return prompt;
     return '${prompt.substring(0, 20)}...';
   }
+
+  @override
+  void dispose() {
+    _taskResultSub?.cancel();
+    _progressSub?.cancel();
+    super.dispose();
+  }
 }
