@@ -190,8 +190,15 @@ class AriChatProvider extends ChangeNotifier {
 
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
       final taskId = data['taskId']?.toString() ?? 'unknown';
+      final requestId = data['requestId']?.toString() ?? '';
       if (taskId != 'unknown') {
         _taskRequestIds.remove(taskId);
+        if (requestId.isNotEmpty) {
+          _taskRequestIds.remove(requestId);
+          _inFlightRequestIds.remove(requestId);
+          _backgroundRequestIds.remove(requestId);
+          removeSystemMessage(requestId);
+        }
         _inFlightRequestIds.remove(taskId);
         _backgroundRequestIds.remove(taskId);
         removeSystemMessage(taskId);

@@ -58,6 +58,7 @@ router.on("/TASKS.NOTIFY_RESULT", async (ws, params) => {
   // 브로드캐스트 데이터 구성
   const broadcastData = {
     taskId: params.taskId,
+    requestId: params.requestId,
     agentId,
     label: params.label,
     result: params.result,

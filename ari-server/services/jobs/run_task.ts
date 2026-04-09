@@ -160,6 +160,7 @@ export async function runScheduledTask(
 
   // ── AI 에이전트 직접 호출 ────────────────────────────────────────────────
   try {
+    const runRequestId = `${task.id}-${Date.now()}`;
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(
         () => reject(new Error(`작업 타임아웃 (${task.timeout ?? DEFAULT_TIMEOUT_SEC}초)`)),
@@ -170,7 +171,7 @@ export async function runScheduledTask(
     const result = await Promise.race([
       executeAgentRequest({
         message: task.prompt,
-        requestId: task.id,
+        requestId: runRequestId,
         agentId: task.agentId || "default",
         appId: task.appId,
         source: "task",
@@ -195,6 +196,7 @@ export async function runScheduledTask(
 
     UserSocketHandler.broadcast("/TASK_RESULT", {
       taskId: task.id,
+      requestId: runRequestId,
       agentId: task.agentId || "default",
       label: task.label,
       result: responseText,
