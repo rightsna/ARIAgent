@@ -85,21 +85,22 @@ export async function initAgent(providersConfig?: AIProviders): Promise<void> {
   } else if (globalSettings.PROVIDERS && globalSettings.PROVIDERS.length > 0) {
     state.setProviders(globalSettings.PROVIDERS);
   } else {
+    const defaultProvider = globalSettings.PROVIDER || "openai-codex";
     state.setProviders([
       new AIProviderConfig({
-        provider: globalSettings.PROVIDER || "openai",
-        model: globalSettings.OPENAI_MODEL || "gpt-4o-mini",
+        provider: defaultProvider,
+        model: globalSettings.OPENAI_MODEL || "gpt-5.3-codex",
         apiKey: globalSettings.OPENAI_API_KEY || "",
-        authType: "apikey",
+        authType: defaultProvider === "openai-codex" ? "oauth" : "apikey",
       }),
     ]);
   }
   const active =
     state.providers.find((provider) => !!provider.apiKey) || state.providers[0];
   state.currentModel =
-    active?.model || globalSettings.OPENAI_MODEL || "gpt-4o-mini";
+    active?.model || globalSettings.OPENAI_MODEL || "gpt-5.3-codex";
   state.currentProvider =
-    active?.provider || globalSettings.PROVIDER || "openai";
+    active?.provider || globalSettings.PROVIDER || "openai-codex";
 
   state.setAvailableProviders(
     (state.providers || []).filter((provider: AIProviderConfig) => {

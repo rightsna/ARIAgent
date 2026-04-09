@@ -69,12 +69,13 @@ class _ModelSettingsState extends State<ModelSettings> {
         } else {
           final p = (data['provider'] ?? 'openai-codex') as String;
           final m = (data['model'] ?? 'gpt-5.3-codex') as String;
+          final meta = metaFor(p.isNotEmpty ? p : 'openai-codex');
           _providers = [
             ProviderItem(
               provider: p.isNotEmpty ? p : 'openai-codex',
               model: m.isNotEmpty ? m : 'gpt-5.3-codex',
               hasApiKey: data['hasApiKey'] == true,
-              authType: 'apikey',
+              authType: meta.isOAuth ? 'oauth' : 'apikey',
             ),
           ];
         }
@@ -108,7 +109,7 @@ class _ModelSettingsState extends State<ModelSettings> {
           provider: 'openai-codex',
           model: metaFor('openai-codex').models.firstOrNull?.id ?? '',
           hasApiKey: false,
-          authType: 'apikey',
+          authType: 'oauth',
         ),
       );
     });

@@ -44,9 +44,9 @@ export class AIProviders {
       this.providers[0];
 
     this.currentModel =
-      data?.currentModel ?? initialProvider?.model ?? data?.OPENAI_MODEL ?? "gpt-4o-mini";
+      data?.currentModel ?? initialProvider?.model ?? data?.OPENAI_MODEL ?? "gpt-5.3-codex";
     this.currentProvider =
-      data?.currentProvider ?? initialProvider?.provider ?? data?.PROVIDER ?? "openai";
+      data?.currentProvider ?? initialProvider?.provider ?? data?.PROVIDER ?? "openai-codex";
   }
 
   setProviders(providers: AIProviderConfig[]): void {
@@ -63,8 +63,8 @@ export class AIProviders {
       return;
     }
 
-    this.currentModel = "gpt-4o-mini";
-    this.currentProvider = "openai";
+    this.currentModel = "gpt-5.3-codex";
+    this.currentProvider = "openai-codex";
   }
 
   setAvailableProviders(providers: AIProviderConfig[]): void {
@@ -181,8 +181,8 @@ export class Settings {
     }
 
     this.OPENAI_API_KEY = data?.OPENAI_API_KEY || "";
-    this.OPENAI_MODEL = data?.OPENAI_MODEL || "gpt-4o-mini";
-    this.PROVIDER = data?.PROVIDER || "openai";
+    this.OPENAI_MODEL = data?.OPENAI_MODEL || "gpt-5.3-codex";
+    this.PROVIDER = data?.PROVIDER || "openai-codex";
   }
 
   static fromJson(jsonStr: string | any): Settings {
