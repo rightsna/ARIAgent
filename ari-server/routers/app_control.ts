@@ -123,3 +123,31 @@ router.on("/DELETE_SKILL", async (ws, params) => {
     ws.send("/DELETE_SKILL", { ok: false, error: String(e) });
   }
 });
+
+router.on("/DELETE_APP", async (ws, params) => {
+  const { name } = params;
+  logger.info(`[Apps] Deleting app: ${name}`);
+  if (!name) {
+    return ws.send("/DELETE_APP", { ok: false, error: "Name is required" });
+  }
+
+  try {
+    // 새 apps 디렉토리 우선, 레거시 skills 디렉토리도 확인
+    const appsDir = path.join(DATA_DIR, "apps", name);
+    const legacyDir = path.join(DATA_DIR, "skills", name);
+    const targetDir = fs.existsSync(appsDir) ? appsDir : fs.existsSync(legacyDir) ? legacyDir : null;
+
+    if (targetDir) {
+      rmDirSyncSafe(targetDir);
+      await initAgent();
+      logger.info(`[Apps] App ${name} deleted and agent re-initialized`);
+      ws.send("/DELETE_APP", { ok: true, data: { success: true } });
+    } else {
+      logger.warn(`[Apps] App ${name} not found`);
+      ws.send("/DELETE_APP", { ok: false, error: "App not found" });
+    }
+  } catch (e) {
+    logger.error(`[Apps] Error deleting app ${name}: ${e}`);
+    ws.send("/DELETE_APP", { ok: false, error: String(e) });
+  }
+});

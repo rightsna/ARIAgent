@@ -22,7 +22,7 @@ class _AppsTabState extends State<AppsTab> {
 
   void _refresh() {
     setState(() {
-      _appsFuture = context.read<AriAppProvider>().getInstalledApps();
+      _appsFuture = context.read<AriAppProvider>().getApps();
     });
   }
 
@@ -58,7 +58,7 @@ class _AppsTabState extends State<AppsTab> {
             itemCount: apps.length,
             itemBuilder: (context, index) {
               final app = apps[index];
-              final isConnected = connectedIds.contains(app['id']);
+              final isConnected = connectedIds.contains(app['name']);
               return _AppCard(
                 app: app,
                 isConnected: isConnected,
@@ -126,8 +126,8 @@ class _AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appId = app['id'] as String;
-    final title = app['title'] as String? ?? appId;
+    final appId = app['name'] as String;
+    final title = (app['title'] as String?) ?? appId;
     final description = app['description'] as String?;
     final icon = app['icon'] as String?;
     final iconPath = app['iconPath'] as String?;
@@ -270,7 +270,7 @@ class _AppCard extends StatelessWidget {
                       if (confirm == true && context.mounted) {
                         final success = await context
                             .read<AriAppProvider>()
-                            .deleteSkill(appId);
+                            .deleteApp(appId);
                         if (success) onRefresh();
                       }
                     },

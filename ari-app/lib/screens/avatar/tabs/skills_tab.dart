@@ -10,24 +10,24 @@ class SkillsTab extends StatefulWidget {
 }
 
 class _SkillsTabState extends State<SkillsTab> {
-  Future<Map<String, dynamic>?>? _pluginsFuture;
+  Future<List<Map<String, dynamic>>>? _skillsFuture;
 
   @override
   void initState() {
     super.initState();
-    _refreshPlugins();
+    _refresh();
   }
 
-  void _refreshPlugins() {
+  void _refresh() {
     setState(() {
-      _pluginsFuture = context.read<AriAppProvider>().getPlugins();
+      _skillsFuture = context.read<AriAppProvider>().getSkills();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _pluginsFuture,
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _skillsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -35,30 +35,25 @@ class _SkillsTabState extends State<SkillsTab> {
           );
         }
 
-        if (snapshot.hasError || snapshot.data == null) {
+        if (snapshot.hasError) {
           return _buildErrorState();
         }
 
-        final allSkills = snapshot.data!['skills'] as List? ?? [];
-        final skills = allSkills
-            .whereType<Map<String, dynamic>>()
-            .where((s) => s['isApp'] != true)
-            .toList();
+        final skills = snapshot.data ?? [];
 
         if (skills.isEmpty) {
           return _buildEmptyState();
         }
 
         return RefreshIndicator(
-          onRefresh: () async => _refreshPlugins(),
+          onRefresh: () async => _refresh(),
           color: const Color(0xFF6C63FF),
           backgroundColor: const Color(0xFF1A1A2E),
           child: ListView.builder(
             padding: const EdgeInsets.all(20),
             itemCount: skills.length,
             itemBuilder: (context, index) {
-              final skill = skills[index];
-              return _buildSkillCard(skill, _refreshPlugins);
+              return _SkillCard(skill: skills[index], onRefresh: _refresh);
             },
           ),
         );
@@ -66,31 +61,20 @@ class _SkillsTabState extends State<SkillsTab> {
     );
   }
 
-  Widget _buildSkillCard(Map<String, dynamic> skill, VoidCallback onRefresh) {
-    return _SkillCard(skill: skill, onRefresh: onRefresh);
-  }
-
   Widget _buildErrorState() {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: Colors.redAccent.withOpacity(0.5),
-            size: 48,
-          ),
+          Icon(Icons.error_outline_rounded,
+              color: Colors.redAccent.withValues(alpha: 0.5), size: 48),
           const SizedBox(height: 16),
-          const Text(
-            '스킬 정보를 가져오지 못했습니다.',
-            style: TextStyle(color: Colors.white70),
-          ),
+          const Text('스킬 정보를 가져오지 못했습니다.',
+              style: TextStyle(color: Colors.white70)),
           TextButton(
-            onPressed: _refreshPlugins,
-            child: const Text(
-              '다시 시도',
-              style: TextStyle(color: Color(0xFF6C63FF)),
-            ),
+            onPressed: _refresh,
+            child: const Text('다시 시도',
+                style: TextStyle(color: Color(0xFF6C63FF))),
           ),
         ],
       ),
@@ -102,23 +86,16 @@ class _SkillsTabState extends State<SkillsTab> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.auto_fix_high_rounded,
-            color: Colors.white.withOpacity(0.2),
-            size: 48,
-          ),
+          Icon(Icons.auto_fix_high_rounded,
+              color: Colors.white.withValues(alpha: 0.2), size: 48),
           const SizedBox(height: 16),
-          const Text(
-            '등록된 스킬이 없습니다.',
-            style: TextStyle(color: Colors.white54, fontSize: 14),
-          ),
+          const Text('등록된 스킬이 없습니다.',
+              style: TextStyle(color: Colors.white54, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
             '에이전트의 skills 폴더를 확인해주세요.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
-              fontSize: 12,
-            ),
+                color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
           ),
         ],
       ),
@@ -151,10 +128,11 @@ class _SkillCardState extends State<_SkillCard> {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF6C63FF).withOpacity(0.1)),
+        border: Border.all(
+            color: const Color(0xFF6C63FF).withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -164,15 +142,10 @@ class _SkillCardState extends State<_SkillCard> {
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            // Side Accent Bar
             Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 6,
+              left: 0, top: 0, bottom: 0, width: 6,
               child: Container(color: const Color(0xFF6C63FF)),
             ),
-            // Content
             Padding(
               padding: const EdgeInsets.all(16).copyWith(left: 22),
               child: Column(
@@ -194,11 +167,9 @@ class _SkillCardState extends State<_SkillCard> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF6C63FF).withOpacity(0.1),
+                          color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -216,49 +187,39 @@ class _SkillCardState extends State<_SkillCard> {
                           constraints: const BoxConstraints(),
                           icon: Icon(
                             Icons.delete_outline_rounded,
-                            color: Colors.redAccent.withOpacity(0.7),
+                            color: Colors.redAccent.withValues(alpha: 0.7),
                             size: 18,
                           ),
                           onPressed: () async {
+                            final provider = context.read<AriAppProvider>();
                             final confirm = await showDialog<bool>(
                               context: context,
-                              builder: (context) => AlertDialog(
+                              builder: (ctx) => AlertDialog(
                                 backgroundColor: const Color(0xFF1A1A2E),
-                                title: const Text(
-                                  '스킬 삭제',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                content: Text(
-                                  '"$name" 스킬을 삭제하시겠습니까?',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
+                                title: const Text('스킬 삭제',
+                                    style: TextStyle(color: Colors.white)),
+                                content: Text('"$name" 스킬을 삭제하시겠습니까?',
+                                    style: const TextStyle(
+                                        color: Colors.white70)),
                                 actions: [
                                   TextButton(
                                     onPressed: () =>
-                                        Navigator.pop(context, false),
+                                        Navigator.pop(ctx, false),
                                     child: const Text('취소'),
                                   ),
                                   TextButton(
                                     onPressed: () =>
-                                        Navigator.pop(context, true),
-                                    child: const Text(
-                                      '삭제',
-                                      style: TextStyle(color: Colors.redAccent),
-                                    ),
+                                        Navigator.pop(ctx, true),
+                                    child: const Text('삭제',
+                                        style: TextStyle(
+                                            color: Colors.redAccent)),
                                   ),
                                 ],
                               ),
                             );
-
-                            if (confirm == true) {
-                              if (mounted) {
-                                final success = await context
-                                    .read<AriAppProvider>()
-                                    .deleteSkill(name);
-                                if (success) {
-                                  widget.onRefresh();
-                                }
-                              }
+                            if (confirm == true && mounted) {
+                              final success = await provider.deleteSkill(name);
+                              if (success) widget.onRefresh();
                             }
                           },
                         ),
@@ -270,7 +231,7 @@ class _SkillCardState extends State<_SkillCard> {
                       final span = TextSpan(
                         text: description,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 13,
                           height: 1.5,
                         ),
@@ -295,8 +256,8 @@ class _SkillCardState extends State<_SkillCard> {
                           ),
                           if (isOverflowing)
                             GestureDetector(
-                              onTap: () =>
-                                  setState(() => _isExpanded = !_isExpanded),
+                              onTap: () => setState(
+                                  () => _isExpanded = !_isExpanded),
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
                                 child: Text(

@@ -57,7 +57,7 @@ class AriAppProvider extends ChangeNotifier {
     }
   }
 
-  /// 스킬(앱) 삭제
+  /// 스킬 삭제
   Future<bool> deleteSkill(String name) async {
     try {
       await AriAgent.call('/DELETE_SKILL', {'name': name});
@@ -68,13 +68,50 @@ class AriAppProvider extends ChangeNotifier {
     }
   }
 
-  /// 모든 플러그인(스킬 포함) 정보 조회
-  Future<Map<String, dynamic>?> getPlugins() async {
+  /// 앱 삭제
+  Future<bool> deleteApp(String name) async {
     try {
-      return await AriAgent.call('/PLUGINS');
+      await AriAgent.call('/DELETE_APP', {'name': name});
+      return true;
     } catch (e) {
-      debugPrint('[AriAppProvider] getPlugins failed: $e');
-      return null;
+      debugPrint('[AriAppProvider] deleteApp failed: $e');
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getSkills() async {
+    try {
+      final res = await AriAgent.call('/PLUGINS.SKILLS');
+      return (res['skills'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    } catch (e) {
+      debugPrint('[AriAppProvider] getSkills failed: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getApps() async {
+    try {
+      final res = await AriAgent.call('/PLUGINS.APPS');
+      return (res['apps'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    } catch (e) {
+      debugPrint('[AriAppProvider] getApps failed: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getTools() async {
+    try {
+      final res = await AriAgent.call('/PLUGINS.TOOLS');
+      return (res['tools'] as List? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    } catch (e) {
+      debugPrint('[AriAppProvider] getTools failed: $e');
+      return [];
     }
   }
 }

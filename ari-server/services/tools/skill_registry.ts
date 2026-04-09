@@ -1,9 +1,19 @@
-import { loadAllSkills, SkillDefinition } from "../../skills/index.js";
+import { loadAllApps, loadAllSkills, SkillDefinition } from "../../skills/index.js";
 
 export type ActiveSkill = Pick<SkillDefinition, "name" | "description" | "tools" | "content" | "isApp">;
 
 export async function loadAvailableSkills(): Promise<SkillDefinition[]> {
   return await loadAllSkills();
+}
+
+export async function loadAvailableApps(): Promise<SkillDefinition[]> {
+  return await loadAllApps();
+}
+
+/** 프롬프트용: 스킬 + 앱을 합쳐서 반환 */
+export async function loadSkillsForPrompt(): Promise<SkillDefinition[]> {
+  const [skills, apps] = await Promise.all([loadAllSkills(), loadAllApps()]);
+  return [...skills, ...apps];
 }
 
 export function clearSkillCache(): void {

@@ -10,24 +10,24 @@ class ToolsTab extends StatefulWidget {
 }
 
 class _ToolsTabState extends State<ToolsTab> {
-  Future<Map<String, dynamic>?>? _pluginsFuture;
+  Future<List<Map<String, dynamic>>>? _toolsFuture;
 
   @override
   void initState() {
     super.initState();
-    _refreshPlugins();
+    _refresh();
   }
 
-  void _refreshPlugins() {
+  void _refresh() {
     setState(() {
-      _pluginsFuture = context.read<AriAppProvider>().getPlugins();
+      _toolsFuture = context.read<AriAppProvider>().getTools();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _pluginsFuture,
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _toolsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -35,35 +35,28 @@ class _ToolsTabState extends State<ToolsTab> {
           );
         }
 
-        if (snapshot.hasError || snapshot.data == null) {
+        if (snapshot.hasError) {
           return _buildErrorState();
         }
 
-        final tools = snapshot.data!['tools'] as List? ?? [];
+        final tools = snapshot.data ?? [];
 
         if (tools.isEmpty) {
           return _buildEmptyState();
         }
 
         return RefreshIndicator(
-          onRefresh: () async => _refreshPlugins(),
+          onRefresh: () async => _refresh(),
           color: const Color(0xFF6C63FF),
           backgroundColor: const Color(0xFF1A1A2E),
           child: ListView.builder(
             padding: const EdgeInsets.all(20),
             itemCount: tools.length,
-            itemBuilder: (context, index) {
-              final tool = tools[index] as Map<String, dynamic>;
-              return _buildToolCard(tool);
-            },
+            itemBuilder: (context, index) => _ToolCard(tool: tools[index]),
           ),
         );
       },
     );
-  }
-
-  Widget _buildToolCard(Map<String, dynamic> tool) {
-    return _ToolCard(tool: tool);
   }
 
   Widget _buildErrorState() {
@@ -71,22 +64,15 @@ class _ToolsTabState extends State<ToolsTab> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            color: Colors.redAccent.withOpacity(0.5),
-            size: 48,
-          ),
+          Icon(Icons.error_outline_rounded,
+              color: Colors.redAccent.withValues(alpha: 0.5), size: 48),
           const SizedBox(height: 16),
-          const Text(
-            '도구 정보를 가져오지 못했습니다.',
-            style: TextStyle(color: Colors.white70),
-          ),
+          const Text('도구 정보를 가져오지 못했습니다.',
+              style: TextStyle(color: Colors.white70)),
           TextButton(
-            onPressed: _refreshPlugins,
-            child: const Text(
-              '다시 시도',
-              style: TextStyle(color: Color(0xFF6C63FF)),
-            ),
+            onPressed: _refresh,
+            child: const Text('다시 시도',
+                style: TextStyle(color: Color(0xFF6C63FF))),
           ),
         ],
       ),
@@ -98,23 +84,16 @@ class _ToolsTabState extends State<ToolsTab> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.terminal_rounded,
-            color: Colors.white.withOpacity(0.2),
-            size: 48,
-          ),
+          Icon(Icons.terminal_rounded,
+              color: Colors.white.withValues(alpha: 0.2), size: 48),
           const SizedBox(height: 16),
-          const Text(
-            '등록된 도구가 없습니다.',
-            style: TextStyle(color: Colors.white54, fontSize: 14),
-          ),
+          const Text('등록된 도구가 없습니다.',
+              style: TextStyle(color: Colors.white54, fontSize: 14)),
           const SizedBox(height: 8),
           Text(
             '에이전트의 tools 폴더를 확인해주세요.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.3),
-              fontSize: 12,
-            ),
+                color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
           ),
         ],
       ),
@@ -145,10 +124,10 @@ class _ToolCardState extends State<_ToolCard> {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentColor.withOpacity(0.1)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -187,7 +166,7 @@ class _ToolCardState extends State<_ToolCard> {
                       final span = TextSpan(
                         text: description,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
+                          color: Colors.white.withValues(alpha: 0.6),
                           fontSize: 13,
                           height: 1.5,
                         ),

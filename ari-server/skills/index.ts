@@ -13,7 +13,10 @@ export interface SkillDefinition {
   isCustom?: boolean;
   isApp?: boolean;
   icon?: string;
+  iconPath?: string;
 }
+
+export type AppDefinition = SkillDefinition;
 
 function parseSkillTools(content: string): string[] {
   const lines = content.split(/\r?\n/);
@@ -81,12 +84,14 @@ function loadSkillsFromDir(dirPath: string): SkillDefinition[] {
     const content = fs.readFileSync(skillFilePath, "utf8").trim();
     if (!content) continue;
 
+    const iconFilePath = path.join(skillDir, "icon.png");
     skills.push({
       name: entry,
       title: entry,
       description: parseSkillDescription(content),
       tools: parseSkillTools(content),
       icon: parseSkillIcon(content),
+      iconPath: fs.existsSync(iconFilePath) ? iconFilePath : undefined,
       content,
       filePath: skillFilePath,
       isApp: fs.existsSync(path.join(skillDir, "app.app")) || fs.existsSync(path.join(skillDir, "app_info.json")),
@@ -98,40 +103,59 @@ function loadSkillsFromDir(dirPath: string): SkillDefinition[] {
 export async function loadAllSkills(): Promise<SkillDefinition[]> {
   const skillMap = new Map<string, SkillDefinition>();
 
-  // 1. 기본 제공 스킬 후보지들
+  // 1. 기본 제공 스킬
   const builtInDirs = [
     resolveServerPath("skills"),
     path.join(process.cwd(), "skills"),
     path.join(process.cwd(), "ari-server", "skills"),
   ];
 
-  // 기본 스킬 로드 (중복 발생 시 덮어쓰기 위해 순차 로드)
   for (const dir of builtInDirs) {
-    const skills = loadSkillsFromDir(dir);
-    for (const skill of skills) {
+    for (const skill of loadSkillsFromDir(dir)) {
+      if (skill.isApp) continue;
       skillMap.set(skill.name, { ...skill, isCustom: false });
     }
   }
 
-  // 실행/연결 가능한 앱 탐색 루트도 함께 스캔해 모델이 앱을 먼저 인지하도록 합니다.
-  for (const dir of getBundleRoots()) {
-    const skills = loadSkillsFromDir(dir);
-    for (const skill of skills) {
-      if (!skill.isApp) continue;
-      skillMap.set(skill.name, { ...skill, isCustom: true });
-    }
-  }
-
-  // 2. 커스텀 스킬 (User Data Dir)
+  // 2. 커스텀 스킬 (~/.ari-agent/skills) — 앱 제외
   const userSkillsDir = path.join(DATA_DIR, "skills");
   ensureDirSync(userSkillsDir);
-  const userSkills = loadSkillsFromDir(userSkillsDir);
-  for (const skill of userSkills) {
-    // 커스텀 스킬이 항상 우선순위를 갖도록 마지막에 덮어씀
+  for (const skill of loadSkillsFromDir(userSkillsDir)) {
+    if (skill.isApp) continue;
     skillMap.set(skill.name, { ...skill, isCustom: true });
   }
 
   const result = Array.from(skillMap.values());
+  result.sort((a, b) => a.name.localeCompare(b.name));
+  return result;
+}
+
+export async function loadAllApps(): Promise<AppDefinition[]> {
+  const appMap = new Map<string, AppDefinition>();
+
+  // 1. 번들 루트 (설치된 .app 패키지 등)
+  for (const dir of getBundleRoots()) {
+    for (const skill of loadSkillsFromDir(dir)) {
+      if (!skill.isApp) continue;
+      appMap.set(skill.name, { ...skill, isCustom: true });
+    }
+  }
+
+  // 2. 레거시: ~/.ari-agent/skills 에 isApp으로 설치된 항목
+  const legacySkillsDir = path.join(DATA_DIR, "skills");
+  for (const skill of loadSkillsFromDir(legacySkillsDir)) {
+    if (!skill.isApp) continue;
+    appMap.set(skill.name, { ...skill, isCustom: true });
+  }
+
+  // 3. 사용자 앱 (~/.ari-agent/apps) — 여기가 새 기본 위치
+  const userAppsDir = path.join(DATA_DIR, "apps");
+  ensureDirSync(userAppsDir);
+  for (const skill of loadSkillsFromDir(userAppsDir)) {
+    appMap.set(skill.name, { ...skill, isCustom: true, isApp: true });
+  }
+
+  const result = Array.from(appMap.values());
   result.sort((a, b) => a.name.localeCompare(b.name));
   return result;
 }

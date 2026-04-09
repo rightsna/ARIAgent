@@ -6,6 +6,7 @@ export type AuthType = "apikey" | "oauth";
 export interface AvailablePlugins {
   tools: AgentTool[];
   skills: SkillDefinition[];
+  apps: SkillDefinition[];
 }
 
 export class AIProviderConfig {

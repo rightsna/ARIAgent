@@ -56,14 +56,23 @@ router.on("/SETTINGS", async (ws, params) => {
   ws.send("/SETTINGS", { ok: true, data: { success: true, model: state.currentModel, provider: state.currentProvider } });
 });
 
-router.on("/PLUGINS", async (ws, params) => {
-  logger.info(`[Plugins] Requesting list from ${ws.uuid}`);
-  const plugins = await getPluginsInfo();
-  ws.send("/PLUGINS", {
+router.on("/PLUGINS.SKILLS", async (ws, _params) => {
+  logger.info(`[Plugins] Skills requested from ${ws.uuid}`);
+  const { skills } = await getPluginsInfo();
+  ws.send("/PLUGINS.SKILLS", { ok: true, data: { skills } });
+});
+
+router.on("/PLUGINS.APPS", async (ws, _params) => {
+  logger.info(`[Plugins] Apps requested from ${ws.uuid}`);
+  const { apps } = await getPluginsInfo();
+  ws.send("/PLUGINS.APPS", { ok: true, data: { apps } });
+});
+
+router.on("/PLUGINS.TOOLS", async (ws, _params) => {
+  logger.info(`[Plugins] Tools requested from ${ws.uuid}`);
+  const { tools } = await getPluginsInfo();
+  ws.send("/PLUGINS.TOOLS", {
     ok: true,
-    data: {
-      tools: plugins.tools.map((t) => ({ name: t.name, description: t.description })),
-      skills: plugins.skills,
-    },
+    data: { tools: tools.map((t) => ({ name: t.name, description: t.description })) },
   });
 });

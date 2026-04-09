@@ -24,7 +24,7 @@ import {
   getOrCreateSession,
   getSession,
 } from "./session_manager.js";
-import { clearSkillCache, loadAvailableSkills } from "../tools/skill_registry.js";
+import { clearSkillCache, loadAvailableApps, loadAvailableSkills, loadSkillsForPrompt } from "../tools/skill_registry.js";
 import { clearToolCache, loadMainTools } from "../tools/tool_registry.js";
 import { isOAuthProvider } from "./provider_selector.js";
 import { UserSocketHandler } from "../../system/ws.js";
@@ -56,7 +56,7 @@ export async function initAgent(
   clearToolCache();
   clearSkillCache();
   currentTools = await loadMainTools();
-  currentSkills = await loadAvailableSkills();
+  currentSkills = await loadSkillsForPrompt();
 
   if (providersConfig && providersConfig.providers.length > 0) {
     state.setProviders(providersConfig.providers);
@@ -121,10 +121,11 @@ export async function getPluginsInfo(): Promise<AvailablePlugins> {
   if (currentTools.length === 0) {
     currentTools = await loadMainTools();
   }
-  if (currentSkills.length === 0) {
-    currentSkills = await loadAvailableSkills();
-  }
-  return { tools: currentTools, skills: currentSkills };
+  const [skills, apps] = await Promise.all([
+    loadAvailableSkills(),
+    loadAvailableApps(),
+  ]);
+  return { tools: currentTools, skills, apps };
 }
 
 export async function chatWithAgent(
