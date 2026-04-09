@@ -1,0 +1,13 @@
+[Request Context]
+{{#if appId}}
+- appId: {{appId}}
+{{/if}}
+{{#if platform}}
+- platform: {{platform}}
+{{/if}}
+{{#each details}}
+- {{key}}: {{value}}
+{{/each}}
+
+[User Request]
+{{message}}

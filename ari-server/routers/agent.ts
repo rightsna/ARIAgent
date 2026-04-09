@@ -50,6 +50,28 @@ router.on("/AGENT", async (ws, params) => {
     }
   }
 
+  if (source !== "app") {
+    const detailEntries =
+      details && typeof details === "object" && !Array.isArray(details)
+        ? Object.entries(details)
+            .filter(([, value]) => value != null)
+            .map(([key, value]) => ({
+              key,
+              value:
+                typeof value === "string" ? value : JSON.stringify(value),
+            }))
+        : [];
+
+    if (resolvedAppId || normalizedPlatform || detailEntries.length > 0) {
+      message = await Prompt.load("app_user_context.hbs", {
+        appId: resolvedAppId,
+        platform: normalizedPlatform,
+        details: detailEntries,
+        message,
+      });
+    }
+  }
+
   // 앱 소스인 경우 템플릿 적용 (동적 래핑)
   if (source === "app") {
     message = await Prompt.load("app_report.hbs", {
