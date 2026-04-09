@@ -322,6 +322,9 @@ export class AgentSession {
             case "execute_bash":
               onProgress?.(t("tool.progress.execute_bash"));
               break;
+            case "sleep":
+              onProgress?.(t("tool.progress.sleep"));
+              break;
             case "update_core_memory":
               onProgress?.(t("tool.progress.update_core_memory"));
               break;

@@ -9,6 +9,7 @@ const translations: Record<ServerLocale, Record<string, TranslationValue>> = {
   ko: {
     "tool.progress.read_skill": "스킬 문서를 읽는 중...",
     "tool.progress.execute_bash": "로컬 명령을 실행하는 중...",
+    "tool.progress.sleep": "잠시 대기하는 중...",
     "tool.progress.update_core_memory": "핵심 메모리를 갱신하는 중...",
     "tool.progress.append_daily_memory": "일상 메모리를 기록하는 중...",
     "tool.progress.list_schedules": "등록된 일정을 확인하는 중...",
@@ -37,6 +38,7 @@ const translations: Record<ServerLocale, Record<string, TranslationValue>> = {
   en: {
     "tool.progress.read_skill": "Reading the skill document...",
     "tool.progress.execute_bash": "Running a local command...",
+    "tool.progress.sleep": "Waiting briefly...",
     "tool.progress.update_core_memory": "Updating core memory...",
     "tool.progress.append_daily_memory": "Writing daily memory...",
     "tool.progress.list_schedules": "Checking registered schedules...",

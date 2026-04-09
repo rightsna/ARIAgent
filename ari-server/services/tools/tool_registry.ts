@@ -3,6 +3,7 @@ import { loadAllTools } from "../../tools/index.js";
 
 const MAIN_TOOL_NAMES = new Set<string>([
   "execute_bash",
+  "sleep",
   "update_core_memory",
   "append_daily_memory",
   "read_skill",

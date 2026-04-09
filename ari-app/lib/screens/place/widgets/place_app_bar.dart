@@ -67,7 +67,7 @@ class PlaceAppBar extends StatelessWidget {
                     ),
                     SizedBox(width: 8),
                     Text(
-                      '스토어',
+                      '앱스토어',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,

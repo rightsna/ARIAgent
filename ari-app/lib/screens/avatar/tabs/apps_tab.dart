@@ -76,15 +76,22 @@ class _AppsTabState extends State<AppsTab> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline_rounded,
-              color: Colors.redAccent.withValues(alpha: 0.5), size: 48),
+          Icon(
+            Icons.error_outline_rounded,
+            color: Colors.redAccent.withValues(alpha: 0.5),
+            size: 48,
+          ),
           const SizedBox(height: 16),
-          const Text('앱 정보를 가져오지 못했습니다.',
-              style: TextStyle(color: Colors.white70)),
+          const Text(
+            '앱 정보를 가져오지 못했습니다.',
+            style: TextStyle(color: Colors.white70),
+          ),
           TextButton(
             onPressed: _refresh,
-            child: const Text('다시 시도',
-                style: TextStyle(color: Color(0xFF6C63FF))),
+            child: const Text(
+              '다시 시도',
+              style: TextStyle(color: Color(0xFF6C63FF)),
+            ),
           ),
         ],
       ),
@@ -96,16 +103,23 @@ class _AppsTabState extends State<AppsTab> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.apps_rounded,
-              color: Colors.white.withValues(alpha: 0.2), size: 48),
+          Icon(
+            Icons.apps_rounded,
+            color: Colors.white.withValues(alpha: 0.2),
+            size: 48,
+          ),
           const SizedBox(height: 16),
-          const Text('설치된 앱이 없습니다.',
-              style: TextStyle(color: Colors.white54, fontSize: 14)),
+          const Text(
+            '설치된 앱이 없습니다.',
+            style: TextStyle(color: Colors.white54, fontSize: 14),
+          ),
           const SizedBox(height: 8),
           Text(
-            '~/.ari-agent/skills 폴더를 확인해주세요.',
+            '~/.ari-agent/apps 폴더를 확인해주세요.',
             style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
+              color: Colors.white.withValues(alpha: 0.3),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -190,10 +204,14 @@ class _AppCard extends StatelessWidget {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: isConnected
-                                    ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
+                                    ? const Color(
+                                        0xFF4CAF50,
+                                      ).withValues(alpha: 0.15)
                                     : Colors.white.withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(20),
                               ),
@@ -250,10 +268,14 @@ class _AppCard extends StatelessWidget {
                         context: context,
                         builder: (context) => AlertDialog(
                           backgroundColor: const Color(0xFF1A1A2E),
-                          title: const Text('앱 삭제',
-                              style: TextStyle(color: Colors.white)),
-                          content: Text('"$title" 앱을 삭제하시겠습니까?',
-                              style: const TextStyle(color: Colors.white70)),
+                          title: const Text(
+                            '앱 삭제',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          content: Text(
+                            '"$title" 앱을 삭제하시겠습니까?',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
@@ -261,8 +283,10 @@ class _AppCard extends StatelessWidget {
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(context, true),
-                              child: const Text('삭제',
-                                  style: TextStyle(color: Colors.redAccent)),
+                              child: const Text(
+                                '삭제',
+                                style: TextStyle(color: Colors.redAccent),
+                              ),
                             ),
                           ],
                         ),
@@ -305,8 +329,11 @@ class _AppCard extends StatelessWidget {
       child: Center(
         child: icon != null
             ? Text(icon, style: const TextStyle(fontSize: 22))
-            : Icon(Icons.extension_rounded,
-                color: const Color(0xFF6C63FF).withValues(alpha: 0.5), size: 22),
+            : Icon(
+                Icons.extension_rounded,
+                color: const Color(0xFF6C63FF).withValues(alpha: 0.5),
+                size: 22,
+              ),
       ),
     );
   }
