@@ -60,11 +60,9 @@ void main() async {
   // window_manager 초기화
   await windowManager.ensureInitialized();
 
-  const windowSize = Size(450, 720);
-
-  WindowOptions windowOptions = const WindowOptions(
-    size: windowSize,
-    minimumSize: Size(300, 400),
+  final WindowOptions windowOptions = WindowOptions(
+    size: Platform.isWindows ? const Size(450, 720) : null,
+    minimumSize: const Size(300, 400),
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
     titleBarStyle: TitleBarStyle.hidden,
@@ -74,12 +72,12 @@ void main() async {
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     if (Platform.isWindows) {
       await windowManager.setAsFrameless();
+      await windowManager.setPosition(const Offset(20, 100));
     }
     await windowManager.setAlwaysOnTop(ConfigProvider().isPinned);
     await windowManager.setHasShadow(false);
     await windowManager.setResizable(true);
     await windowManager.setMaximumSize(const Size(1200, 2000));
-    await windowManager.setPosition(const Offset(20, 100));
     await windowManager.setPreventClose(true);
     await windowManager.show();
     await windowManager.focus();

@@ -1,13 +1,30 @@
 import { AgentMessage } from "@mariozechner/pi-agent-core";
 import { AgentInfo } from "../../models/agent.js";
+import { AIProviders } from "../../models/settings.js";
 import { Prompt } from "../../infra/prompt.js";
 import { logger } from "../../infra/logger.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import { readCoreMemory, readRecentDailyLogs } from "../memory.js";
+import { ARI_CLOUD_PROVIDER } from "./provider_selector.js";
 
 export async function buildSystemPrompt(
   agentProfile: AgentInfo,
+  providers?: AIProviders,
 ): Promise<string> {
+  // setup 모드: 아직 프로바이더가 설정되지 않아 ARICloud 프록시를 사용 중인 경우
+  // 일반 system_prompt 대신 setup 가이드 전용 프롬프트를 사용한다
+  const isSetupMode =
+    !!providers &&
+    providers.availableProviders.length > 0 &&
+    providers.availableProviders.every((p) => p.provider === ARI_CLOUD_PROVIDER);
+
+  if (isSetupMode) {
+    const setupPrompt = await Prompt.load("setup_system_prompt.hbs", {
+      now_str: new Date().toISOString(),
+    });
+    return setupPrompt;
+  }
+
   const agentId = agentProfile.id || "default";
   const coreMemory = readCoreMemory(agentId);
   const recentDailyLogs = readRecentDailyLogs(agentId);

@@ -2,6 +2,7 @@ import http from "http";
 import { setMaxListeners } from "events";
 import { WebSocketServer } from "ws";
 import { getPluginsInfo, initAgent, getCurrentState } from "./services/agent/index.js";
+import { ARI_CLOUD_PROVIDER } from "./services/agent/provider_selector.js";
 import { getSettings } from "./repositories/setting_repository.js";
 import { getAgentsConfig } from "./repositories/agent_repository.js";
 import { AgentsConfig } from "./models/agent.js";
@@ -118,6 +119,16 @@ function setupWebSocket(server: http.Server): void {
 async function bootstrapTaskScheduler(): Promise<void> {
   initializeTaskScheduler({
     executeTask: async (task) => {
+      const state = getCurrentState();
+      const isSetupMode =
+        state.availableProviders.length > 0 &&
+        state.availableProviders.every((p) => p.provider === ARI_CLOUD_PROVIDER);
+      if (isSetupMode) {
+        logger.info(
+          `[LocalTaskScheduler] Skipping task in setup mode: ${task.id} (${task.label})`,
+        );
+        return;
+      }
       await runScheduledTask(task);
     },
   });

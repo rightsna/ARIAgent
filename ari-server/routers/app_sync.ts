@@ -12,6 +12,8 @@ router.on("/HEALTH", async (ws) => {
     data: {
       status: "ok",
       hasApiKey: state.availableProviders.length > 0,
+      isSetupMode: state.availableProviders.length > 0 &&
+        state.availableProviders.every((p: any) => p.provider === "ari-cloud"),
       providers: (state.providers || []).map((p: any) => ({
         provider: p.provider,
         model: p.model,

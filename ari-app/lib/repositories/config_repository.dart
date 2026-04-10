@@ -16,6 +16,10 @@ class ConfigRepository {
   bool _showTaskMessages = true;
   String _avatarSize = 'medium';
   String _backgroundTheme = 'dark';
+  double? _windowWidth;
+  double? _windowHeight;
+  double? _windowPosX;
+  double? _windowPosY;
   Map<String, dynamic> _fullConfig = {};
 
   bool _isInitialized = false;
@@ -23,6 +27,10 @@ class ConfigRepository {
   int get port => _port;
   String get baseUrl => 'http://localhost:$_port';
   String get wsUrl => 'ws://localhost:$_port';
+  double? get windowWidth => _windowWidth;
+  double? get windowHeight => _windowHeight;
+  double? get windowPosX => _windowPosX;
+  double? get windowPosY => _windowPosY;
 
   Future<void> init() async {
     // settings.json 로드
@@ -69,6 +77,10 @@ class ConfigRepository {
         if (_fullConfig['BACKGROUND_THEME'] != null) {
           _backgroundTheme = _fullConfig['BACKGROUND_THEME'].toString();
         }
+        _windowWidth = (_fullConfig['WINDOW_WIDTH'] as num?)?.toDouble();
+        _windowHeight = (_fullConfig['WINDOW_HEIGHT'] as num?)?.toDouble();
+        _windowPosX = (_fullConfig['WINDOW_POS_X'] as num?)?.toDouble();
+        _windowPosY = (_fullConfig['WINDOW_POS_Y'] as num?)?.toDouble();
       } catch (e) {
         debugPrint('[ConfigRepository] settings.json 로드 에러: $e');
       }
@@ -100,6 +112,10 @@ class ConfigRepository {
     _fullConfig['SHOW_TASK_MESSAGES'] = _showTaskMessages;
     _fullConfig['AVATAR_SIZE'] = _avatarSize;
     _fullConfig['BACKGROUND_THEME'] = _backgroundTheme;
+    _fullConfig['WINDOW_WIDTH'] = _windowWidth;
+    _fullConfig['WINDOW_HEIGHT'] = _windowHeight;
+    _fullConfig['WINDOW_POS_X'] = _windowPosX;
+    _fullConfig['WINDOW_POS_Y'] = _windowPosY;
 
     await file.writeAsString(jsonEncode(_fullConfig));
   }
@@ -162,6 +178,19 @@ class ConfigRepository {
 
   Future<void> updateBackgroundTheme(String theme) async {
     _backgroundTheme = theme;
+    await _saveConfig();
+  }
+
+  Future<void> updateWindowBounds({
+    required double width,
+    required double height,
+    required double posX,
+    required double posY,
+  }) async {
+    _windowWidth = width;
+    _windowHeight = height;
+    _windowPosX = posX;
+    _windowPosY = posY;
     await _saveConfig();
   }
 }

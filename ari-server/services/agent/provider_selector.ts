@@ -6,6 +6,27 @@ import type { OAuthProvider } from "../../repositories/oauth_repository.js";
 // 이제 서버는 별도의 매핑 테이블을 관리하지 않습니다.
 // 모든 ID 제어는 클라이언트(ari-app)의 provider_meta.dart에서 수행합니다.
 
+// ARICloud 프록시를 통해 LLM에 접근하는 setup agent 전용 프로바이더 이름
+export const ARI_CLOUD_PROVIDER = "ari-cloud";
+
+// ARICloud 프록시 엔드포인트 (was.daierconnect.com)
+const ARI_CLOUD_BASE_URL = "https://ai.dev.daierconnect.com/ari/v1";
+
+// setup agent 전용 모델 — openai-completions API를 ARICloud baseUrl로 라우팅
+const ARI_CLOUD_SETUP_MODEL = {
+  id: "gpt-4.1-mini",
+  name: "ARI Setup Guide",
+  api: "openai-completions" as const,
+  provider: ARI_CLOUD_PROVIDER,
+  baseUrl: ARI_CLOUD_BASE_URL,
+  reasoning: false,
+  input: ["text"] as ("text" | "image")[],
+  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  contextWindow: 128000,
+  maxTokens: 4096,
+  headers: {} as Record<string, string>,
+};
+
 export function providerNameFor(config: AIProviderConfig): string {
   return config.provider;
 }
@@ -17,6 +38,12 @@ export function modelNameFor(config: AIProviderConfig): string {
 export function resolveModel(config: AIProviderConfig) {
   const provider = providerNameFor(config);
   const modelId = modelNameFor(config);
+
+  // ari-cloud는 ARICloud 프록시 전용 커스텀 모델 반환
+  if (provider === ARI_CLOUD_PROVIDER) {
+    return ARI_CLOUD_SETUP_MODEL;
+  }
+
   let model = getModel(provider as any, modelId as any);
 
   if (!model) {

@@ -32,7 +32,7 @@ import {
   loadSkillsForPrompt,
 } from "../tools/skill_registry.js";
 import { clearToolCache, loadMainTools } from "../tools/tool_registry.js";
-import { isOAuthProvider } from "./provider_selector.js";
+import { isOAuthProvider, ARI_CLOUD_PROVIDER } from "./provider_selector.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import { loadAllApps } from "../../skills/index.js";
 
@@ -121,8 +121,18 @@ export async function initAgent(providersConfig?: AIProviders): Promise<void> {
   clearAllAgentSessions();
 
   if (state.availableProviders.length === 0) {
+    // 사용 가능한 프로바이더가 없으면 ARICloud 프록시를 통한 setup agent 모드로 전환
+    const cloudSetupProvider = new AIProviderConfig({
+      provider: ARI_CLOUD_PROVIDER,
+      model: "gpt-4.1-mini",
+      apiKey: "ari-setup-7f3k9mXpQ2wLdRvN",
+      authType: "apikey",
+    });
+    state.setAvailableProviders([cloudSetupProvider]);
+    state.currentProvider = ARI_CLOUD_PROVIDER;
+    state.currentModel = "gpt-4.1-mini";
     logger.info(
-      "⚠️  활성화된 API Key 없음 — 에코 모드 (대화는 가능하나 동작이 제한됩니다)",
+      "🌐 Setup 모드 — ARICloud 프록시를 통해 앱 사용 가이드 에이전트가 활성화됩니다.",
     );
     return;
   }
@@ -182,7 +192,7 @@ export async function chatWithAgent(
     session.enqueueRequest(pendingResponse);
   }
 
-  const systemPrompt = await buildSystemPrompt(session.agentInfo);
+  const systemPrompt = await buildSystemPrompt(session.agentInfo, agentState);
   const result = await runWithExecutionContext(
     {
       agentId: currentAgentId,

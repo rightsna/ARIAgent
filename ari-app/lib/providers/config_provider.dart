@@ -19,9 +19,17 @@ class ConfigProvider extends ChangeNotifier {
   bool get isNotificationEnabled => _repository.getIsNotificationEnabled();
   bool get showTaskMessages => _repository.getShowTaskMessages();
   String get backgroundTheme => _repository.getBackgroundTheme();
+  double? get windowWidth => _repository.windowWidth;
+  double? get windowHeight => _repository.windowHeight;
+  double? get windowPosX => _repository.windowPosX;
+  double? get windowPosY => _repository.windowPosY;
 
   bool _hasApiKey = true;
   bool get hasApiKey => _hasApiKey;
+
+  bool _isSetupMode = false;
+  bool get isSetupMode => _isSetupMode;
+
 
   String? _mode;
   String? get mode => _mode;
@@ -92,19 +100,42 @@ class ConfigProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateWindowBounds({
+    required double width,
+    required double height,
+    required double posX,
+    required double posY,
+  }) async {
+    await _repository.updateWindowBounds(
+      width: width,
+      height: height,
+      posX: posX,
+      posY: posY,
+    );
+  }
+
   // --- 서버 통신 (AriAgent 호출) ---
 
   /// 서버 상태 확인
   Future<Map<String, dynamic>?> getServerHealth() async {
     try {
       final health = await AriAgent.call('/HEALTH');
+      bool changed = false;
       if (health.containsKey('hasApiKey')) {
         final newHasApiKey = health['hasApiKey'] == true;
         if (_hasApiKey != newHasApiKey) {
           _hasApiKey = newHasApiKey;
-          notifyListeners();
+          changed = true;
         }
       }
+      if (health.containsKey('isSetupMode')) {
+        final newSetupMode = health['isSetupMode'] == true;
+        if (_isSetupMode != newSetupMode) {
+          _isSetupMode = newSetupMode;
+          changed = true;
+        }
+      }
+      if (changed) notifyListeners();
       return health;
     } catch (e) {
       debugPrint('[ConfigProvider] getServerHealth failed: $e');

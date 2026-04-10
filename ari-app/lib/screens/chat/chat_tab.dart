@@ -40,8 +40,11 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   void _onConnectionChanged() {
-    if (AriAgent.isConnected && _lastAgentId != null) {
-      context.read<AriChatProvider>().loadServerHistory(_lastAgentId!);
+    if (AriAgent.isConnected) {
+      if (_lastAgentId != null) {
+        context.read<AriChatProvider>().loadServerHistory(_lastAgentId!);
+      }
+      context.read<ConfigProvider>().getServerHealth();
     }
   }
 
@@ -67,10 +70,11 @@ class _ChatTabState extends State<ChatTab> {
     }
 
     // 조건부 오버레이 결정
+    // isSetupMode: ari-cloud 프록시로 setup agent가 활성화된 상태 → 오버레이 없이 채팅 허용
     Widget? overlay;
     if (!isServerRunning) {
       overlay = const ServerStoppedView();
-    } else if (!hasApiKey) {
+    } else if (!hasApiKey && !config.isSetupMode) {
       overlay = ModelSetupView(onSettingsTap: widget.onSettingsTap);
     }
 
@@ -107,6 +111,7 @@ class _ChatTabState extends State<ChatTab> {
             ),
           ),
           ChatSuggestions(
+            isSetupMode: config.isSetupMode,
             onSuggestionTap: (text) => chatProvider.sendAgentMessage(
               text,
               agentId: avatar.currentAvatarId,
