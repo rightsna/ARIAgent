@@ -20,7 +20,9 @@ import "./routers/app_sync.js";
 import "./routers/app_control.js";
 import "./routers/chat.js";
 import "./routers/homeassistant.js";
+import "./routers/channel.js";
 import { logger } from "./infra/logger.js";
+import { startTelegramPolling } from "./services/channels/telegram_service.js";
 import { runScheduledTask } from "./services/jobs/run_task.js";
 import {
   initializeTaskScheduler,
@@ -187,6 +189,9 @@ async function main() {
 
   // 5. WebSocket keep-alive 시작
   UserSocketHandler.startKeepAlive();
+
+  // 6. 채널 시작 (설정된 경우에만)
+  startTelegramPolling();
 }
 
 main().catch((err) => {

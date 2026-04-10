@@ -12,6 +12,7 @@ import 'screens/home_screen.dart';
 import 'repositories/config_repository.dart';
 import 'providers/config_provider.dart';
 import 'providers/home_assistant_provider.dart';
+import 'providers/channel_provider.dart';
 import 'providers/ari_app_provider.dart';
 import 'providers/server_provider.dart';
 import 'services/desktop_notification_service.dart';
@@ -204,6 +205,9 @@ class _ARIAppState extends State<ARIApp> with WindowListener {
         ChangeNotifierProvider<AriTaskProvider>.value(value: AriTaskProvider()),
         ChangeNotifierProvider<HomeAssistantProvider>.value(
           value: HomeAssistantProvider(),
+        ),
+        ChangeNotifierProvider<ChannelProvider>.value(
+          value: ChannelProvider(),
         ),
         ChangeNotifierProvider<AriAppProvider>.value(value: AriAppProvider()),
         ChangeNotifierProvider<PlaceAgentStatusProvider>.value(
