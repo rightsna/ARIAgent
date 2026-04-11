@@ -61,11 +61,11 @@ class _SampleHomeState extends State<SampleHome> {
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
 
-    // 에이전트가 자연스럽게 인지하도록 보고 형식으로 전송
-    AriAgent.emit('/APP.REPORT', {
+    AriAgent.call('/AGENT', {
       'appId': ProtocolConfig.appId,
       'message': text,
-      'type': 'info',
+      'requestId': 'sample-${DateTime.now().microsecondsSinceEpoch}',
+      'platform': ProtocolConfig.appId,
     });
 
     LogProvider().add('SEND TO AGENT: $text');
@@ -185,10 +185,12 @@ class _SampleHomeState extends State<SampleHome> {
                           icon: Icons.send_and_archive,
                           color: Colors.purple,
                           onPressed: () {
-                            AriAgent.emit('/APP.REPORT', {
+                            AriAgent.call('/AGENT', {
                               'appId': ProtocolConfig.appId,
-                              'message': '사용자가 앱에서 직접 보고를 전송했습니다.',
-                              'type': 'success',
+                              'message': '사용자가 앱에서 직접 메시지를 전송했습니다.',
+                              'requestId':
+                                  'sample-${DateTime.now().microsecondsSinceEpoch}',
+                              'platform': ProtocolConfig.appId,
                             });
                             _handleTest(context, 'Report to Agent');
                           },

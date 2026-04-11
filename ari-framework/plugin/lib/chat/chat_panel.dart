@@ -7,7 +7,7 @@ import '../theme/ari_chat_theme.dart';
 /// ARI 프레임워크 표준 채팅 패널.
 ///
 /// **기본 모드** (`messages` 미제공):
-///   내부 [AriChatProvider]를 생성하고 AriAgent.report()로 메시지를 전송합니다.
+///   내부 [AriChatProvider]를 생성하고 `/AGENT` 경로로 메시지를 전송합니다.
 ///   ARIStock처럼 단순한 사용 사례에 적합합니다.
 ///
 /// **외부 모드** (`messages` 제공):

@@ -51,28 +51,6 @@ class AriAgent {
     await emit('/APP.REGISTER', {'appId': appId});
   }
 
-  /// Reports an event or message to the agent.
-  /// The agent will typically analyze this and respond to the user.
-  static Future<Map<String, dynamic>> report({
-    required String appId,
-    required String message,
-    String type = 'info',
-    Map<String, dynamic>? details,
-    String? agentId,
-  }) async {
-    final requestId = 'report-${DateTime.now().millisecondsSinceEpoch}';
-
-    return await call('/AGENT', {
-      'source': 'app',
-      'appId': appId,
-      'message': message,
-      'type': type,
-      'details': details,
-      'requestId': requestId,
-      'agentId': agentId,
-    });
-  }
-
   /// Sends a response to a previously received command.
   static Future<void> sendResponse({
     required String requestId,

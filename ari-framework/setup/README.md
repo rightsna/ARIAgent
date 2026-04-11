@@ -153,9 +153,8 @@ class _MyAppState extends State<MyApp> {
 2.  **명령 수신 (COMMAND)**: `/APP.COMMAND {"command": "...", "params": {...}}`
     - 명령어 중 `GET_STATE`는 앱의 현재 상태를 요청하는 예약된 명령어입니다.
 3.  **결과 응답**: `/APP.COMMAND_RESPONSE {"requestId": "...", "result": {...}}`
-4.  **자발적 보고 (REPORT)**: `AriAgent.report(...)`를 사용해 서버의 에이전트에 메시지를 전달합니다.
-    - 내부적으로는 `/AGENT` 요청을 사용합니다.
-    - 앱이 스스로 서버(에이전트)에게 특정 사건을 보고할 때 사용합니다.
+4.  **에이전트 메시지 전송**: `/AGENT` 요청을 사용해 서버의 에이전트에 메시지를 전달합니다.
+    - 앱이 스스로 서버(에이전트)에게 특정 사건이나 요청을 전달할 때 사용합니다.
     - **중요**: 이 요청을 보내면 서버의 에이전트가 내용을 분석하고 사용자에게 **자연스러운 문장**으로 답변을 생성하여 전달할 수 있습니다.
 
 ---
@@ -164,7 +163,7 @@ class _MyAppState extends State<MyApp> {
 `AriAgent` 클래스는 위 프로토콜을 쉽게 사용할 수 있도록 래퍼 메서드를 제공합니다.
 
 - **등록**: `AriAgent.register(appId)`
-- **보고**: `AriAgent.report(appId: appId, message: "메시지", type: "info")`
+- **메시지 전송**: `AriAgent.call('/AGENT', {'appId': appId, 'message': '메시지', 'requestId': '...', 'platform': appId})`
 - **응답**: `AriAgent.sendResponse(requestId: id, result: data)`
 
 ---
