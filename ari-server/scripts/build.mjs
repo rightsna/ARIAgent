@@ -12,6 +12,14 @@ const distDir = path.join(rootDir, "dist");
 const standaloneDir = path.join(rootDir, "build", "standalone");
 const standaloneBinaryName = process.platform === "win32" ? "ari-server.exe" : "ari-server";
 const nodeBinDir = path.dirname(process.execPath);
+const standaloneExternalModules = [
+  "playwright",
+  "playwright-core",
+  "chromium-bidi",
+  "fsevents",
+  "sharp",
+  "onnxruntime-node",
+];
 const existingPath = process.env.PATH ?? process.env.Path ?? "";
 const pathWithNode = process.platform === "win32"
   ? `${nodeBinDir};${existingPath}`
@@ -173,12 +181,7 @@ async function buildStandalone() {
       target: "node22",
       sourcemap: false,
       logLevel: "info",
-      external: [
-        "playwright",
-        "playwright-core",
-        "chromium-bidi",
-        "fsevents",
-      ],
+      external: standaloneExternalModules,
     });
 
     fs.writeFileSync(
@@ -235,9 +238,9 @@ async function buildStandalone() {
 
     copyDirIfExists("template", standaloneDir);
     copySkills(standaloneDir);
-    copyNodeModuleTree("playwright", standaloneDir);
-    copyNodeModuleTree("playwright-core", standaloneDir);
-    copyNodeModuleTree("chromium-bidi", standaloneDir);
+    for (const moduleName of standaloneExternalModules) {
+      copyNodeModuleTree(moduleName, standaloneDir);
+    }
     copyNodeModuleTree("node-schedule", standaloneDir);
 
     fs.rmSync(launcherFile, { force: true });
