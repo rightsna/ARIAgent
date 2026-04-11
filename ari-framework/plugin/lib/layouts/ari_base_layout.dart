@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../bridge/ws/AriAgent.dart';
 import '../chat/chat_panel.dart';
-import '../chat/models/ari_chat_message.dart';
 import '../chat/providers/chat_provider.dart';
 import '../theme/ari_chat_theme.dart';
 import '../update/widgets/ari_update_banner.dart';
+import 'widgets/connection_warning_banner.dart';
+import 'widgets/thinking_glow_overlay.dart';
 
 class AriBaseLayout extends StatefulWidget {
   const AriBaseLayout({
@@ -74,65 +74,94 @@ class _AriBaseLayoutState extends State<AriBaseLayout> {
     final maxChatWidth = MediaQuery.of(context).size.width * _maxChatWidthRatio;
     final themeBackground = Theme.of(context).scaffoldBackgroundColor;
 
-    return Scaffold(
-      key: widget.scaffoldKey,
-      drawer: widget.drawer,
-      backgroundColor: widget.backgroundColor ?? themeBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const _ConnectionWarningBanner(),
-            AriUpdateBanner(appId: widget.appId, appName: widget.appName),
-            Expanded(
-              child: Row(
-                children: [
-                  // Left Side: Header + Content
-                  Expanded(
-                    child: Column(
-                      children: [
-                        if (widget.appBar != null)
-                          SizedBox(
-                            height: widget.appBar!.preferredSize.height,
-                            child: widget.appBar!,
-                          ),
-                        Expanded(child: widget.body),
-                      ],
-                    ),
-                  ),
-                  // Right Side: Chat Panel
-                  if (widget.showChat) ...[
-                    // Resize Handle
-                    GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onHorizontalDragUpdate: (details) {
-                        setState(() {
-                          _chatWidth = (_chatWidth - details.delta.dx).clamp(
-                            _minChatWidth,
-                            maxChatWidth,
-                          );
-                        });
-                      },
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.resizeLeftRight,
-                        child: Container(
-                          width: 1,
-                          height: double.infinity,
-                          color: Theme.of(context).dividerColor.withOpacity(0.1),
+    return Stack(
+      children: [
+        Scaffold(
+          key: widget.scaffoldKey,
+          drawer: widget.drawer,
+          backgroundColor: widget.backgroundColor ?? themeBackground,
+          body: SafeArea(
+            child: Column(
+              children: [
+                const ConnectionWarningBanner(),
+                AriUpdateBanner(appId: widget.appId, appName: widget.appName),
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Left Side: Header + Content
+                      Expanded(
+                        child: Column(
+                          children: [
+                            if (widget.appBar != null)
+                              SizedBox(
+                                height: widget.appBar!.preferredSize.height,
+                                child: widget.appBar!,
+                              ),
+                            Expanded(child: widget.body),
+                          ],
                         ),
                       ),
-                    ),
-                    // Chat Panel Area
-                    SizedBox(
-                      width: _chatWidth,
-                      child: _buildChatPanel(),
-                    ),
-                  ],
-                ],
-              ),
+                      // Right Side: Chat Panel
+                      if (widget.showChat) ...[
+                        // Resize Handle
+                        GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragUpdate: (details) {
+                            setState(() {
+                              _chatWidth = (_chatWidth - details.delta.dx).clamp(
+                                _minChatWidth,
+                                maxChatWidth,
+                              );
+                            });
+                          },
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.resizeLeftRight,
+                            child: Container(
+                              width: 1,
+                              height: double.infinity,
+                              color: Theme.of(context)
+                                  .dividerColor
+                                  .withOpacity(0.1),
+                            ),
+                          ),
+                        ),
+                        // Chat Panel Area
+                        SizedBox(
+                          width: _chatWidth,
+                          child: _buildChatPanel(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+        // AI Thinking Glow Effect
+        _buildThinkingEffect(),
+      ],
+    );
+  }
+
+  Widget _buildThinkingEffect() {
+    final isLoading = widget.chatProvider != null
+        ? widget.chatProvider!.isLoading
+        : widget.isChatLoading;
+
+    if (widget.chatProvider != null) {
+      return ListenableBuilder(
+        listenable: widget.chatProvider!,
+        builder: (context, _) => ThinkingGlowOverlay(
+          isLoading: widget.chatProvider!.isLoading,
+          color: widget.chatTheme.primaryColor,
+        ),
+      );
+    }
+
+    return ThinkingGlowOverlay(
+      isLoading: isLoading,
+      color: widget.chatTheme.primaryColor,
     );
   }
 
@@ -145,7 +174,8 @@ class _AriBaseLayoutState extends State<AriBaseLayout> {
         listenable: p,
         builder: (context, _) => AriChatPanel(
           appId: widget.appId,
-          onSend: widget.onChatSend ?? (text) => p.sendAgentMessage(text, appId: widget.appId),
+          onSend: widget.onChatSend ??
+              (text) => p.sendAgentMessage(text, appId: widget.appId),
           onCancel: widget.onChatCancel ?? p.cancelAgentMessage,
           messages: p.messages,
           isLoading: p.isLoading,
@@ -175,42 +205,5 @@ class _AriBaseLayoutState extends State<AriBaseLayout> {
   }
 }
 
-class _ConnectionWarningBanner extends StatelessWidget {
-  const _ConnectionWarningBanner();
 
-  @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<bool>(
-      stream: AriAgent.connectionStream,
-      initialData: AriAgent.isConnected,
-      builder: (context, snapshot) {
-        final isConnected = snapshot.data ?? false;
-        if (isConnected) return const SizedBox.shrink();
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          decoration: const BoxDecoration(
-            color: Color(0xFFE53935),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.wifi_off, color: Colors.white, size: 16),
-              SizedBox(width: 8),
-              Text(
-                'AI 에이전트 서버와의 연결이 원활하지 않습니다.',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
