@@ -58,7 +58,7 @@ class ChatDefaultHeader extends StatelessWidget {
                 ),
                 if (contextLabel != null)
                   Text(
-                    '현재 모드: $contextLabel',
+                    contextLabel!,
                     style: TextStyle(color: theme.textSub, fontSize: 11),
                   ),
               ],
