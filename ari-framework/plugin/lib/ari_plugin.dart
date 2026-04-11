@@ -10,6 +10,7 @@ export 'theme/ari_chat_theme.dart';
 export 'chat/providers/chat_provider.dart';
 export 'chat/chat_panel.dart';
 export 'chat/widgets/chat_input_area.dart';
+export 'chat/models/ari_chat_message.dart';
 
 export 'tasks/providers/ari_task_provider.dart';
 
@@ -19,3 +20,4 @@ export 'avatar/providers/avatar_provider.dart';
 
 export 'update/app_update_service.dart';
 export 'update/widgets/ari_update_banner.dart';
+export 'layouts/ari_base_layout.dart';

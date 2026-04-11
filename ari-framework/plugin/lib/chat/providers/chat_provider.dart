@@ -266,6 +266,7 @@ class AriChatProvider extends ChangeNotifier {
     String? persona,
     String? avatarName,
     String? appId,
+    Map<String, dynamic>? details,
     String platform = 'Client',
   }) async {
     final requestId = DateTime.now().microsecondsSinceEpoch.toString();
@@ -283,6 +284,7 @@ class AriChatProvider extends ChangeNotifier {
         if (persona != null) 'persona': persona,
         if (avatarName != null) 'avatarName': avatarName,
         if (appId != null) 'appId': appId,
+        if (details != null) 'details': details,
         'platform': platform,
       });
     } catch (e) {
