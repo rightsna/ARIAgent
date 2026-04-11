@@ -9,6 +9,16 @@ const KUZU_DIR = path.join(DATA_DIR, "kuzu_memory");
 let db: any = null;
 let conn: any = null;
 
+// Kuzu는 단일 connection에서 동시 쿼리를 지원하지 않으므로
+// 모든 DB 작업은 이 락을 통해 직렬화(serialization)합니다.
+let _kuzuQueue: Promise<any> = Promise.resolve();
+
+function withKuzuLock<T>(fn: () => Promise<T>): Promise<T> {
+  const next = _kuzuQueue.then(() => fn());
+  _kuzuQueue = next.catch(() => {});
+  return next;
+}
+
 // ─────────────────────────────────────────────
 // 연결 및 스키마
 // ─────────────────────────────────────────────
@@ -173,133 +183,135 @@ export interface MemorySearchResult {
 /**
  * 메모리 노드를 그래프에 삽입하고 Entity/Topic 노드와 연결합니다.
  */
-export async function insertMemoryNode(opts: InsertMemoryOptions): Promise<void> {
-  const c = await getConnection();
-  const {
-    agentId, content, memType, embedding,
-    topics = [], entities = [], importance = "normal",
-  } = opts;
+export function insertMemoryNode(opts: InsertMemoryOptions): Promise<void> {
+  return withKuzuLock(async () => {
+    const c = await getConnection();
+    const {
+      agentId, content, memType, embedding,
+      topics = [], entities = [], importance = "normal",
+    } = opts;
 
-  const id = crypto.randomUUID();
-  const ts = Date.now();
-  const embStr = `[${embedding.join(",")}]`;
+    const id = crypto.randomUUID();
+    const ts = Date.now();
+    const embStr = `[${embedding.join(",")}]`;
 
-  // 1. Memory 노드 생성
-  await tryQuery(c, `
-    CREATE (:Memory {
-      id: '${id}',
-      agentId: '${esc(agentId)}',
-      content: '${esc(content)}',
-      memType: '${memType}',
-      importance: '${importance}',
-      ts: ${ts},
-      embedding: ${embStr}
-    })
-  `);
-
-  // 2. FOLLOWS 엣지 — 직전 Memory와 시간 순서 연결
-  const prevId = await getLastMemoryId(c, agentId);
-  if (prevId && prevId !== id) {
     await tryQuery(c, `
-      MATCH (prev:Memory {id: '${prevId}'}), (cur:Memory {id: '${id}'})
-      CREATE (prev)-[:FOLLOWS]->(cur)
+      CREATE (:Memory {
+        id: '${id}',
+        agentId: '${esc(agentId)}',
+        content: '${esc(content)}',
+        memType: '${memType}',
+        importance: '${importance}',
+        ts: ${ts},
+        embedding: ${embStr}
+      })
     `);
-  }
 
-  // 3. Entity 노드 upsert + MENTIONS 엣지
-  for (const ent of entities) {
-    const entityType = ent.type ?? "concept";
-    const entId = await upsertEntity(c, ent.name, entityType);
-    await tryQuery(c, `
-      MATCH (m:Memory {id: '${id}'}), (e:Entity {id: '${entId}'})
-      CREATE (m)-[:MENTIONS]->(e)
-    `);
-  }
+    const prevId = await getLastMemoryId(c, agentId);
+    if (prevId && prevId !== id) {
+      await tryQuery(c, `
+        MATCH (prev:Memory {id: '${prevId}'}), (cur:Memory {id: '${id}'})
+        CREATE (prev)-[:FOLLOWS]->(cur)
+      `);
+    }
 
-  // 4. Topic 노드 upsert + ABOUT 엣지
-  for (const topicName of topics) {
-    const topicId = await upsertTopic(c, topicName);
-    await tryQuery(c, `
-      MATCH (m:Memory {id: '${id}'}), (t:Topic {id: '${topicId}'})
-      CREATE (m)-[:ABOUT]->(t)
-    `);
-  }
+    for (const ent of entities) {
+      const entityType = ent.type ?? "concept";
+      const entId = await upsertEntity(c, ent.name, entityType);
+      await tryQuery(c, `
+        MATCH (m:Memory {id: '${id}'}), (e:Entity {id: '${entId}'})
+        CREATE (m)-[:MENTIONS]->(e)
+      `);
+    }
+
+    for (const topicName of topics) {
+      const topicId = await upsertTopic(c, topicName);
+      await tryQuery(c, `
+        MATCH (m:Memory {id: '${id}'}), (t:Topic {id: '${topicId}'})
+        CREATE (m)-[:ABOUT]->(t)
+      `);
+    }
+  });
 }
 
 /**
  * 벡터 유사도 기반으로 관련 메모리를 검색합니다.
  * 각 결과에 연결된 Entity와 Topic 정보도 함께 반환합니다.
  */
-export async function searchMemoryNodes(
+export function searchMemoryNodes(
   agentId: string,
   queryEmbedding: number[],
   topK: number = 5,
 ): Promise<MemorySearchResult[]> {
-  const c = await getConnection();
+  return withKuzuLock(async () => {
+    const c = await getConnection();
 
-  // 전체 Memory + 연결 정보를 한 번에 가져오기
-  const r = await c.query(`
-    MATCH (m:Memory)
-    WHERE m.agentId = '${esc(agentId)}'
-    OPTIONAL MATCH (m)-[:MENTIONS]->(e:Entity)
-    OPTIONAL MATCH (m)-[:ABOUT]->(t:Topic)
-    RETURN
-      m.id AS id,
-      m.content AS content,
-      m.memType AS memType,
-      m.importance AS importance,
-      m.embedding AS embedding,
-      collect(DISTINCT t.name) AS topics,
-      collect(DISTINCT {name: e.name, type: e.entityType}) AS entities
-  `);
+    const r = await c.query(`
+      MATCH (m:Memory)
+      WHERE m.agentId = '${esc(agentId)}'
+      OPTIONAL MATCH (m)-[:MENTIONS]->(e:Entity)
+      OPTIONAL MATCH (m)-[:ABOUT]->(t:Topic)
+      RETURN
+        m.id AS id,
+        m.content AS content,
+        m.memType AS memType,
+        m.importance AS importance,
+        m.embedding AS embedding,
+        collect(DISTINCT t.name) AS topics,
+        collect(DISTINCT {name: e.name, type: e.entityType}) AS entities
+    `);
 
-  const rows: any[] = await r.getAll();
-  r.close?.();
+    const rows: any[] = await r.getAll();
+    r.close?.();
 
-  if (!rows || rows.length === 0) return [];
+    if (!rows || rows.length === 0) return [];
 
-  // 중요도에 따른 가중치
-  const importanceWeight: Record<string, number> = { high: 1.2, normal: 1.0, low: 0.8 };
+    const importanceWeight: Record<string, number> = { high: 1.2, normal: 1.0, low: 0.8 };
 
-  return rows
-    .map((row) => {
-      const baseSim = cosineSimilarity(queryEmbedding, row.embedding);
-      const weight = importanceWeight[row.importance] ?? 1.0;
-      return {
-        content: row.content as string,
-        memType: row.memType as string,
-        importance: row.importance as string,
-        score: baseSim * weight,
-        topics: (row.topics as string[]).filter(Boolean),
-        entities: (row.entities as any[]).filter((e) => e?.name),
-      };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+    return rows
+      .map((row) => {
+        const baseSim = cosineSimilarity(queryEmbedding, row.embedding);
+        const weight = importanceWeight[row.importance] ?? 1.0;
+        return {
+          content: row.content as string,
+          memType: row.memType as string,
+          importance: row.importance as string,
+          score: baseSim * weight,
+          topics: (row.topics as string[]).filter(Boolean),
+          entities: (row.entities as any[]).filter((e) => e?.name),
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK);
+  });
 }
 
 /**
  * core 타입 메모리 전체 삭제 (MEMORY.md 교체 시)
  */
-export async function deleteCoreMemoryNodes(agentId: string): Promise<void> {
-  const c = await getConnection();
-  await tryQuery(c, `
-    MATCH (m:Memory)
-    WHERE m.agentId = '${esc(agentId)}' AND m.memType = 'core'
-    DETACH DELETE m
-  `);
+export function deleteCoreMemoryNodes(agentId: string): Promise<void> {
+  return withKuzuLock(async () => {
+    const c = await getConnection();
+    await tryQuery(c, `
+      MATCH (m:Memory)
+      WHERE m.agentId = '${esc(agentId)}' AND m.memType = 'core'
+      DETACH DELETE m
+    `);
+  });
 }
 
 /**
  * 에이전트의 모든 메모리 삭제
  */
-export async function deleteAllMemoryNodes(agentId: string): Promise<void> {
-  const c = await getConnection();
-  await tryQuery(c, `
-    MATCH (m:Memory)
-    WHERE m.agentId = '${esc(agentId)}'
-    DETACH DELETE m
-  `);
+export function deleteAllMemoryNodes(agentId: string): Promise<void> {
+  return withKuzuLock(async () => {
+    const c = await getConnection();
+    await tryQuery(c, `
+      MATCH (m:Memory)
+      WHERE m.agentId = '${esc(agentId)}'
+      DETACH DELETE m
+    `);
+  });
 }
 
 export interface MemoryStats {
@@ -315,28 +327,29 @@ export interface MemoryStats {
 /**
  * 에이전트의 그래프 메모리 통계를 반환합니다.
  */
-export async function getMemoryStats(agentId: string): Promise<MemoryStats> {
-  const c = await getConnection();
+export function getMemoryStats(agentId: string): Promise<MemoryStats> {
+  return withKuzuLock(async () => {
+    const c = await getConnection();
 
-  async function count(cypher: string): Promise<number> {
-    const r = await c.query(cypher);
-    const rows = await r.getAll();
-    r.close?.();
-    if (!rows || rows.length === 0) return 0;
-    const val = Object.values(rows[0])[0];
-    return typeof val === "number" ? val : 0;
-  }
+    async function count(cypher: string): Promise<number> {
+      const r = await c.query(cypher);
+      const rows = await r.getAll();
+      r.close?.();
+      if (!rows || rows.length === 0) return 0;
+      const val = Object.values(rows[0])[0];
+      return typeof val === "number" ? val : 0;
+    }
 
-  const aid = esc(agentId);
+    const aid = esc(agentId);
 
-  // Kuzu는 단일 connection에서 동시 쿼리 불가 — 순차 실행
-  const coreCount     = await count(`MATCH (m:Memory) WHERE m.agentId = '${aid}' AND m.memType = 'core' RETURN count(m) AS n`);
-  const dailyCount    = await count(`MATCH (m:Memory) WHERE m.agentId = '${aid}' AND m.memType = 'daily' RETURN count(m) AS n`);
-  const entityCount   = await count(`MATCH (m:Memory)-[:MENTIONS]->(e:Entity) WHERE m.agentId = '${aid}' RETURN count(DISTINCT e.id) AS n`);
-  const topicCount    = await count(`MATCH (m:Memory)-[:ABOUT]->(t:Topic) WHERE m.agentId = '${aid}' RETURN count(DISTINCT t.id) AS n`);
-  const mentionsCount = await count(`MATCH (m:Memory)-[:MENTIONS]->(:Entity) WHERE m.agentId = '${aid}' RETURN count(*) AS n`);
-  const aboutCount    = await count(`MATCH (m:Memory)-[:ABOUT]->(:Topic) WHERE m.agentId = '${aid}' RETURN count(*) AS n`);
-  const followsCount  = await count(`MATCH (m:Memory)-[:FOLLOWS]->(:Memory) WHERE m.agentId = '${aid}' RETURN count(*) AS n`);
+    const coreCount     = await count(`MATCH (m:Memory) WHERE m.agentId = '${aid}' AND m.memType = 'core' RETURN count(m) AS n`);
+    const dailyCount    = await count(`MATCH (m:Memory) WHERE m.agentId = '${aid}' AND m.memType = 'daily' RETURN count(m) AS n`);
+    const entityCount   = await count(`MATCH (m:Memory)-[:MENTIONS]->(e:Entity) WHERE m.agentId = '${aid}' RETURN count(DISTINCT e.id) AS n`);
+    const topicCount    = await count(`MATCH (m:Memory)-[:ABOUT]->(t:Topic) WHERE m.agentId = '${aid}' RETURN count(DISTINCT t.id) AS n`);
+    const mentionsCount = await count(`MATCH (m:Memory)-[:MENTIONS]->(:Entity) WHERE m.agentId = '${aid}' RETURN count(*) AS n`);
+    const aboutCount    = await count(`MATCH (m:Memory)-[:ABOUT]->(:Topic) WHERE m.agentId = '${aid}' RETURN count(*) AS n`);
+    const followsCount  = await count(`MATCH (m:Memory)-[:FOLLOWS]->(:Memory) WHERE m.agentId = '${aid}' RETURN count(*) AS n`);
 
-  return { coreCount, dailyCount, entityCount, topicCount, mentionsCount, aboutCount, followsCount };
+    return { coreCount, dailyCount, entityCount, topicCount, mentionsCount, aboutCount, followsCount };
+  });
 }
