@@ -20,6 +20,7 @@ import "./routers/oauth.js";
 import "./routers/app_sync.js";
 import "./routers/app_control.js";
 import "./routers/chat.js";
+import "./routers/usage.js";
 import "./routers/homeassistant.js";
 import "./routers/channel.js";
 import { logger } from "./infra/logger.js";

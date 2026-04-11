@@ -3,6 +3,7 @@ import { AgentInfo } from "../../models/agent.js";
 import { AIProviders } from "../../models/settings.js";
 import { PendingAgentResponse } from "../../models/agent_response.js";
 import { appendChatLog } from "../../repositories/chat_log_repository.js";
+import { appendUsageLog } from "../../repositories/usage_repository.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import {
   extractFinalResponseText,
@@ -45,6 +46,9 @@ export class AgentSession {
   currentResponseText = "";
   currentRequestAnnounced = false;
   hasResponseBridge = false;
+  currentProvider = "";
+  currentModel = "";
+  private _pendingMeta: { provider: string; model: string; usage: any } | null = null;
 
   constructor(agentInfo: AgentInfo) {
     this.agentInfo = agentInfo;
@@ -213,6 +217,10 @@ export class AgentSession {
         requestId: pending.requestId,
         source: pending.source || "user",
       });
+
+      const meta = this._pendingMeta;
+      this._pendingMeta = null;
+
       appendChatLog(pending.agentId, {
         type: "chat",
         isUser: false,
@@ -220,6 +228,16 @@ export class AgentSession {
         requestId: pending.requestId,
         source: pending.source || "user",
       });
+
+      if (meta && (meta.usage?.totalTokens ?? 0) > 0) {
+        appendUsageLog(pending.agentId, {
+          requestId: pending.requestId,
+          provider: meta.provider,
+          model: meta.model,
+          usage: meta.usage,
+          source: pending.source || "user",
+        });
+      }
 
       UserSocketHandler.broadcast("/APP.PUSH", {
         ok: true,
@@ -259,6 +277,7 @@ export class AgentSession {
     this.agent.setFollowUpMode("one-at-a-time");
     this.agent.subscribe((event) => {
       if (event.type === "turn_start") {
+        this._pendingMeta = null;
         this.beginNextRequest();
         const pending = this.currentPendingResponse;
         if (
@@ -292,7 +311,28 @@ export class AgentSession {
         return;
       }
 
-      if (event.type === "turn_end" && this.currentPendingResponse != null) {
+      if (event.type === "turn_end") {
+        // 매 턴(툴 호출 포함)마다 usage 누적
+        const msg = event.message as any;
+        if (msg?.role === "assistant" && msg?.usage) {
+          const prev = this._pendingMeta;
+          this._pendingMeta = {
+            provider: msg.provider ?? prev?.provider ?? "",
+            model: msg.model ?? prev?.model ?? "",
+            usage: prev?.usage
+              ? {
+                  input: (prev.usage.input ?? 0) + (msg.usage.input ?? 0),
+                  output: (prev.usage.output ?? 0) + (msg.usage.output ?? 0),
+                  cacheRead: (prev.usage.cacheRead ?? 0) + (msg.usage.cacheRead ?? 0),
+                  cacheWrite: (prev.usage.cacheWrite ?? 0) + (msg.usage.cacheWrite ?? 0),
+                  totalTokens: (prev.usage.totalTokens ?? 0) + (msg.usage.totalTokens ?? 0),
+                }
+              : { ...msg.usage },
+          };
+        }
+
+        if (this.currentPendingResponse == null) return;
+
         if (event.toolResults.length > 0) {
           this.currentResponseText = "";
           return;
@@ -503,6 +543,8 @@ export class AgentSession {
       logger.info(
         `✅ [Agent] Response success (${provider.provider}/${provider.model})`,
       );
+      this.currentProvider = provider.provider;
+      this.currentModel = provider.model;
       this.resetTurnScopedSkills();
       return {
         responseText,

@@ -4,21 +4,44 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ari_plugin/ari_plugin.dart';
+import 'token_management_screen.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return Navigator(
+      onGenerateRoute: (settings) => MaterialPageRoute(
+        builder: (context) => const _SettingsTabContent(),
+      ),
+    );
+  }
+}
+
+class _SettingsTabContent extends StatelessWidget {
+  const _SettingsTabContent();
+
+  @override
+  Widget build(BuildContext context) {
     final avatar = context.watch<AvatarProvider>();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionHeader('데이터 관리'),
           const SizedBox(height: 16),
+          _buildNavigationButton(
+            context,
+            icon: Icons.token_outlined,
+            title: '토큰 관리',
+            description: '이 아바타의 AI 모델 토큰 사용량을 확인하고 한도를 설정합니다.',
+            destination: TokenManagementScreen(agentId: avatar.currentAvatarId),
+            destinationTitle: '토큰 관리',
+          ),
+          const SizedBox(height: 12),
           _buildSettingsButton(
             context,
             icon: Icons.psychology_outlined,
@@ -101,6 +124,80 @@ class SettingsTab extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationButton(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required Widget destination,
+    required String destinationTitle,
+  }) {
+    const color = Color(0xFF6C63FF);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => _AvatarSettingsSubPage(
+              title: destinationTitle,
+              child: destination,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A2E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      fontSize: 11,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -230,6 +327,47 @@ class SettingsTab extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvatarSettingsSubPage extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _AvatarSettingsSubPage({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: child),
         ],
       ),
     );

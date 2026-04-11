@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/channel_provider.dart';
 
@@ -76,7 +75,6 @@ class _TelegramCard extends StatefulWidget {
 class _TelegramCardState extends State<_TelegramCard> {
   bool _expanded = false;
   final _tokenController = TextEditingController();
-  final _chatIdController = TextEditingController();
   bool _tokenObscured = true;
   bool _isTesting = false;
   bool _isSaving = false;
@@ -93,7 +91,6 @@ class _TelegramCardState extends State<_TelegramCard> {
   @override
   void dispose() {
     _tokenController.dispose();
-    _chatIdController.dispose();
     super.dispose();
   }
 
@@ -143,17 +140,8 @@ class _TelegramCardState extends State<_TelegramCard> {
     final provider = context.read<ChannelProvider>();
     final newToken = _tokenIsNew ? _tokenController.text.trim() : null;
 
-    final ids = widget.state.allowedChatIds.toList();
-    final extra = _chatIdController.text.trim();
-    if (extra.isNotEmpty) {
-      final parsed = int.tryParse(extra);
-      if (parsed != null && !ids.contains(parsed)) ids.add(parsed);
-      _chatIdController.clear();
-    }
-
     final ok = await provider.saveTelegram(
       botToken: newToken,
-      allowedChatIds: ids,
     );
 
     if (!mounted) return;
@@ -181,11 +169,6 @@ class _TelegramCardState extends State<_TelegramCard> {
       _showSnack(provider.errorMessage ?? '오류가 발생했습니다.', isError: true);
       provider.clearError();
     }
-  }
-
-  void _onRemoveChatId(int id) async {
-    final updated = widget.state.allowedChatIds.where((e) => e != id).toList();
-    await context.read<ChannelProvider>().saveTelegram(allowedChatIds: updated);
   }
 
   void _showSnack(String msg, {bool isError = false}) {
@@ -387,71 +370,6 @@ class _TelegramCardState extends State<_TelegramCard> {
                     ),
                   ],
 
-                  const SizedBox(height: 16),
-
-                  // 허용 Chat ID
-                  _label('허용 Chat ID'),
-                  const SizedBox(height: 4),
-                  Text(
-                    '비워두면 모든 채팅에서 메세지를 받습니다.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withOpacity(0.35),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // 등록된 ID 칩
-                  if (state.allowedChatIds.isNotEmpty) ...[
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: state.allowedChatIds
-                          .map((id) => _chatIdChip(id))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-
-                  // 새 ID 추가
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _chatIdController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                                RegExp(r'-?\d')),
-                          ],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                          ),
-                          decoration:
-                              _inputDecoration(hint: 'Chat ID 추가 (예: -1001234567)'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _outlinedButton(
-                        label: '추가',
-                        onTap: () async {
-                          final val =
-                              int.tryParse(_chatIdController.text.trim());
-                          if (val == null) return;
-                          final updated = [
-                            ...state.allowedChatIds,
-                            val,
-                          ];
-                          _chatIdController.clear();
-                          await context
-                              .read<ChannelProvider>()
-                              .saveTelegram(allowedChatIds: updated);
-                        },
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 20),
 
                   // 저장 버튼
@@ -559,34 +477,4 @@ class _TelegramCardState extends State<_TelegramCard> {
     );
   }
 
-  Widget _chatIdChip(int id) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF6C63FF).withOpacity(0.12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF6C63FF).withOpacity(0.3),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            id.toString(),
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () => _onRemoveChatId(id),
-            child: const Icon(Icons.close, size: 12, color: Colors.white38),
-          ),
-        ],
-      ),
-    );
-  }
 }

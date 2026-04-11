@@ -4,14 +4,12 @@ import 'package:ari_plugin/ari_plugin.dart';
 class TelegramChannelState {
   final bool enabled;
   final String botTokenMasked; // 서버에서 마스킹된 토큰
-  final List<int> allowedChatIds;
   final String? agentId;
   final bool isPolling;
 
   const TelegramChannelState({
     this.enabled = false,
     this.botTokenMasked = '',
-    this.allowedChatIds = const [],
     this.agentId,
     this.isPolling = false,
   });
@@ -21,14 +19,12 @@ class TelegramChannelState {
   TelegramChannelState copyWith({
     bool? enabled,
     String? botTokenMasked,
-    List<int>? allowedChatIds,
     String? agentId,
     bool? isPolling,
   }) {
     return TelegramChannelState(
       enabled: enabled ?? this.enabled,
       botTokenMasked: botTokenMasked ?? this.botTokenMasked,
-      allowedChatIds: allowedChatIds ?? this.allowedChatIds,
       agentId: agentId ?? this.agentId,
       isPolling: isPolling ?? this.isPolling,
     );
@@ -61,10 +57,6 @@ class ChannelProvider extends ChangeNotifier {
       _telegram = TelegramChannelState(
         enabled: data['enabled'] == true,
         botTokenMasked: data['botToken'] as String? ?? '',
-        allowedChatIds: (data['allowedChatIds'] as List?)
-                ?.map((e) => (e as num).toInt())
-                .toList() ??
-            [],
         agentId: data['agentId'] as String?,
         isPolling: data['isPolling'] == true,
       );
@@ -81,14 +73,12 @@ class ChannelProvider extends ChangeNotifier {
 
   Future<bool> saveTelegram({
     String? botToken,
-    List<int>? allowedChatIds,
     String? agentId,
   }) async {
     try {
       await AriAgent.call('/CHANNEL.SAVE', {
         'type': 'telegram',
         if (botToken != null) 'botToken': botToken,
-        if (allowedChatIds != null) 'allowedChatIds': allowedChatIds,
         if (agentId != null) 'agentId': agentId,
       });
       await loadTelegram();

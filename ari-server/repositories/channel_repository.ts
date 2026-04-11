@@ -26,7 +26,6 @@ function defaultTelegramConfig(): TelegramChannelConfig {
     type: "telegram",
     enabled: false,
     botToken: "",
-    allowedChatIds: [],
     agentId: undefined,
   };
 }

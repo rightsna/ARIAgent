@@ -50,17 +50,12 @@ router.on("/CHANNEL.SAVE", async (ws, params) => {
         ? params.botToken.trim()
         : existing.botToken;
 
-    const allowedChatIds = Array.isArray(params.allowedChatIds)
-      ? (params.allowedChatIds as any[]).map(Number).filter((n) => !isNaN(n))
-      : existing.allowedChatIds;
-
     const agentId =
       typeof params.agentId === "string" ? params.agentId || undefined : existing.agentId;
 
     const updated = {
       ...existing,
       botToken,
-      allowedChatIds,
       agentId,
     };
 

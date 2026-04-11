@@ -58,7 +58,7 @@ export async function testTelegramConnection(token: string): Promise<{ ok: boole
 // Long-polling loop
 // ─────────────────────────────────────────────
 
-async function pollOnce(token: string, allowedChatIds: number[], agentId?: string): Promise<void> {
+async function pollOnce(token: string, agentId?: string): Promise<void> {
   let updates: any[];
   try {
     const res = await telegramGet(token, "getUpdates", {
@@ -84,12 +84,6 @@ async function pollOnce(token: string, allowedChatIds: number[], agentId?: strin
     const chatId: number = msg.chat.id;
     const text: string = msg.text;
     const fromName: string = msg.from?.first_name || msg.from?.username || "Unknown";
-
-    // 허용된 채팅 아이디 필터링
-    if (allowedChatIds.length > 0 && !allowedChatIds.includes(chatId)) {
-      logger.debug(`[Telegram] 허용되지 않은 chatId=${chatId}, 무시합니다.`);
-      continue;
-    }
 
     logger.info(`[Telegram] 메세지 수신 from ${fromName} (chatId=${chatId}): ${text}`);
 
@@ -133,7 +127,7 @@ async function pollingLoop(): Promise<void> {
       pollingActive = false;
       break;
     }
-    await pollOnce(config.botToken, config.allowedChatIds, config.agentId);
+    await pollOnce(config.botToken, config.agentId);
   }
   logger.info("[Telegram] Polling 종료");
 }
