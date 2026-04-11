@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/config_provider.dart';
-import 'memory/standard_memory_section.dart';
-import 'memory/advanced_intelligence_section.dart';
+import '../memory/standard_memory_section.dart';
+import '../memory/advanced_intelligence_section.dart';
 
 class MemoryTab extends StatefulWidget {
   const MemoryTab({super.key});
