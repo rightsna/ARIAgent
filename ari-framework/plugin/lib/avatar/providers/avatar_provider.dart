@@ -83,4 +83,8 @@ class AvatarProvider extends ChangeNotifier {
   Future<void> updateMemory(String content) async {
     await _repository.updateMemory(_currentAgentId, content);
   }
+
+  Future<Map<String, dynamic>> getMemoryStats() async {
+    return await _repository.getMemoryStats(_currentAgentId);
+  }
 }

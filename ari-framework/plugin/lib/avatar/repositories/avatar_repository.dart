@@ -91,6 +91,14 @@ class AvatarRepository {
     } catch (_) {}
   }
 
+  Future<Map<String, dynamic>> getMemoryStats(String agentId) async {
+    try {
+      return await AriAgent.call('/MEMORY.STATS', {'agentId': agentId});
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
   Future<String> _processAvatarImage(String id, String rawPath) async {
     if (rawPath.isEmpty) return '';
 

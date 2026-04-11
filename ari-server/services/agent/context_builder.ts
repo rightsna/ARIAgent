@@ -4,7 +4,10 @@ import { AIProviders } from "../../models/settings.js";
 import { Prompt } from "../../infra/prompt.js";
 import { logger } from "../../infra/logger.js";
 import { UserSocketHandler } from "../../system/ws.js";
-import { readCoreMemory, readRecentDailyLogs } from "../memory.js";
+import { readCoreMemory, readRecentDailyLogs, searchRelevantMemories } from "../memory.js";
+import { getSettings } from "../../repositories/setting_repository.js";
+import { Settings } from "../../models/settings.js";
+import { getEmbeddingStatus } from "../embedding.js";
 import { ARI_CLOUD_PROVIDER } from "./provider_selector.js";
 
 export async function buildSystemPrompt(
@@ -26,8 +29,24 @@ export async function buildSystemPrompt(
   }
 
   const agentId = agentProfile.id || "default";
-  const coreMemory = readCoreMemory(agentId);
-  const recentDailyLogs = readRecentDailyLogs(agentId);
+  const settings = getSettings(new Settings());
+  const useAdvancedMemory =
+    settings.USE_ADVANCED_MEMORY && getEmbeddingStatus().status === "ready";
+
+  // 고급 관계 지능이 활성화된 경우 벡터 검색으로 관련 메모리만 주입
+  // 비활성화된 경우 기존 방식(전체 MEMORY.md + 어제/오늘 로그) 사용
+  let coreMemory: string;
+  let recentDailyLogs: string;
+
+  if (useAdvancedMemory) {
+    // 현재 에이전트 메시지는 context_builder에서 알 수 없으므로
+    // agentProfile의 persona를 쿼리 시드로 사용하고, 추후 메시지 파이프라인에서 개선 가능
+    coreMemory = await searchRelevantMemories("recent context summary preferences rules", agentId, 6);
+    recentDailyLogs = "";
+  } else {
+    coreMemory = readCoreMemory(agentId);
+    recentDailyLogs = readRecentDailyLogs(agentId);
+  }
   const avatarName = agentProfile.name.trim() || "ARI";
   const platform = agentProfile.platform?.trim() || process.platform;
   const connectedAppIds = UserSocketHandler.getConnectedAppIds();

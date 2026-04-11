@@ -30,6 +30,13 @@ class ConfigProvider extends ChangeNotifier {
   bool _isSetupMode = false;
   bool get isSetupMode => _isSetupMode;
 
+  bool _useAdvancedMemory = false;
+  bool get useAdvancedMemory => _useAdvancedMemory;
+
+  // "idle" | "downloading" | "ready" | "error"
+  String _embeddingModelStatus = "idle";
+  String get embeddingModelStatus => _embeddingModelStatus;
+
 
   String? _mode;
   String? get mode => _mode;
@@ -135,6 +142,20 @@ class ConfigProvider extends ChangeNotifier {
           changed = true;
         }
       }
+      if (health.containsKey('useAdvancedMemory')) {
+        final val = health['useAdvancedMemory'] == true;
+        if (_useAdvancedMemory != val) {
+          _useAdvancedMemory = val;
+          changed = true;
+        }
+      }
+      if (health.containsKey('embeddingModelStatus')) {
+        final val = health['embeddingModelStatus'] as String? ?? 'idle';
+        if (_embeddingModelStatus != val) {
+          _embeddingModelStatus = val;
+          changed = true;
+        }
+      }
       if (changed) notifyListeners();
       return health;
     } catch (e) {
@@ -198,6 +219,39 @@ class ConfigProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[ConfigProvider] savePortToServer failed: $e');
       return false;
+    }
+  }
+
+  /// 고급 관계 지능 on/off
+  Future<bool> updateAdvancedMemory(bool enabled) async {
+    try {
+      await AriAgent.call('/SETTINGS', {'advancedMemory': enabled});
+      _useAdvancedMemory = enabled;
+      // 켰을 때 모델 상태를 바로 polling
+      if (enabled) {
+        _embeddingModelStatus = 'downloading';
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('[ConfigProvider] updateAdvancedMemory failed: $e');
+      return false;
+    }
+  }
+
+  /// 임베딩 모델 다운로드 상태를 서버에서 조회하고 내부 상태를 갱신합니다.
+  Future<String> refreshEmbeddingModelStatus() async {
+    try {
+      final result = await AriAgent.call('/MEMORY.MODEL_STATUS');
+      final status = result['status'] as String? ?? 'idle';
+      if (_embeddingModelStatus != status) {
+        _embeddingModelStatus = status;
+        notifyListeners();
+      }
+      return status;
+    } catch (e) {
+      debugPrint('[ConfigProvider] refreshEmbeddingModelStatus failed: $e');
+      return _embeddingModelStatus;
     }
   }
 

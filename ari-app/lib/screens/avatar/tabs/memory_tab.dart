@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ari_plugin/ari_plugin.dart';
+import '../../../providers/config_provider.dart';
+import 'memory/standard_memory_section.dart';
+import 'memory/advanced_intelligence_section.dart';
 
 class MemoryTab extends StatefulWidget {
   const MemoryTab({super.key});
@@ -10,287 +13,227 @@ class MemoryTab extends StatefulWidget {
 }
 
 class _MemoryTabState extends State<MemoryTab> {
-  final TextEditingController _coreMemoryController = TextEditingController();
-  String _dailyLogs = '';
-  bool _isLoading = true;
-  bool _isSaving = false;
-  bool _isEditing = false;
-
-  String? _lastAvatarId;
-
-  @override
-  void initState() {
-    super.initState();
-    // initState에서는 context.read를 사용하여 초기 로드를 수행할 수 있지만,
-    // 아바타 전환 시에는 build에서 감지하여 다시 로드하는 것이 확실합니다.
-  }
+  // 모델 로드 대기 폴링용 글로벌 트리거
+  Timer? _modelStatusTimer;
 
   @override
   void dispose() {
-    _coreMemoryController.dispose();
+    _modelStatusTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _fetchMemory() async {
-    // 로딩 중 중복 방지 (다만 _lastAvatarId가 바뀐 상태에서의 첫 로드는 허용)
-    if (mounted) setState(() => _isLoading = true);
-    try {
-      final memory = await context.read<AvatarProvider>().getMemory();
-      if (mounted) {
-        setState(() {
-          _coreMemoryController.text = memory['core'] ?? '';
-          _dailyLogs = memory['daily'] ?? '';
-          _isLoading = false;
-        });
+  void _startModelStatusPolling() {
+    _modelStatusTimer?.cancel();
+    _modelStatusTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      final status = await ConfigProvider().refreshEmbeddingModelStatus();
+      if (status == 'ready') {
+        _modelStatusTimer?.cancel();
+        _modelStatusTimer = null;
+        if (mounted) setState(() {}); // UI 갱신 (Advanced 섹션 노출 위해)
+      } else if (status == 'error') {
+        _modelStatusTimer?.cancel();
+        _modelStatusTimer = null;
       }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('기억을 불러오는데 실패했습니다: $e')));
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _saveCoreMemory() async {
-    setState(() => _isSaving = true);
-    try {
-      await context.read<AvatarProvider>().updateMemory(
-        _coreMemoryController.text,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('장기 기억이 업데이트되었습니다.')));
-        setState(() {
-          _isEditing = false;
-          _isSaving = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('저장 실패: $e')));
-      }
-      setState(() => _isSaving = false);
-    }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final avatar = context.watch<AvatarProvider>();
+    final config = context.watch<ConfigProvider>();
+    final useAdvanced =
+        config.useAdvancedMemory && config.embeddingModelStatus == 'ready';
 
-    // 아바타가 바뀌었을 때 기억 다시 불러오기
-    if (_lastAvatarId != avatar.currentAvatarId) {
-      _lastAvatarId = avatar.currentAvatarId;
-      _isEditing = false; // 아바타 바뀌면 편집 모드 해제
-      _fetchMemory();
-    }
-
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
-      );
+    // 고급 관계 지능이 켜져 있지만 모델이 아직 준비 중이면 폴링 시작
+    final modelStatus = config.embeddingModelStatus;
+    if (config.useAdvancedMemory &&
+        (modelStatus == 'loading' || modelStatus == 'downloading') &&
+        _modelStatusTimer == null) {
+      _startModelStatusPolling();
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchMemory,
+      onRefresh: () async {
+        setState(
+          () {},
+        ); // 각 섹션은 내부적으로 AvatarProvider를 watch하고 있으므로 여기서 갱신 신호만 주면 됨
+      },
       color: const Color(0xFF6C63FF),
       backgroundColor: const Color(0xFF1F1F3D),
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          _buildHeaderSection(
-            'Core Memory',
-            '에이전트의 핵심 가치관과 장기 기억입니다.',
-            icon: Icons.psychology_rounded,
-            action: _isEditing
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _isEditing = false;
-                            _fetchMemory(); // Revert changes
-                          });
-                        },
-                        child: const Text(
-                          '취소',
-                          style: TextStyle(color: Colors.white54),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _isSaving
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFF6C63FF),
-                              ),
-                            )
-                          : ElevatedButton(
-                              onPressed: _saveCoreMemory,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF6C63FF),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: const Text('저장'),
-                            ),
-                    ],
-                  )
-                : IconButton(
-                    onPressed: () => setState(() => _isEditing = true),
-                    icon: const Icon(
-                      Icons.edit_note_rounded,
-                      color: Color(0xFF6C63FF),
-                    ),
-                    tooltip: '편집하기',
-                  ),
-          ),
-          const SizedBox(height: 16),
-          _buildCoreMemoryCard(),
-          const SizedBox(height: 32),
-          _buildHeaderSection(
-            'Recent Daily Logs',
-            '최근 활동 내역 및 대화에서 생성된 일일 로그입니다.',
-            icon: Icons.history_rounded,
-          ),
-          const SizedBox(height: 16),
-          _buildDailyLogsCard(),
+          _buildAdvancedMemoryToggle(config),
+          const SizedBox(height: 20),
+          if (useAdvanced)
+            AdvancedIntelligenceSection(onRefresh: () => setState(() {}))
+          else
+            StandardMemorySection(onRefresh: () => setState(() {})),
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderSection(
-    String title,
-    String subtitle, {
-    required IconData icon,
-    Widget? action,
-  }) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF6C63FF).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: const Color(0xFF6C63FF), size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  // ── 상단 토글 카드 ──────────────────────────────────────────────
+
+  Widget _buildAdvancedMemoryToggle(ConfigProvider config) {
+    final enabled = config.useAdvancedMemory;
+    final modelStatus = config.embeddingModelStatus;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '고급 관계 지능',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '의미론적 벡터 기억 및 관계 그래프를 활성화합니다.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
-                  fontSize: 11,
-                ),
+              Switch(
+                value: enabled,
+                onChanged: (val) async {
+                  await ConfigProvider().updateAdvancedMemory(val);
+                  if (mounted) setState(() {});
+                },
+                activeThumbColor: const Color(0xFF6C63FF),
+                inactiveThumbColor: Colors.white38,
+                inactiveTrackColor: Colors.white12,
               ),
             ],
           ),
-        ),
-        if (action != null) action,
-      ],
+          if (enabled) ...[
+            const SizedBox(height: 10),
+            _buildModelStatusBadge(modelStatus),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildCoreMemoryCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _isEditing
-              ? const Color(0xFF6C63FF).withOpacity(0.5)
-              : Colors.white.withOpacity(0.05),
-          width: _isEditing ? 1.5 : 1,
-        ),
-      ),
-      child: _isEditing
-          ? TextField(
-              controller: _coreMemoryController,
-              maxLines: null,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                height: 1.6,
-                fontFamily: 'Courier',
-              ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: '장기 기억 내용을 입력하세요...',
-                hintStyle: TextStyle(color: Colors.white24),
-              ),
-              cursorColor: const Color(0xFF6C63FF),
-            )
-          : Text(
-              _coreMemoryController.text.isEmpty
-                  ? '아직 저장된 장기 기억이 없습니다.'
-                  : _coreMemoryController.text,
+  Widget _buildModelStatusBadge(String status) {
+    switch (status) {
+      case 'ready':
+        return Row(
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Color(0xFF4ADE80),
+              size: 13,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '임베딩 모델 준비 완료',
               style: TextStyle(
-                color: _coreMemoryController.text.isEmpty
-                    ? Colors.white24
-                    : Colors.white70,
-                fontSize: 14,
-                height: 1.6,
-                fontFamily: 'Courier',
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11,
               ),
             ),
-    );
-  }
-
-  Widget _buildDailyLogsCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A0A1F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
-      ),
-      child: _dailyLogs.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Text(
-                  '최근 일일 로그가 존재하지 않습니다.',
-                  style: TextStyle(color: Colors.white24, fontSize: 13),
-                ),
-              ),
-            )
-          : Text(
-              _dailyLogs,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                height: 1.5,
-                fontFamily: 'Courier',
+          ],
+        );
+      case 'loading':
+        return Row(
+          children: [
+            const SizedBox(
+              width: 11,
+              height: 11,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF6C63FF),
               ),
             ),
-    );
+            const SizedBox(width: 8),
+            Text(
+              '임베딩 모델 로드 중...',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      case 'downloading':
+        return Row(
+          children: [
+            const SizedBox(
+              width: 11,
+              height: 11,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF6C63FF),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '임베딩 모델 다운로드 중... (~280MB)',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      case 'error':
+        return Row(
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFFF6B6B),
+              size: 13,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '모델 로드 실패 — 재시작 후 다시 시도',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      default:
+        return Row(
+          children: [
+            Icon(
+              Icons.download_outlined,
+              color: Colors.white.withValues(alpha: 0.35),
+              size: 13,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '모델 미설치 — 활성화 시 자동 다운로드 (~280MB)',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.35),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+    }
   }
 }

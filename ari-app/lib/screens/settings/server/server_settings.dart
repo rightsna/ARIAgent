@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,12 +18,33 @@ class _ServerSettingsState extends State<ServerSettings> {
   bool _isSaving = false;
   String _statusMessage = '';
   late ConfigProvider _configProvider;
+  Timer? _modelStatusTimer;
 
   @override
   void initState() {
     super.initState();
     _configProvider = ConfigProvider();
     _portController.text = _configProvider.port.toString();
+    _startModelStatusPollingIfNeeded();
+  }
+
+  void _startModelStatusPollingIfNeeded() {
+    final status = _configProvider.embeddingModelStatus;
+    if (_configProvider.useAdvancedMemory &&
+        (status == 'downloading' || status == 'loading')) {
+      _startPolling();
+    }
+  }
+
+  void _startPolling() {
+    _modelStatusTimer?.cancel();
+    _modelStatusTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      final status = await _configProvider.refreshEmbeddingModelStatus();
+      if (status == 'ready' || status == 'error') {
+        _modelStatusTimer?.cancel();
+        _modelStatusTimer = null;
+      }
+    });
   }
 
   Future<void> _saveSettings() async {
@@ -68,6 +90,7 @@ class _ServerSettingsState extends State<ServerSettings> {
 
   @override
   void dispose() {
+    _modelStatusTimer?.cancel();
     _portController.dispose();
     super.dispose();
   }
@@ -83,6 +106,10 @@ class _ServerSettingsState extends State<ServerSettings> {
           // 서버 제어 패널 (통합)
           ServerControlPanel(serverProvider: server),
           const SizedBox(height: 24),
+
+          // 고급 관계 지능 설정
+          _buildAdvancedMemorySection(),
+          const SizedBox(height: 16),
 
           // 포트 설정 구역
           Container(
@@ -200,6 +227,168 @@ class _ServerSettingsState extends State<ServerSettings> {
         ],
       ),
     );
+  }
+
+  Widget _buildAdvancedMemorySection() {
+    final config = context.watch<ConfigProvider>();
+    final enabled = config.useAdvancedMemory;
+    final modelStatus = config.embeddingModelStatus;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '고급 관계 지능 사용',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '대화 맥락 기반 의미론적 기억을 활성화합니다.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: enabled,
+                onChanged: (val) async {
+                  await _configProvider.updateAdvancedMemory(val);
+                  if (val) _startPolling();
+                },
+                activeThumbColor: const Color(0xFF6C63FF),
+                inactiveThumbColor: Colors.white38,
+                inactiveTrackColor: Colors.white12,
+              ),
+            ],
+          ),
+          if (enabled) ...[
+            const SizedBox(height: 12),
+            _buildModelStatusBadge(modelStatus),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModelStatusBadge(String status) {
+    switch (status) {
+      case 'ready':
+        return Row(
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Color(0xFF4ADE80),
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '임베딩 모델 준비 완료',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      case 'loading':
+        return Row(
+          children: [
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF6C63FF),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '임베딩 모델 로드 중...',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      case 'downloading':
+        return Row(
+          children: [
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF6C63FF),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '임베딩 모델 다운로드 중... (~280MB)',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      case 'error':
+        return Row(
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Color(0xFFFF6B6B),
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '모델 로드 실패 — 재시작 후 다시 시도',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+      default: // idle
+        return Row(
+          children: [
+            Icon(
+              Icons.download_outlined,
+              color: Colors.white.withValues(alpha: 0.4),
+              size: 14,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '모델 미설치 — 활성화 시 자동 다운로드 (~280MB)',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        );
+    }
   }
 
   Widget _sectionTitle(String title) {

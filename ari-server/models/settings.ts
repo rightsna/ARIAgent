@@ -161,6 +161,7 @@ export class Settings {
   AVATAR_SIZE: string;
   LANGUAGE: string;
   SHOW_TASK_MESSAGES: boolean;
+  USE_ADVANCED_MEMORY: boolean;
   PROVIDERS: AIProviderConfig[];
   OPENAI_API_KEY: string;
   OPENAI_MODEL: string;
@@ -173,6 +174,8 @@ export class Settings {
     this.LANGUAGE = data?.LANGUAGE || "ko";
     this.SHOW_TASK_MESSAGES =
       data?.SHOW_TASK_MESSAGES !== undefined ? data.SHOW_TASK_MESSAGES : true;
+    this.USE_ADVANCED_MEMORY =
+      data?.USE_ADVANCED_MEMORY !== undefined ? data.USE_ADVANCED_MEMORY : false;
 
     if (Array.isArray(data?.PROVIDERS)) {
       this.PROVIDERS = data.PROVIDERS.map((p: any) => new AIProviderConfig(p));

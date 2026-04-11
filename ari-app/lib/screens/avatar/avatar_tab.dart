@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'tabs/profile_tab.dart';
-import 'tabs/logs_tab.dart';
 import 'tabs/memory_tab.dart';
 import 'schedule/schedule_tab.dart';
 import 'tabs/apps_tab.dart';
@@ -38,7 +37,7 @@ class _AvatarTabState extends State<AvatarTab>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 9, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
   }
 
   @override
@@ -85,7 +84,6 @@ class _AvatarTabState extends State<AvatarTab>
             ),
             tabs: const [
               Tab(text: 'Profile'),
-              Tab(text: 'Logs'),
               Tab(text: 'Memory'),
               Tab(text: 'Schedule'),
               Tab(text: 'Apps'),
@@ -103,7 +101,6 @@ class _AvatarTabState extends State<AvatarTab>
               controller: _tabController,
               children: [
                 ProfileTab(),
-                LogsTab(),
                 const MemoryTab(),
                 const ScheduleTab(),
                 const AppsTab(),
