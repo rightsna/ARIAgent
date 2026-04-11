@@ -41,9 +41,13 @@ export namespace Prompt {
       const stat = fs.statSync(fullPath);
       const cached = cache.get(templateName);
       if (cached && cached.fullPath === fullPath && cached.mtimeMs === stat.mtimeMs) {
+        logger.debug(
+          `[Prompt] Using cached template: ${templateName} (${fullPath})`,
+        );
         return cached.compiled(param);
       }
 
+      logger.debug(`[Prompt] Loading template: ${templateName} (${fullPath})`);
       const content = readTextSync(fullPath);
       const compiled = handlebars.compile(content);
 

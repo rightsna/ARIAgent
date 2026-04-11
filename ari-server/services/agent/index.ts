@@ -71,6 +71,18 @@ type ExecuteAgentRequestParams = {
   waitForCompletion?: boolean;
 };
 
+function isRequestCancellationError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("request aborted") ||
+    message.includes("request queue reset")
+  );
+}
+
 export async function initAgent(providersConfig?: AIProviders): Promise<void> {
   const globalSettings = getSettings(new Settings()) || {};
   const state = agentState;
@@ -360,7 +372,15 @@ export async function submitAgentRequestAndWait(
 
   const session = getSessionForAgent(currentAgentProfile);
   session.ensureLifecycleAttached();
-  const completion = session.waitForRequestCompletion(pendingResponse.requestId);
+  const completion = session
+    .waitForRequestCompletion(pendingResponse.requestId)
+    .then((responseText) => ({ status: "completed" as const, responseText }))
+    .catch((error) => {
+      if (isRequestCancellationError(error)) {
+        return { status: "cancelled" as const };
+      }
+      throw error;
+    });
 
   try {
     const result = await submitAgentRequest(
@@ -374,12 +394,19 @@ export async function submitAgentRequestAndWait(
       return { status: "cancelled" };
     }
 
-    const responseText = await completion;
+    const completionResult = await completion;
+    if (completionResult.status === "cancelled") {
+      return { status: "cancelled" };
+    }
+
     return {
       status: result.status,
-      responseText,
+      responseText: completionResult.responseText,
     };
   } catch (error) {
+    if (isRequestCancellationError(error)) {
+      return { status: "cancelled" };
+    }
     dropPendingResponse(agentId, pendingResponse.requestId);
     throw error;
   }
