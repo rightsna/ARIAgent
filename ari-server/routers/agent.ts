@@ -26,7 +26,7 @@ router.on("/AGENT", async (ws, params) => {
       avatarName: (params.avatarName as string | undefined) || "",
       platform: (params.platform as string | undefined) || "",
       agentId: currentAgentId,
-      source: (params.source as "user" | "app" | "task" | undefined) || "user",
+      source: (params.source as "user" | "task" | undefined) || "user",
       appId: params.appId as string | undefined,
       socketAppId: ws.appId,
       type: params.type as string | undefined,

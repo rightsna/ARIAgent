@@ -4,7 +4,7 @@ export type AgentRuntimeState = {
   agentId: string;
   status: AgentRuntimeStatus;
   requestId?: string;
-  source?: "user" | "app" | "task";
+  source?: "user" | "task";
   updatedAt: string;
 };
 
@@ -13,7 +13,7 @@ const runtimeStates = new Map<string, AgentRuntimeState>();
 export function markAgentWorking(params: {
   agentId: string;
   requestId?: string;
-  source?: "user" | "app" | "task";
+  source?: "user" | "task";
 }): AgentRuntimeState {
   const next: AgentRuntimeState = {
     agentId: params.agentId,

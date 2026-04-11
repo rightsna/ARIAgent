@@ -54,7 +54,7 @@ function getSessionForAgent(agentProfile: AgentInfo) {
   );
 }
 
-type AgentRequestSource = "user" | "app" | "task";
+type AgentRequestSource = "user" | "task";
 
 type ExecuteAgentRequestParams = {
   message: string;
@@ -455,42 +455,31 @@ export async function executeAgentRequest(
     }
   }
 
-  if (source !== "app") {
-    const detailEntries =
-      details && typeof details === "object" && !Array.isArray(details)
-        ? Object.entries(details)
-            .filter(([, value]) => value != null)
-            .map(([key, value]) => ({
-              key,
-              value:
-                typeof value === "string" ? value : JSON.stringify(value),
-            }))
-        : [];
+  const detailEntries =
+    details && typeof details === "object" && !Array.isArray(details)
+      ? Object.entries(details)
+          .filter(([, value]) => value != null)
+          .map(([key, value]) => ({
+            key,
+            value:
+              typeof value === "string" ? value : JSON.stringify(value),
+          }))
+      : [];
 
-    if (resolvedAppId || normalizedPlatform || detailEntries.length > 0) {
-      message = await Prompt.load("app_user_context.hbs", {
-        appId: resolvedAppId,
-        platform: normalizedPlatform,
-        details: detailEntries,
-        message,
-      });
-    }
-  }
-
-  if (source === "app") {
-    message = await Prompt.load("app_report.hbs", {
-      appId: resolvedAppId || "unknown",
+  if (resolvedAppId || normalizedPlatform || detailEntries.length > 0) {
+    message = await Prompt.load("app_user_context.hbs", {
+      appId: resolvedAppId,
+      platform: normalizedPlatform,
+      details: detailEntries,
       message,
-      type: type || "info",
-      detailsJson: JSON.stringify(details || {}),
     });
   }
 
   const agentProfile = new AgentInfo({
     id: currentAgentId,
-    name: avatarName || (source === "app" ? "ARI" : "ARI"),
+    name: avatarName || "ARI",
     persona,
-    platform: normalizedPlatform || (source === "app" ? "system" : undefined),
+    platform: normalizedPlatform,
     appId: resolvedAppId,
   });
 
