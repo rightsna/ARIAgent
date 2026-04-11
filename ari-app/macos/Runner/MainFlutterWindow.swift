@@ -4,12 +4,13 @@ import UserNotifications
 
 class MainFlutterWindow: NSWindow {
   private var notificationChannel: FlutterMethodChannel?
+  private let autosaveName = "MainFlutterWindow"
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     self.contentViewController = flutterViewController
-    self.setFrameAutosaveName("MainFlutterWindow")
-    self.setFrameUsingName("MainFlutterWindow")
+    restoreFrameIfPossible()
+    _ = self.setFrameAutosaveName(autosaveName)
 
     // 투명 배경 설정
     self.isOpaque = false
@@ -23,6 +24,46 @@ class MainFlutterWindow: NSWindow {
     setupNotificationChannel(flutterViewController)
 
     super.awakeFromNib()
+  }
+
+  private func restoreFrameIfPossible() {
+    let restored = self.setFrameUsingName(autosaveName)
+    guard restored else {
+      centerToDefaultSize()
+      return
+    }
+
+    let frame = self.frame
+    let minimumUsableSize = NSSize(width: 320, height: 420)
+    guard frame.width >= minimumUsableSize.width,
+          frame.height >= minimumUsableSize.height,
+          isFrameVisible(frame) else {
+      centerToDefaultSize()
+      return
+    }
+  }
+
+  private func centerToDefaultSize() {
+    let targetSize = NSSize(width: 450, height: 720)
+    let visibleFrame = screen?.visibleFrame ?? NSScreen.main?.visibleFrame
+    guard let visibleFrame else {
+      self.setContentSize(targetSize)
+      self.center()
+      return
+    }
+
+    let origin = NSPoint(
+      x: visibleFrame.origin.x + (visibleFrame.width - targetSize.width) / 2,
+      y: visibleFrame.origin.y + (visibleFrame.height - targetSize.height) / 2
+    )
+    let centeredFrame = NSRect(origin: origin, size: targetSize)
+    self.setFrame(centeredFrame, display: true)
+  }
+
+  private func isFrameVisible(_ frame: NSRect) -> Bool {
+    NSScreen.screens.contains { screen in
+      frame.intersects(screen.visibleFrame.insetBy(dx: -40, dy: -40))
+    }
   }
 
   private func setupNotificationChannel(_ flutterViewController: FlutterViewController) {
