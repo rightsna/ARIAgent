@@ -22,44 +22,43 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isNotice) {
-      return SizedBox(
+      return Container(
         width: double.infinity,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Divider(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
-                  height: 1,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.notifications_rounded,
-                size: 11,
-                color: Color(0xFF9D8FFF),
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  message,
-                  style: const TextStyle(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Divider(
+              color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
+              height: 1,
+            ),
+            Container(
+              color: const Color(0xFF12122A), // 배경색으로 덮기 (ChatTab 배경색과 동일하게)
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.notifications_rounded,
+                    size: 11,
                     color: Color(0xFF9D8FFF),
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
                   ),
-                ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      message.trim(),
+                      style: const TextStyle(
+                        color: Color(0xFF9D8FFF),
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Divider(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
-                  height: 1,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
