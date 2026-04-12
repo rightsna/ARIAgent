@@ -5,14 +5,12 @@ class ChatDefaultHeader extends StatelessWidget {
   final String headerTitle;
   final String? contextLabel;
   final AriChatTheme theme;
-  final VoidCallback? onReset;
 
   const ChatDefaultHeader({
     super.key,
     required this.headerTitle,
     required this.contextLabel,
     required this.theme,
-    required this.onReset,
   });
 
   @override
@@ -63,10 +61,6 @@ class ChatDefaultHeader extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-          IconButton(
-            onPressed: onReset,
-            icon: Icon(Icons.refresh_rounded, size: 20, color: theme.textSub),
           ),
         ],
       ),

@@ -26,6 +26,7 @@ class AriChatPanelBody extends StatefulWidget {
   final Widget? overlayWidget;
   final Widget Function(AriChatMessage)? messageBubbleBuilder;
   final Widget? emptyStateWidget;
+  final String? emptyStateMessage;
   final Widget Function(
     Future<void> Function(String) onSend,
     VoidCallback? onCancel,
@@ -52,6 +53,7 @@ class AriChatPanelBody extends StatefulWidget {
     required this.overlayWidget,
     required this.messageBubbleBuilder,
     required this.emptyStateWidget,
+    required this.emptyStateMessage,
     required this.inputAreaBuilder,
     required this.followUpBannerTopOffset,
     required this.isExternalMode,
@@ -246,9 +248,6 @@ class _AriChatPanelBodyState extends State<AriChatPanelBody> {
                   headerTitle: widget.headerTitle,
                   contextLabel: widget.contextLabel,
                   theme: theme,
-                  onReset: widget.isExternalMode
-                      ? null
-                      : () => _internalProvider?.resetAgentSession(),
                 ),
 
           // ── 메시지 영역 ────────────────────────────────────────────────────
@@ -260,6 +259,7 @@ class _AriChatPanelBodyState extends State<AriChatPanelBody> {
               scrollController: _scrollController,
               overlayWidget: widget.overlayWidget,
               emptyStateWidget: widget.emptyStateWidget,
+              emptyStateMessage: widget.emptyStateMessage,
               messageBubbleBuilder: widget.messageBubbleBuilder,
               showScrollToBottomButton: _showScrollToBottomButton,
               onScrollToBottom: () => _scrollToBottom(immediate: true),

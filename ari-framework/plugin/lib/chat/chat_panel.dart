@@ -92,6 +92,9 @@ class AriChatPanel extends StatelessWidget {
   /// 메시지 없을 때 표시할 위젯. null이면 기본 [ChatEmptyState] 사용.
   final Widget? emptyStateWidget;
 
+  /// 메시지 없을 때 표시할 기본 텍스트.
+  final String? emptyStateMessage;
+
   /// 입력창 전체를 교체할 빌더. null이면 기본 [ChatInputArea] 사용.
   /// 빌더 인자: onSend(text), onCancel, isLoading
   final Widget Function(
@@ -119,6 +122,7 @@ class AriChatPanel extends StatelessWidget {
     this.overlayWidget,
     this.messageBubbleBuilder,
     this.emptyStateWidget,
+    this.emptyStateMessage,
     this.inputAreaBuilder,
     this.followUpBannerTopOffset = -52,
   }) : assert(
@@ -147,6 +151,7 @@ class AriChatPanel extends StatelessWidget {
       overlayWidget: overlayWidget,
       messageBubbleBuilder: messageBubbleBuilder,
       emptyStateWidget: emptyStateWidget,
+      emptyStateMessage: emptyStateMessage,
       inputAreaBuilder: inputAreaBuilder,
       followUpBannerTopOffset: followUpBannerTopOffset,
       isExternalMode: _isExternalMode,

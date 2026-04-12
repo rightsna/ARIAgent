@@ -11,6 +11,7 @@ class ChatMessageViewport extends StatelessWidget {
   final ScrollController scrollController;
   final Widget? overlayWidget;
   final Widget? emptyStateWidget;
+  final String? emptyStateMessage;
   final Widget Function(AriChatMessage)? messageBubbleBuilder;
   final bool showScrollToBottomButton;
   final VoidCallback onScrollToBottom;
@@ -23,6 +24,7 @@ class ChatMessageViewport extends StatelessWidget {
     required this.scrollController,
     required this.overlayWidget,
     required this.emptyStateWidget,
+    required this.emptyStateMessage,
     required this.messageBubbleBuilder,
     required this.showScrollToBottomButton,
     required this.onScrollToBottom,
@@ -39,7 +41,11 @@ class ChatMessageViewport extends StatelessWidget {
               : Container(
                   color: theme.backgroundColor,
                   child: messages.isEmpty
-                      ? (emptyStateWidget ?? ChatEmptyState(theme: theme))
+                      ? (emptyStateWidget ??
+                          ChatEmptyState(
+                            theme: theme,
+                            message: emptyStateMessage ?? '무엇을 도와드릴까요?',
+                          ))
                       : ListView.builder(
                           controller: scrollController,
                           reverse: reverseMessages,
