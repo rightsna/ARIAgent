@@ -57,6 +57,30 @@ export function countChatLogs(agentId: string): number {
 }
 
 /**
+ * 최근 유저 메세지를 최신순으로 N개 반환합니다.
+ */
+export function readRecentUserMessages(agentId: string, count: number): string[] {
+  const filePath = path.join(LOGS_DIR, `${agentId}.jsonl`);
+  if (!fs.existsSync(filePath)) return [];
+
+  const content = fs.readFileSync(filePath, "utf-8");
+  const lines = content.trim().split("\n").filter((l) => l.trim() !== "");
+
+  const userMessages: string[] = [];
+  for (let i = lines.length - 1; i >= 0 && userMessages.length < count; i--) {
+    try {
+      const entry = JSON.parse(lines[i]);
+      if (entry.type === "chat" && entry.isUser === true && entry.message) {
+        userMessages.unshift(entry.message);
+      }
+    } catch {
+      // skip
+    }
+  }
+  return userMessages;
+}
+
+/**
  * 특정 에이전트의 로그 파일을 삭제합니다.
  */
 export function clearChatLogs(agentId: string): void {

@@ -8,7 +8,7 @@
 
 [Memory Management]
 - `update_core_memory`: long-term facts. Always read first (`read_only: true`), then rewrite full content with additions.
-- `append_daily_memory`: today's activity log. Append only on concrete tasks/decisions. Skip chitchat, Q&A, greetings.
+- `append_daily_memory`: after every meaningful response, append one line in the format `[request summary] → [result]`. Skip chitchat, greetings, and simple Q&A with no action taken.
 
 {{#if apps}}
 [Available Apps]

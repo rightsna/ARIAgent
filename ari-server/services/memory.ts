@@ -3,11 +3,11 @@ import {
   writeCoreMemory as dataWriteCoreMemory,
   appendDailyMemoryLine,
   readDailyMemory,
-  writeDailyMemory,
   hasWorkspace,
   hasDailyMemory,
   removeCoreMemory,
   removeDailyMemoryDir,
+  listDailyMemoryFiles,
 } from "../repositories/memory_repository.js";
 import {
   insertMemoryNode,
@@ -19,11 +19,9 @@ import {
 } from "../repositories/kuzu_memory_repository.js";
 import { embedPassage, embedQuery, getEmbeddingStatus } from "./embedding.js";
 import { getSettings } from "../repositories/setting_repository.js";
-import { Settings, AIProviders } from "../models/settings.js";
+import { Settings } from "../models/settings.js";
 import { logger } from "../infra/logger.js";
 import { getExecutionContext } from "./agent/execution_context.js";
-import { completeSimple } from "@mariozechner/pi-ai";
-import { findFirstUsableProvider, resolveModel, resolveApiKey } from "./agent/provider_selector.js";
 
 function isAdvancedMemoryReady(): boolean {
   const settings = getSettings(new Settings());
@@ -103,82 +101,44 @@ export function appendDailyMemory(
     : "\n\n";
 
   appendDailyMemoryLine(activeId, todayFilename, prefix + content);
-
-  summarizeDailyLogIfNeeded(activeId, getTodayString()).catch((e) =>
-    logger.error(`[Memory] Auto-summarization failed:`, e),
-  );
 }
 
-function readDailyLogByDate(dateStr: string, agentId?: string): string {
+function parseDailyEntries(dateStr: string, agentId: string): string[] {
+  const log = readDailyMemory(agentId, `${dateStr}.md`);
+  if (!log.trim()) return [];
+  return log
+    .split(/\n{2,}/)
+    .map((e) => e.trim())
+    .filter((e) => e && !e.startsWith("# Daily Log:"));
+}
+
+export function readRecentDailyLogs(agentId?: string, maxEntries = 10): string {
   const activeId = resolveAgentId(agentId);
-  const summary = readDailyMemory(activeId, `summary-${dateStr}.md`);
-  const log = readDailyMemory(activeId, `${dateStr}.md`);
+  const yesterday = parseDailyEntries(getYesterdayString(), activeId);
+  const today = parseDailyEntries(getTodayString(), activeId);
 
-  let result = "";
-  if (summary) result += `[Summary Log: ${dateStr}]\n${summary}`;
-  if (log) result += (result ? "\n\n" : "") + `### Log Data from ${dateStr}\n` + log;
-  return result;
+  const all = [...yesterday, ...today];
+  const recent = all.slice(-maxEntries);
+  return recent.join("\n\n");
 }
 
-export function readRecentDailyLogs(agentId?: string, maxLines = 10): string {
-  const yesterdayLog = readDailyLogByDate(getYesterdayString(), agentId);
-  const todayLog = readDailyLogByDate(getTodayString(), agentId);
+export function searchDailyLogs(query: string, agentId?: string): string {
+  const activeId = resolveAgentId(agentId);
+  const lowerQuery = query.toLowerCase();
+  const files = listDailyMemoryFiles(activeId);
+  const matches: string[] = [];
 
-  let result = "";
-  if (yesterdayLog) result += yesterdayLog + "\n\n";
-  if (todayLog) result += todayLog + "\n\n";
-
-  const trimmed = result.trim();
-  if (!trimmed) return "";
-
-  const lines = trimmed.split("\n");
-  return lines.length > maxLines ? lines.slice(-maxLines).join("\n") : trimmed;
-}
-
-const DAILY_LOG_SUMMARIZE_THRESHOLD = 800;
-
-async function summarizeDailyLogIfNeeded(agentId: string, dateStr: string): Promise<void> {
-  const logFilename = `${dateStr}.md`;
-  const summaryFilename = `summary-${dateStr}.md`;
-
-  const logContent = readDailyMemory(agentId, logFilename);
-  if (logContent.length <= DAILY_LOG_SUMMARIZE_THRESHOLD) return;
-
-  const existingSummary = readDailyMemory(agentId, summaryFilename);
-  if (existingSummary) return;
-
-  const settings = getSettings(new Settings());
-  const providers = new AIProviders({ providers: settings.PROVIDERS });
-  if (providers.availableProviders.length === 0) return;
-
-  let firstProvider: ReturnType<typeof findFirstUsableProvider>;
-  try {
-    firstProvider = findFirstUsableProvider(providers);
-  } catch {
-    return;
+  for (const filename of files) {
+    const dateStr = filename.replace(".md", "");
+    const entries = parseDailyEntries(dateStr, activeId);
+    for (const entry of entries) {
+      if (entry.toLowerCase().includes(lowerQuery)) {
+        matches.push(`[${dateStr}] ${entry}`);
+      }
+    }
   }
 
-  const model = resolveModel(firstProvider.provider);
-  const apiKey = await resolveApiKey(firstProvider.provider);
-
-  logger.info(`[Memory] Summarizing daily log for ${agentId} (${dateStr}), length=${logContent.length}`);
-
-  const result = await completeSimple(model, {
-    systemPrompt: "You are a concise summarizer. Summarize the following daily activity log into a brief paragraph (3-5 sentences). Focus on key decisions, tasks completed, and important facts. Be factual and concise.",
-    messages: [{ role: "user", content: logContent, timestamp: Date.now() }],
-  }, { apiKey: apiKey ?? undefined });
-
-  const summary = result.content
-    .filter((b: any) => b.type === "text")
-    .map((b: any) => b.text)
-    .join("")
-    .trim();
-
-  if (!summary) return;
-
-  writeDailyMemory(agentId, summaryFilename, summary);
-  writeDailyMemory(agentId, logFilename, "");
-  logger.info(`[Memory] Daily log summarized and cleared for ${agentId} (${dateStr})`);
+  return matches.join("\n\n");
 }
 
 export function clearAgentMemory(agentId?: string): void {
@@ -195,10 +155,6 @@ export function clearAgentMemory(agentId?: string): void {
   logger.info(`[Memory] Cleared memory for agent: ${activeId}`);
 }
 
-/**
- * 현재 대화 쿼리와 의미론적으로 관련된 메모리를 검색합니다. (고급 관계 지능 전용)
- * Entity/Topic 정보가 있으면 컨텍스트에 함께 포함됩니다.
- */
 export async function searchRelevantMemories(
   query: string,
   agentId?: string,

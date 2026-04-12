@@ -12,11 +12,14 @@
 {{#if connectedAppIds}}
 - connected apps: {{#each connectedAppIds}}{{#unless @first}}, {{/unless}}`{{this}}`{{/each}}
 {{/if}}
-{{#if recentDailyLogs}}
 
+{{#if recentDailyLogs}}
 [Recent Logs]
 {{recentDailyLogs}}
 {{/if}}
-
+{{#if recentUserMessages}}
+[Recent User Messages]
+{{#each recentUserMessages}}- {{this}}
+{{/each}}{{/if}}
 [User Request]
 {{message}}

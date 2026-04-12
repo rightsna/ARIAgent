@@ -1,5 +1,5 @@
 import path from "path";
-import { DATA_DIR, ensureDirSync, fileExistsSync, readTextSync, writeTextSync, appendTextSync, unlinkSyncSafe, rmDirSyncSafe } from "../infra/data.js";
+import { DATA_DIR, ensureDirSync, fileExistsSync, readTextSync, writeTextSync, appendTextSync, unlinkSyncSafe, rmDirSyncSafe, readDirSyncSafe } from "../infra/data.js";
 
 function getWorkspaceDir(agentId?: string): string {
   if (agentId && agentId !== "default") {
@@ -50,6 +50,12 @@ export function writeDailyMemory(agentId: string | undefined, filename: string, 
   const mDir = getMemoryDir(agentId);
   ensureDirSync(mDir);
   writeTextSync(path.join(mDir, filename), content);
+}
+
+export function listDailyMemoryFiles(agentId?: string): string[] {
+  return readDirSyncSafe(getMemoryDir(agentId))
+    .filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f))
+    .sort();
 }
 
 export function removeDailyMemoryDir(agentId?: string): void {

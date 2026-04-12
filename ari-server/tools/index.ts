@@ -15,6 +15,7 @@ import { TOOLS as UTILS_TOOLS } from "./utils.js";
 import { TOOLS as HA_TOOLS } from "./homeassistant.js";
 import { updateCoreMemoryTool } from "./core_memory_tool.js";
 import { appendDailyMemoryTool } from "./daily_memory_tool.js";
+import { searchMemoryTool } from "./search_memory_tool.js";
 import { readSkillTool } from "./read_skill.js";
 import { searchStoreAppTool } from "./store.js";
 
@@ -31,6 +32,7 @@ const BUILT_IN_TOOLS = [
   ...HA_TOOLS,
   updateCoreMemoryTool,
   appendDailyMemoryTool,
+  searchMemoryTool,
   readSkillTool,
   searchStoreAppTool,
 ] as AgentTool[];

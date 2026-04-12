@@ -1,7 +1,7 @@
 import { AgentMessage } from "@mariozechner/pi-agent-core";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { getAgentsConfig } from "../../repositories/agent_repository.js";
-import { appendChatLog } from "../../repositories/chat_log_repository.js";
+import { appendChatLog, readRecentUserMessages } from "../../repositories/chat_log_repository.js";
 import { AgentInfo, AgentsConfig } from "../../models/agent.js";
 import {
   ChatWithAgentResult,
@@ -467,6 +467,7 @@ export async function executeAgentRequest(
 
   const connectedAppIds = UserSocketHandler.getConnectedAppIds();
   const recentDailyLogs = readRecentDailyLogs(currentAgentId);
+  const recentUserMessages = readRecentUserMessages(currentAgentId, 5);
 
   message = await Prompt.load("app_user_context.hbs", {
     now_str: new Date().toISOString(),
@@ -475,6 +476,7 @@ export async function executeAgentRequest(
     details: detailEntries,
     connectedAppIds: !resolvedAppId && connectedAppIds.length > 0 ? connectedAppIds : undefined,
     recentDailyLogs: recentDailyLogs || undefined,
+    recentUserMessages: recentUserMessages.length > 0 ? recentUserMessages : undefined,
     message,
   });
 
