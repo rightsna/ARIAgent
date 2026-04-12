@@ -201,52 +201,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTabContent() {
-    final activeTab = homeTabs.firstWhere((tab) => tab.index == _currentTab);
-
-    if (activeTab.requiresServer) {
-      return ListenableBuilder(
-        listenable: ServerProvider(),
-        builder: (context, _) {
-          if (!ServerProvider().isRunning) {
-            return HomeServerRequiredOverlay(
-              onGoToSettings: () {
-                setState(() {
-                  _currentTab = 3;
-                });
-              },
-            );
-          }
-          return _buildActiveTabContent();
-        },
-      );
-    }
-    return _buildActiveTabContent();
+    return IndexedStack(
+      index: _currentTab,
+      children: [
+        ChatTab(onSettingsTap: () => setState(() => _currentTab = 3)),
+        _withServerGuard(const PlaceTab()),
+        _withServerGuard(const AvatarTab()),
+        const SettingsTab(),
+      ],
+    );
   }
 
-  Widget _buildActiveTabContent() {
-    switch (_currentTab) {
-      case 0:
-        return ChatTab(
-          onSettingsTap: () {
-            setState(() {
-              _currentTab = 3;
-            });
-          },
-        );
-      case 1:
-        return const PlaceTab();
-      case 2:
-        return const AvatarTab();
-      case 3:
-        return const SettingsTab();
-      default:
-        return ChatTab(
-          onSettingsTap: () {
-            setState(() {
-              _currentTab = 3;
-            });
-          },
-        );
-    }
+  Widget _withServerGuard(Widget child) {
+    return ListenableBuilder(
+      listenable: ServerProvider(),
+      builder: (context, _) => !ServerProvider().isRunning
+          ? HomeServerRequiredOverlay(
+              onGoToSettings: () => setState(() => _currentTab = 3),
+            )
+          : child,
+    );
   }
 }

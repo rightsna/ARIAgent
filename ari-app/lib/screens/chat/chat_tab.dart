@@ -62,17 +62,11 @@ class _ChatTabState extends State<ChatTab> {
 
     // 아바타가 변경되었거나, 서버가 방금 연결된 경우 히스토리 다시 불러오기
     if (avatarId != _lastAgentId || (isConnected && !_lastConnected)) {
-      if (!isConnected) {
-        // 연결 끊김: tracking만 업데이트, 로드 없음
-        _lastAgentId = avatarId;
-        _lastConnected = false;
-      } else if (!chatProvider.isLoading) {
-        // 연결됨 + 요청 없음: 히스토리 로드
-        _lastAgentId = avatarId;
-        _lastConnected = isConnected;
+      _lastAgentId = avatarId;
+      _lastConnected = isConnected;
+      if (isConnected) {
         Future.microtask(() => chatProvider.loadServerHistory(avatarId));
       }
-      // 연결됨 + 요청 진행 중: tracking 업데이트 안 함 → isLoading이 false가 되면 재시도
     }
 
     // 조건부 오버레이 결정
