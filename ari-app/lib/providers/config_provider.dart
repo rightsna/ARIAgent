@@ -18,6 +18,7 @@ class ConfigProvider extends ChangeNotifier {
   bool get isChatCollapsed => _repository.getIsChatCollapsed();
   bool get isNotificationEnabled => _repository.getIsNotificationEnabled();
   bool get showTaskMessages => _repository.getShowTaskMessages();
+  bool get isExperimentalEnabled => _repository.getIsExperimentalEnabled();
   String get backgroundTheme => _repository.getBackgroundTheme();
   double? get windowWidth => _repository.windowWidth;
   double? get windowHeight => _repository.windowHeight;
@@ -36,7 +37,6 @@ class ConfigProvider extends ChangeNotifier {
   // "idle" | "downloading" | "ready" | "error"
   String _embeddingModelStatus = "idle";
   String get embeddingModelStatus => _embeddingModelStatus;
-
 
   String? _mode;
   String? get mode => _mode;
@@ -98,6 +98,11 @@ class ConfigProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[ConfigProvider] updateShowTaskMessages failed: $e');
     }
+    notifyListeners();
+  }
+
+  Future<void> updateIsExperimentalEnabled(bool value) async {
+    await _repository.updateIsExperimentalEnabled(value);
     notifyListeners();
   }
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'model/model_settings.dart';
 import 'server/server_settings.dart';
 import 'appearance/appearance_settings.dart';
+import 'experimental/experimental_settings.dart';
 import 'notification/notification_settings.dart';
 import 'about/about_settings.dart';
 import '../../../providers/server_provider.dart';
@@ -72,6 +73,16 @@ class _SettingsCategoryList extends StatelessWidget {
               isEnabled: true,
               page: const NotificationSettings(),
               title: 'Notification',
+            ),
+            _buildCategoryItem(
+              context,
+              Icons.science_outlined,
+              isServerRunning
+                  ? '실험 중인 기능을 미리 켜고 확인하는 메뉴'
+                  : '실험 중인 기능을 미리 켜고 확인하는 메뉴 (에이전트 실행 필요)',
+              isEnabled: isServerRunning,
+              page: const ExperimentalSettings(),
+              title: 'Experimental',
             ),
             _buildCategoryItem(
               context,

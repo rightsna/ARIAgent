@@ -40,12 +40,16 @@ class _MemoryTabState extends State<MemoryTab> {
   @override
   Widget build(BuildContext context) {
     final config = context.watch<ConfigProvider>();
+    final isExperimentalEnabled = config.isExperimentalEnabled;
     final useAdvanced =
-        config.useAdvancedMemory && config.embeddingModelStatus == 'ready';
+        isExperimentalEnabled &&
+        config.useAdvancedMemory &&
+        config.embeddingModelStatus == 'ready';
 
     // 고급 관계 지능이 켜져 있지만 모델이 아직 준비 중이면 폴링 시작
     final modelStatus = config.embeddingModelStatus;
-    if (config.useAdvancedMemory &&
+    if (isExperimentalEnabled &&
+        config.useAdvancedMemory &&
         (modelStatus == 'loading' || modelStatus == 'downloading') &&
         _modelStatusTimer == null) {
       _startModelStatusPolling();
@@ -62,8 +66,10 @@ class _MemoryTabState extends State<MemoryTab> {
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          _buildAdvancedMemoryToggle(config),
-          const SizedBox(height: 20),
+          if (isExperimentalEnabled) ...[
+            _buildAdvancedMemoryToggle(config),
+            const SizedBox(height: 20),
+          ],
           if (useAdvanced)
             AdvancedIntelligenceSection(onRefresh: () => setState(() {}))
           else

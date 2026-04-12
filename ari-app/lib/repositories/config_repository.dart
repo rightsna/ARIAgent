@@ -14,6 +14,7 @@ class ConfigRepository {
   bool _isChatCollapsed = false;
   bool _isNotificationEnabled = true;
   bool _showTaskMessages = true;
+  bool _isExperimentalEnabled = false;
   String _avatarSize = 'medium';
   String _backgroundTheme = 'dark';
   double? _windowWidth;
@@ -71,6 +72,10 @@ class ConfigRepository {
         if (_fullConfig['SHOW_TASK_MESSAGES'] != null) {
           _showTaskMessages = _fullConfig['SHOW_TASK_MESSAGES'] == true;
         }
+        if (_fullConfig['IS_EXPERIMENTAL_ENABLED'] != null) {
+          _isExperimentalEnabled =
+              _fullConfig['IS_EXPERIMENTAL_ENABLED'] == true;
+        }
         if (_fullConfig['AVATAR_SIZE'] != null) {
           _avatarSize = _fullConfig['AVATAR_SIZE'].toString();
         }
@@ -110,6 +115,7 @@ class ConfigRepository {
     _fullConfig['IS_CHAT_COLLAPSED'] = _isChatCollapsed;
     _fullConfig['IS_NOTIFICATION_ENABLED'] = _isNotificationEnabled;
     _fullConfig['SHOW_TASK_MESSAGES'] = _showTaskMessages;
+    _fullConfig['IS_EXPERIMENTAL_ENABLED'] = _isExperimentalEnabled;
     _fullConfig['AVATAR_SIZE'] = _avatarSize;
     _fullConfig['BACKGROUND_THEME'] = _backgroundTheme;
     _fullConfig['WINDOW_WIDTH'] = _windowWidth;
@@ -169,6 +175,15 @@ class ConfigRepository {
 
   Future<void> updateShowTaskMessages(bool value) async {
     _showTaskMessages = value;
+    await _saveConfig();
+  }
+
+  bool getIsExperimentalEnabled() {
+    return _isExperimentalEnabled;
+  }
+
+  Future<void> updateIsExperimentalEnabled(bool value) async {
+    _isExperimentalEnabled = value;
     await _saveConfig();
   }
 
