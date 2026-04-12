@@ -127,6 +127,7 @@ class _ChatTabState extends State<ChatTab> {
         isUser: msg.isUser,
         isError: msg.isError,
         isSystem: msg.isSystem,
+        isNotice: msg.isNotice,
       ),
       inputAreaBuilder: (onSend, onCancel, isLoading) {
         if (!isServerRunning) return const SizedBox.shrink();

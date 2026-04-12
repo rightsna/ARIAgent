@@ -46,6 +46,12 @@ export function readDailyMemory(agentId: string | undefined, filename: string): 
   return readTextSync(path.join(getMemoryDir(agentId), filename));
 }
 
+export function writeDailyMemory(agentId: string | undefined, filename: string, content: string): void {
+  const mDir = getMemoryDir(agentId);
+  ensureDirSync(mDir);
+  writeTextSync(path.join(mDir, filename), content);
+}
+
 export function removeDailyMemoryDir(agentId?: string): void {
   rmDirSyncSafe(getMemoryDir(agentId));
 }

@@ -11,6 +11,7 @@ import { getTasks, saveTasks } from "../../repositories/task_repository.js";
 import { getTaskScheduler } from "../scheduler/runtime.js";
 import { executeAgentRequest } from "../agent/index.js";
 import { UserSocketHandler } from "../../system/ws.js";
+import { appendChatLog } from "../../repositories/chat_log_repository.js";
 import { findAppExecutable } from "../../infra/runtime_paths.js";
 import { DATA_DIR } from "../../infra/data.js";
 import { logger } from "../../infra/logger.js";
@@ -131,6 +132,21 @@ export async function runScheduledTask(
     return;
   }
 
+  const agentId = task.agentId || "default";
+  const noticeId = `notice-task-start-${task.id}-${Date.now()}`;
+  const noticeMessage = `스케줄 작업 시작: ${task.label}`;
+
+  appendChatLog(agentId, {
+    type: "notice",
+    message: noticeMessage,
+    noticeId,
+  });
+  UserSocketHandler.broadcast("/APP.NOTICE", {
+    noticeId,
+    agentId,
+    message: noticeMessage,
+  });
+
   const timeoutMs = (task.timeout ?? DEFAULT_TIMEOUT_SEC) * 1000;
   const managedAppId = task.managedAppId;
   let launchedByTask = false;
@@ -172,7 +188,7 @@ export async function runScheduledTask(
       executeAgentRequest({
         message: task.prompt,
         requestId: runRequestId,
-        agentId: task.agentId || "default",
+        agentId,
         appId: task.appId,
         source: "task",
         waitForCompletion: true,
@@ -197,7 +213,7 @@ export async function runScheduledTask(
     UserSocketHandler.broadcast("/TASK_RESULT", {
       taskId: task.id,
       requestId: runRequestId,
-      agentId: task.agentId || "default",
+      agentId,
       label: task.label,
       result: responseText,
       executedAt,

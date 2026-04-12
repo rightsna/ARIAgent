@@ -35,6 +35,7 @@ import { clearToolCache, loadMainTools } from "../tools/tool_registry.js";
 import { isOAuthProvider, ARI_CLOUD_PROVIDER } from "./provider_selector.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import { loadAllApps } from "../../skills/index.js";
+import { readRecentDailyLogs } from "../memory.js";
 
 const agentState = new AIProviders();
 let currentTools = [] as Awaited<ReturnType<typeof loadMainTools>>;
@@ -66,7 +67,6 @@ type ExecuteAgentRequestParams = {
   source?: AgentRequestSource;
   appId?: string;
   socketAppId?: string;
-  type?: string;
   details?: Record<string, unknown>;
   waitForCompletion?: boolean;
 };
@@ -204,7 +204,7 @@ export async function chatWithAgent(
     session.enqueueRequest(pendingResponse);
   }
 
-  const systemPrompt = await buildSystemPrompt(session.agentInfo, agentState);
+  const systemPrompt = await buildSystemPrompt(session.agentInfo, agentState, message);
   const result = await runWithExecutionContext(
     {
       agentId: currentAgentId,
@@ -429,7 +429,6 @@ export async function executeAgentRequest(
     source = "user",
     appId,
     socketAppId,
-    type,
     details,
     waitForCompletion = false,
   } = params;
@@ -466,14 +465,18 @@ export async function executeAgentRequest(
           }))
       : [];
 
-  if (resolvedAppId || normalizedPlatform || detailEntries.length > 0) {
-    message = await Prompt.load("app_user_context.hbs", {
-      appId: resolvedAppId,
-      platform: normalizedPlatform,
-      details: detailEntries,
-      message,
-    });
-  }
+  const connectedAppIds = UserSocketHandler.getConnectedAppIds();
+  const recentDailyLogs = readRecentDailyLogs(currentAgentId);
+
+  message = await Prompt.load("app_user_context.hbs", {
+    now_str: new Date().toISOString(),
+    currentAppId: resolvedAppId,
+    platform: normalizedPlatform,
+    details: detailEntries,
+    connectedAppIds: !resolvedAppId && connectedAppIds.length > 0 ? connectedAppIds : undefined,
+    recentDailyLogs: recentDailyLogs || undefined,
+    message,
+  });
 
   const agentProfile = new AgentInfo({
     id: currentAgentId,

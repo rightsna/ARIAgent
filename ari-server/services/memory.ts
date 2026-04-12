@@ -3,6 +3,7 @@ import {
   writeCoreMemory as dataWriteCoreMemory,
   appendDailyMemoryLine,
   readDailyMemory,
+  writeDailyMemory,
   hasWorkspace,
   hasDailyMemory,
   removeCoreMemory,
@@ -18,9 +19,11 @@ import {
 } from "../repositories/kuzu_memory_repository.js";
 import { embedPassage, embedQuery, getEmbeddingStatus } from "./embedding.js";
 import { getSettings } from "../repositories/setting_repository.js";
-import { Settings } from "../models/settings.js";
+import { Settings, AIProviders } from "../models/settings.js";
 import { logger } from "../infra/logger.js";
 import { getExecutionContext } from "./agent/execution_context.js";
+import { completeSimple } from "@mariozechner/pi-ai";
+import { findFirstUsableProvider, resolveModel, resolveApiKey } from "./agent/provider_selector.js";
 
 function isAdvancedMemoryReady(): boolean {
   const settings = getSettings(new Settings());
@@ -101,40 +104,81 @@ export function appendDailyMemory(
 
   appendDailyMemoryLine(activeId, todayFilename, prefix + content);
 
-  if (isAdvancedMemoryReady()) {
-    (async () => {
-      try {
-        const embedding = await embedPassage(content);
-        await insertMemoryNode({
-          agentId: activeId,
-          content,
-          memType: "daily",
-          embedding,
-          topics: meta.topics,
-          entities: meta.entities,
-          importance: meta.importance ?? "normal",
-        });
-      } catch (e) {
-        logger.error(`[Memory] Kuzu daily memory sync failed:`, e);
-      }
-    })();
-  }
+  summarizeDailyLogIfNeeded(activeId, getTodayString()).catch((e) =>
+    logger.error(`[Memory] Auto-summarization failed:`, e),
+  );
 }
 
 function readDailyLogByDate(dateStr: string, agentId?: string): string {
   const activeId = resolveAgentId(agentId);
-  const content = readDailyMemory(activeId, `${dateStr}.md`);
-  return content ? `### Log Data from ${dateStr}\n` + content : "";
+  const summary = readDailyMemory(activeId, `summary-${dateStr}.md`);
+  const log = readDailyMemory(activeId, `${dateStr}.md`);
+
+  let result = "";
+  if (summary) result += `[Summary Log: ${dateStr}]\n${summary}`;
+  if (log) result += (result ? "\n\n" : "") + `### Log Data from ${dateStr}\n` + log;
+  return result;
 }
 
-export function readRecentDailyLogs(agentId?: string): string {
+export function readRecentDailyLogs(agentId?: string, maxLines = 10): string {
   const yesterdayLog = readDailyLogByDate(getYesterdayString(), agentId);
   const todayLog = readDailyLogByDate(getTodayString(), agentId);
 
   let result = "";
   if (yesterdayLog) result += yesterdayLog + "\n\n";
   if (todayLog) result += todayLog + "\n\n";
-  return result.trim();
+
+  const trimmed = result.trim();
+  if (!trimmed) return "";
+
+  const lines = trimmed.split("\n");
+  return lines.length > maxLines ? lines.slice(-maxLines).join("\n") : trimmed;
+}
+
+const DAILY_LOG_SUMMARIZE_THRESHOLD = 800;
+
+async function summarizeDailyLogIfNeeded(agentId: string, dateStr: string): Promise<void> {
+  const logFilename = `${dateStr}.md`;
+  const summaryFilename = `summary-${dateStr}.md`;
+
+  const logContent = readDailyMemory(agentId, logFilename);
+  if (logContent.length <= DAILY_LOG_SUMMARIZE_THRESHOLD) return;
+
+  const existingSummary = readDailyMemory(agentId, summaryFilename);
+  if (existingSummary) return;
+
+  const settings = getSettings(new Settings());
+  const providers = new AIProviders({ providers: settings.PROVIDERS });
+  if (providers.availableProviders.length === 0) return;
+
+  let firstProvider: ReturnType<typeof findFirstUsableProvider>;
+  try {
+    firstProvider = findFirstUsableProvider(providers);
+  } catch {
+    return;
+  }
+
+  const model = resolveModel(firstProvider.provider);
+  const apiKey = await resolveApiKey(firstProvider.provider);
+
+  logger.info(`[Memory] Summarizing daily log for ${agentId} (${dateStr}), length=${logContent.length}`);
+
+  const result = await completeSimple(model, {
+    systemPrompt: "You are a concise summarizer. Summarize the following daily activity log into a brief paragraph (3-5 sentences). Focus on key decisions, tasks completed, and important facts. Be factual and concise.",
+    messages: [{ role: "user", content: logContent, timestamp: Date.now() }],
+  }, { apiKey: apiKey ?? undefined });
+
+  const summary = result.content
+    .filter((b: any) => b.type === "text")
+    .map((b: any) => b.text)
+    .join("")
+    .trim();
+
+  if (!summary) return;
+
+  writeDailyMemory(agentId, summaryFilename, summary);
+  writeDailyMemory(agentId, logFilename, "");
+  logger.info(`[Memory] Daily log summarized and cleared for ${agentId} (${dateStr})`);
 }
 
 export function clearAgentMemory(agentId?: string): void {

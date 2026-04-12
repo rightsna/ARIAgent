@@ -15,6 +15,7 @@ class AriChatProvider extends ChangeNotifier {
   StreamSubscription? _followUpSub;
   StreamSubscription? _cancelSub;
   StreamSubscription? _taskResultSub;
+  StreamSubscription? _noticeSub;
   final List<StreamSubscription> _customSubs = [];
   final Set<String> _inFlightRequestIds = {};
   final Set<String> _backgroundRequestIds = {};
@@ -81,6 +82,7 @@ class AriChatProvider extends ChangeNotifier {
       if (message.isEmpty) return;
       if (source == 'task') {
         _taskRequestIds.add(requestId);
+        return; // 스케줄 작업 프롬프트는 UI에 표시하지 않음 (APP.NOTICE로 대체)
       }
       if (requestId.isNotEmpty &&
           _messages.any((m) => m.isUser && m.requestId == requestId)) return;
@@ -186,6 +188,25 @@ class AriChatProvider extends ChangeNotifier {
       notifyListeners();
     });
 
+    _noticeSub = AriAgent.on('/APP.NOTICE', (data) {
+      final payload = data['data'] is Map ? data['data'] as Map : data;
+      final message = payload['message']?.toString() ?? '';
+      final noticeId = payload['noticeId']?.toString();
+
+      if (message.isEmpty) return;
+      if (noticeId != null &&
+          _messages.any((m) => m.isNotice && m.requestId == noticeId)) return;
+
+      _messages.add(AriChatMessage(
+        text: message,
+        isUser: false,
+        isNotice: true,
+        createdAt: DateTime.now(),
+        requestId: noticeId,
+      ));
+      notifyListeners();
+    });
+
     _taskResultSub = AriAgent.on('/TASK_RESULT', (data) {
       final taskId = data['taskId']?.toString() ?? 'unknown';
       final requestId = data['requestId']?.toString() ?? '';
@@ -240,6 +261,14 @@ class AriChatProvider extends ChangeNotifier {
               createdAt: DateTime.now(),
               requestId: log['requestId']?.toString(),
             ));
+          } else if (log['type'] == 'notice') {
+            history.add(AriChatMessage(
+              text: log['message']?.toString() ?? '',
+              isUser: false,
+              isNotice: true,
+              createdAt: DateTime.now(),
+              requestId: log['noticeId']?.toString(),
+            ));
           } else if (log['type'] == 'task') {
             final label = log['label'] ?? '스케줄 작업';
             final result = log['result'] ?? '';
@@ -285,7 +314,8 @@ class AriChatProvider extends ChangeNotifier {
         if (details != null) 'details': details,
         'platform': platform,
       });
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[AriChatProvider] sendAgentMessage 오류: $e\n$st');
       _inFlightRequestIds.remove(requestId);
       _backgroundRequestIds.remove(requestId);
       final removedFollowUp = _removeFollowUpByRequestId(requestId);
@@ -354,6 +384,19 @@ class AriChatProvider extends ChangeNotifier {
 
   void removeSystemMessage(String requestId) {
     _messages.removeWhere((m) => m.isSystem && m.requestId == requestId);
+    notifyListeners();
+  }
+
+  void addNoticeMessage(String text, {String? noticeId}) {
+    if (noticeId != null &&
+        _messages.any((m) => m.isNotice && m.requestId == noticeId)) return;
+    _messages.add(AriChatMessage(
+      text: text,
+      isUser: false,
+      isNotice: true,
+      createdAt: DateTime.now(),
+      requestId: noticeId,
+    ));
     notifyListeners();
   }
 
@@ -430,6 +473,7 @@ class AriChatProvider extends ChangeNotifier {
     _followUpSub?.cancel();
     _cancelSub?.cancel();
     _taskResultSub?.cancel();
+    _noticeSub?.cancel();
     for (final sub in _customSubs) {
       sub.cancel();
     }

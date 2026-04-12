@@ -8,6 +8,7 @@ class ChatBubble extends StatelessWidget {
   final bool isUser;
   final bool isError;
   final bool isSystem;
+  final bool isNotice;
 
   const ChatBubble({
     super.key,
@@ -15,10 +16,54 @@ class ChatBubble extends StatelessWidget {
     this.isUser = true,
     this.isError = false,
     this.isSystem = false,
+    this.isNotice = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isNotice) {
+      return SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Divider(
+                  color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.notifications_rounded,
+                size: 11,
+                color: Color(0xFF9D8FFF),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Color(0xFF9D8FFF),
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Divider(
+                  color: const Color(0xFF6C63FF).withValues(alpha: 0.25),
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (isSystem) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

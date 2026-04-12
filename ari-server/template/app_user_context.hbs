@@ -1,6 +1,7 @@
 [Request Context]
-{{#if appId}}
-- appId: {{appId}}
+- time: {{now_str}}
+{{#if currentAppId}}
+- current app: {{currentAppId}}
 {{/if}}
 {{#if platform}}
 - platform: {{platform}}
@@ -8,6 +9,14 @@
 {{#each details}}
 - {{key}}: {{value}}
 {{/each}}
+{{#if connectedAppIds}}
+- connected apps: {{#each connectedAppIds}}{{#unless @first}}, {{/unless}}`{{this}}`{{/each}}
+{{/if}}
+{{#if recentDailyLogs}}
+
+[Recent Logs]
+{{recentDailyLogs}}
+{{/if}}
 
 [User Request]
 {{message}}

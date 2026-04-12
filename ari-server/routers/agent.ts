@@ -30,7 +30,6 @@ router.on("/AGENT", async (ws, params) => {
       source: (params.source as "user" | "task" | undefined) || "user",
       appId: params.appId as string | undefined,
       socketAppId: ws.appId,
-      type: params.type as string | undefined,
       details:
         params.details && typeof params.details === "object" && !Array.isArray(params.details)
           ? (params.details as Record<string, unknown>)

@@ -3,8 +3,7 @@ import { AgentInfo } from "../../models/agent.js";
 import { AIProviders } from "../../models/settings.js";
 import { Prompt } from "../../infra/prompt.js";
 import { logger } from "../../infra/logger.js";
-import { UserSocketHandler } from "../../system/ws.js";
-import { readCoreMemory, readRecentDailyLogs, searchRelevantMemories } from "../memory.js";
+import { readCoreMemory, searchRelevantMemories } from "../memory.js";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { Settings } from "../../models/settings.js";
 import { getEmbeddingStatus } from "../embedding.js";
@@ -13,6 +12,7 @@ import { ARI_CLOUD_PROVIDER } from "./provider_selector.js";
 export async function buildSystemPrompt(
   agentProfile: AgentInfo,
   providers?: AIProviders,
+  userQuery?: string,
 ): Promise<string> {
   // setup 모드: 아직 프로바이더가 설정되지 않아 ARICloud 프록시를 사용 중인 경우
   // 일반 system_prompt 대신 setup 가이드 전용 프롬프트를 사용한다
@@ -36,33 +36,28 @@ export async function buildSystemPrompt(
   // 고급 관계 지능이 활성화된 경우 벡터 검색으로 관련 메모리만 주입
   // 비활성화된 경우 기존 방식(전체 MEMORY.md + 어제/오늘 로그) 사용
   let coreMemory: string;
-  let recentDailyLogs: string;
 
   if (useAdvancedMemory) {
-    // 현재 에이전트 메시지는 context_builder에서 알 수 없으므로
-    // agentProfile의 persona를 쿼리 시드로 사용하고, 추후 메시지 파이프라인에서 개선 가능
-    coreMemory = await searchRelevantMemories("recent context summary preferences rules", agentId, 6);
-    recentDailyLogs = "";
+    const query = userQuery || "recent context summary preferences rules";
+    coreMemory = await searchRelevantMemories(query, agentId, 6);
   } else {
     coreMemory = readCoreMemory(agentId);
-    recentDailyLogs = readRecentDailyLogs(agentId);
   }
   const avatarName = agentProfile.name.trim() || "ARI";
   const platform = agentProfile.platform?.trim() || process.platform;
-  const connectedAppIds = UserSocketHandler.getConnectedAppIds();
   const loadedSkills = agentProfile.toLoadedSkills(agentProfile.activeSkills);
 
+  const apps = agentProfile.visibleSkills
+    .filter((s) => s.isApp)
+    .map((s) => ({ name: s.name, description: s.description }));
+
   const systemPrompt = await Prompt.load("system_prompt.hbs", {
-    now_str: new Date().toISOString(),
     avatarName,
     platform,
     persona: agentProfile.persona,
-    currentAppId: agentProfile.appId,
-    connectedAppIds,
     coreMemory,
-    recentDailyLogs,
     skills: agentProfile.promptSkills,
-    apps: agentProfile.toPromptApps(connectedAppIds),
+    apps: apps.length > 0 ? apps : undefined,
     loadedSkills,
   });
 

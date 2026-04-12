@@ -65,7 +65,7 @@ class AriAgent {
   static Future<Map<String, dynamic>> call(
     String uri, [
     Map<String, dynamic>? param,
-    Duration idleTimeout = const Duration(seconds: 60),
+    Duration idleTimeout = const Duration(seconds: 600),
   ]) async {
     final completer = Completer<Map<String, dynamic>>();
     final requestId = param?['requestId']?.toString();

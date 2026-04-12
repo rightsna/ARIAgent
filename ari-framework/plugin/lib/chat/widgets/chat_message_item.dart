@@ -15,6 +15,46 @@ class AriChatMessageItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (message.isNotice) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Divider(
+                color: theme.primaryColor.withValues(alpha: 0.2),
+                height: 1,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.notifications_rounded,
+              size: 11,
+              color: theme.primaryColor.withValues(alpha: 0.5),
+            ),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                message.text,
+                style: TextStyle(
+                  color: theme.primaryColor.withValues(alpha: 0.7),
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Divider(
+                color: theme.primaryColor.withValues(alpha: 0.2),
+                height: 1,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (message.isSystem) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 24, left: 38),
