@@ -65,3 +65,7 @@ ari-framework/sample_control/pubspec.lock
 ari-framework/sample_basic/pubspec.lock
 ari-framework/plugin/pubspec.lock
 ari-app/pubspec.lock
+
+# Local tool and analysis settings
+**/analysis_options.yaml
+**/devtools_options.yaml
