@@ -1,0 +1,22 @@
+name: ari_sample_layout
+description: A clean, minimal sample layout project for ARI framework.
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  ari_plugin:
+    path: ../plugin
+  provider: ^6.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
