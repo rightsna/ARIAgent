@@ -21,3 +21,7 @@ export 'avatar/providers/avatar_provider.dart';
 export 'update/app_update_service.dart';
 export 'update/widgets/ari_update_banner.dart';
 export 'layouts/ari_base_layout.dart';
+
+export 'widgets/markdown/ari_markdown_view.dart';
+export 'widgets/markdown/ari_markdown_diff_view.dart';
+export 'widgets/markdown/ari_markdown_editor.dart';
