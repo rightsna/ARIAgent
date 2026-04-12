@@ -1,4 +1,5 @@
 import { router } from "../system/router.js";
+import { UserSocketHandler } from "../system/ws.js";
 import {
   abortAgent,
   clearAgentInstance,
@@ -51,11 +52,11 @@ router.on("/AGENT", async (ws, params) => {
 });
 
 // /AGENT.CANCEL
-router.on("/AGENT.CANCEL", async (ws, params) => {
+router.on("/AGENT.CANCEL", async (_ws, params) => {
   const agentId = resolveAgentId(params.agentId as string | undefined);
 
   abortAgent(agentId);
-  ws.send("/AGENT.CANCEL", { ok: true, data: { agentId } });
+  UserSocketHandler.broadcast("/AGENT.CANCEL", { ok: true, data: { agentId } });
 });
 
 // /AGENT.RESET

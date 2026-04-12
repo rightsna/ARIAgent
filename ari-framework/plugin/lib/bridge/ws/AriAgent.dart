@@ -72,6 +72,7 @@ class AriAgent {
 
     Timer? timer;
     StreamSubscription? progressSub;
+    void Function()? cancelSend;
 
     // 타임아웃 타이머를 초기화하거나 갱신하는 내부 함수 (Activity Watchdog)
     void resetTimer() {
@@ -79,6 +80,7 @@ class AriAgent {
       timer = Timer(idleTimeout, () {
         if (!completer.isCompleted) {
           progressSub?.cancel();
+          cancelSend?.call();
           completer.completeError(
             Exception('[AriAgent] Inactivity timeout: $uri ($requestId)'),
           );
@@ -101,8 +103,9 @@ class AriAgent {
       });
     }
 
-    _webSocketService.send(uri, param ?? {}, (res) {
+    cancelSend = await _webSocketService.send(uri, param ?? {}, (res) {
       progressSub?.cancel();
+      cancelSend?.call();
       timer?.cancel();
       if (completer.isCompleted) return;
 

@@ -15,8 +15,7 @@ class AppProtocolHandler {
 
   final List<StreamSubscription> _subscriptions = [];
   Timer? _registerRetryTimer;
-  int _registerAttempts = 0;
-  static const int _maxRegisterAttempts = 3;
+  bool _registered = false;
 
   void start() {
     _subscriptions.add(AriAgent.on('/APP.COMMAND', _handleAppCommand));
@@ -24,7 +23,7 @@ class AppProtocolHandler {
     _subscriptions.add(AriAgent.on('/APP.REGISTER', _handleRegisterAck));
     _subscriptions.add(AriAgent.connectionStream.listen((connected) {
       if (connected) {
-        _registerAttempts = 0;
+        _registered = false;
         _registerApp();
         _startRegisterRetry();
       } else {
@@ -48,7 +47,6 @@ class AppProtocolHandler {
 
   void _registerApp() {
     if (!AriAgent.isConnected) return;
-    _registerAttempts++;
     AriAgent.register(appId);
   }
 
@@ -58,7 +56,7 @@ class AppProtocolHandler {
         _stopRegisterRetry();
         return;
       }
-      if (_registerAttempts >= _maxRegisterAttempts) {
+      if (_registered) {
         _stopRegisterRetry();
         return;
       }
@@ -74,6 +72,7 @@ class AppProtocolHandler {
   void _handleRegisterAck(Map<String, dynamic> data) {
     final ackAppId = data['data']?['appId'] ?? data['appId'];
     if (ackAppId == appId) {
+      _registered = true;
       _stopRegisterRetry();
     }
   }

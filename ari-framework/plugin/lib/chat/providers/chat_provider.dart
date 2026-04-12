@@ -143,8 +143,6 @@ class AriChatProvider extends ChangeNotifier {
       } else if (requestId.startsWith('report-') ||
           requestId.startsWith('sys-')) {
         _backgroundRequestIds.add(requestId);
-      } else if (requestId.isNotEmpty && requestId != _activeRequestId) {
-        _taskRequestIds.add(requestId);
       }
       _syncLoadingState();
       final removedFollowUp = _removeFollowUpByRequestId(requestId);

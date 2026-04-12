@@ -255,14 +255,14 @@ class WebSocketService {
     }
   }
 
-  Future<void> send(
+  Future<void Function()> send(
     String cmd,
     Map<String, dynamic> param,
     void Function(Response) callback,
   ) async {
     if (_channel == null || !isConnected) {
       await connect();
-      if (!isConnected) return;
+      if (!isConnected) return () {};
     }
 
     final expectedRequestId = param['requestId']?.toString();
@@ -288,6 +288,8 @@ class WebSocketService {
     final data = '$cmd ${jsonEncode(param)}';
     _channel!.sink.add(data);
     _logDebug('send(): $data');
+
+    return () => subscription.cancel();
   }
 
   void receive(String message) {

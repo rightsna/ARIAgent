@@ -28,7 +28,7 @@ class AriMarkdownView extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
-          color: primaryColor.withValues(alpha: 0.2),
+          color: primaryColor.withOpacity(0.2),
           width: 1.2,
         ),
       ),
