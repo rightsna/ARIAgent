@@ -37,7 +37,6 @@ class _AvatarTabState extends State<AvatarTab> {
     final avatar = context.watch<AvatarProvider>();
     final config = context.watch<ConfigProvider>();
     final showAdvanced = config.showAdvancedDeveloperUI;
-    final isExperimental = config.isExperimentalEnabled;
 
     final List<Widget> tabs = [
       const Tab(text: 'Profile'),
@@ -102,9 +101,7 @@ class _AvatarTabState extends State<AvatarTab> {
           Expanded(
             child: ScrollConfiguration(
               behavior: AppScrollBehavior(),
-              child: TabBarView(
-                children: views,
-              ),
+              child: TabBarView(children: views),
             ),
           ),
           _buildBottomSelector(context, avatar),

@@ -73,7 +73,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
   Widget build(BuildContext context) {
     final avatar = context.watch<AvatarProvider>();
     final taskProvider = context.watch<AriTaskProvider>();
-    final allTasks = taskProvider.tasks;
+    final allTasks = taskProvider.tasksForAgent(avatar.currentAvatarId);
 
     final dayTaskLists = List.generate(7, (_) => <AriScheduledTask>[]);
     for (final task in allTasks) {

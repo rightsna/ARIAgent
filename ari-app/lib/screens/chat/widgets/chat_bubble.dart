@@ -149,17 +149,53 @@ class ChatBubble extends StatelessWidget {
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            bubble,
-            if (showCopyButton) ...[
-              const SizedBox(width: 4),
-              _CopyButton(message: message),
-            ],
-          ],
-        ),
+        child: showCopyButton
+            ? _BubbleWithCopy(bubble: bubble, message: message)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [bubble],
+              ),
+      ),
+    );
+  }
+}
+
+class _BubbleWithCopy extends StatefulWidget {
+  final Widget bubble;
+  final String message;
+  const _BubbleWithCopy({required this.bubble, required this.message});
+
+  @override
+  State<_BubbleWithCopy> createState() => _BubbleWithCopyState();
+}
+
+class _BubbleWithCopyState extends State<_BubbleWithCopy> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Flexible(child: widget.bubble),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            child: _hovered
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 4),
+                      _CopyButton(message: widget.message),
+                    ],
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }
