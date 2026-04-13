@@ -12,9 +12,10 @@ export class Task {
   appId?: string;           // 어떤 앱에서 생성한 스케줄인지 기록
   managedAppId?: string;    // 태스크 실행 전 자동 런치하고 완료 후 종료할 앱 ID
   isOneOff?: boolean;       // 1회성 스케줄 여부
-  scheduledFor?: string;    // 1회성 스케줄의 절대 실행 시각 (ISO 8601)
   enabled: boolean;         // 활성화 여부
   timeout?: number;         // 태스크 최대 실행 시간 (초, 기본값: 120)
+  startAt: string;          // 실행 시작 일시 (기본값: 생성 시각)
+  endAt?: string;           // 실행 종료 일시 (기본값: null = 무한)
   createdAt: string;        // 생성 일시
   lastRunAt?: string;       // 마지막 실행 시각
   lastResult?: string;      // 마지막 실행 결과
@@ -29,9 +30,10 @@ export class Task {
     this.appId = data?.appId;
     this.managedAppId = data?.managedAppId;
     this.isOneOff = data?.isOneOff !== undefined ? data.isOneOff : false;
-    this.scheduledFor = data?.scheduledFor;
     this.enabled = data?.enabled !== undefined ? data.enabled : true;
     this.timeout = data?.timeout;
+    this.startAt = data?.startAt || new Date().toISOString();
+    this.endAt = data?.endAt;
     this.createdAt = data?.createdAt || new Date().toISOString();
     this.lastRunAt = data?.lastRunAt;
     this.lastResult = data?.lastResult;

@@ -4,11 +4,9 @@ import os from "os";
 import { spawn } from "child_process";
 
 import { Task } from "../../models/task.js";
-import { AgentInfo } from "../../models/agent.js";
 import { Settings } from "../../models/settings.js";
 import { getSettings } from "../../repositories/setting_repository.js";
 import { getTasks, saveTasks } from "../../repositories/task_repository.js";
-import { getTaskScheduler } from "../scheduler/runtime.js";
 import { executeAgentRequest } from "../agent/index.js";
 import { UserSocketHandler } from "../../system/ws.js";
 import { appendChatLog } from "../../repositories/chat_log_repository.js";
@@ -132,6 +130,16 @@ export async function runScheduledTask(
     return;
   }
 
+  const now = new Date();
+  if (new Date(task.startAt) > now) {
+    logger.info(`⏳ 시작일 전 (${task.startAt}) — 스킵`);
+    return;
+  }
+  if (task.endAt && new Date(task.endAt) < now) {
+    logger.info(`⏰ 종료일 지남 (${task.endAt}) — 스킵`);
+    return;
+  }
+
   const agentId = task.agentId || "default";
   const noticeId = `notice-task-start-${task.id}-${Date.now()}`;
   const noticeMessage = `스케줄 작업 시작: ${task.label}`;
@@ -219,9 +227,6 @@ export async function runScheduledTask(
       executedAt,
     });
 
-    if (task.isOneOff) {
-      await cleanupOneOffTask(task.id);
-    }
   } catch (err: any) {
     logger.error(`❌ 실행 오류: ${err.message}`);
     persistTaskResult(task.id, {
@@ -249,12 +254,6 @@ export async function runScheduledTask(
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
-
-async function cleanupOneOffTask(taskId: string) {
-  saveTasks(getTasks().filter((t: Task) => t.id !== taskId));
-  const scheduler = getTaskScheduler();
-  if (scheduler) await scheduler.restoreFromDisk();
-}
 
 function persistTaskResult(
   taskId: string,

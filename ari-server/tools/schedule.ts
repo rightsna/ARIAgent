@@ -17,12 +17,12 @@ function resolveExecutionContext(): { agentId: string; appId?: string } {
 
 export const registerScheduleTool: AgentTool = {
   name: "register_schedule",
-  label: "반복 스케줄 등록",
-  description: "매분, 매시간, 매일, 매주, 매월 등 정기적으로 반복되는 작업을 로컬 스케줄러에 등록한다. (1회성 알림은 register_one_off_schedule 사용)",
+  label: "스케줄 등록",
+  description: "반복 작업 또는 1회성 알림을 스케줄러에 등록한다. 1회성은 scheduleType을 'once'로 지정하고 startAt에 실행 일시를 넣는다.",
   parameters: Type.Object({
     scheduleType: Type.String({
       description:
-        "반복 유형. 반드시 다음 중 하나: 'every_n_minutes'(N분마다), 'every_n_hours'(N시간마다), 'daily'(매일), 'weekly'(매주 특정 요일), 'monthly'(매월 특정 일), 'yearly'(매년 특정 날짜)",
+        "스케줄 유형. 반드시 다음 중 하나: 'once'(1회성), 'every_n_minutes'(N분마다), 'every_n_hours'(N시간마다), 'daily'(매일), 'weekly'(매주 특정 요일), 'monthly'(매월 특정 일), 'yearly'(매년 특정 날짜)",
     }),
     every: Type.Optional(
       Type.Number({
@@ -56,9 +56,15 @@ export const registerScheduleTool: AgentTool = {
     ),
     prompt: Type.String({ description: "스케줄 시간에 LLM이 실행할 프롬프트" }),
     label: Type.String({ description: "작업 이름 (짧게, 예: '뉴스 브리핑')" }),
+    startAt: Type.Optional(Type.String({
+      description: "스케줄 시작 일시 (ISO 8601). 'once' 타입에서는 실행 일시. 반복 타입에서는 이 시각 이후부터 실행. 생략 시 즉시 시작. 예: '2026-05-01T09:00:00+09:00'",
+    })),
+    endAt: Type.Optional(Type.String({
+      description: "스케줄 종료 일시 (ISO 8601). 반복 타입 전용. 이 시각 이후에는 실행 안 함. 생략 시 무한 반복. 예: '2026-06-30T23:59:59+09:00'",
+    })),
   }),
   execute: async (_toolCallId, params, _signal, _onUpdate) => {
-    const { scheduleType, every, hour, minute, days, day, month, prompt, label } = params as {
+    const { scheduleType, every, hour, minute, days, day, month, prompt, label, startAt, endAt } = params as {
       scheduleType: string;
       every?: number;
       hour?: number;
@@ -68,9 +74,40 @@ export const registerScheduleTool: AgentTool = {
       month?: number;
       prompt: string;
       label: string;
+      startAt?: string;
+      endAt?: string;
     };
     const { agentId, appId } = resolveExecutionContext();
 
+    // ── 1회성 ──────────────────────────────────────────────────────
+    if (scheduleType === "once") {
+      if (!startAt) {
+        return {
+          content: [{ type: "text" as const, text: "'once' 타입은 startAt(실행 일시)이 필요합니다." }],
+          details: { ok: false },
+        };
+      }
+      const runAt = new Date(startAt);
+      if (Number.isNaN(runAt.getTime())) {
+        return {
+          content: [{ type: "text" as const, text: `올바르지 않은 날짜 형식입니다: ${startAt}` }],
+          details: { ok: false },
+        };
+      }
+      logger.info(`📅 Tool[schedule/once]: ${label} → ${startAt} [Agent: ${agentId}]`);
+      await registerScheduledTask({
+        prompt, label, agentId, appId,
+        isOneOff: true,
+        startAt: runAt.toISOString(),
+        // endAt = startAt + 59초 (서버에서 자동 설정)
+      });
+      return {
+        content: [{ type: "text" as const, text: `✅ "${label}" 알림이 ${runAt.toLocaleString("ko-KR")}에 등록되었습니다.` }],
+        details: { ok: true, scheduledAt: runAt.toISOString() },
+      };
+    }
+
+    // ── 반복 ──────────────────────────────────────────────────────
     let spec: ScheduleSpec;
     switch (scheduleType) {
       case "every_n_minutes":
@@ -99,43 +136,10 @@ export const registerScheduleTool: AgentTool = {
     }
 
     const specLabel = scheduleSpecToLabel(spec);
-    logger.info(`📅 Tool[schedule]: ${label} (${specLabel}) [Agent: ${agentId}, App: ${appId}, OneOff: false]`);
-    await registerScheduledTask({ scheduleSpec: spec, prompt, label, agentId, appId, isOneOff: false });
+    logger.info(`📅 Tool[schedule]: ${label} (${specLabel}) [Agent: ${agentId}, startAt: ${startAt ?? "즉시"}, endAt: ${endAt ?? "무한"}]`);
+    await registerScheduledTask({ scheduleSpec: spec, prompt, label, agentId, appId, isOneOff: false, startAt, endAt });
     return {
       content: [{ type: "text" as const, text: t("tool.schedule.registered", { label, schedule: specLabel }) }],
-      details: {},
-    };
-  },
-};
-
-export const registerOneOffScheduleTool: AgentTool = {
-  name: "register_one_off_schedule",
-  label: "1회성 스케줄 등록",
-  description: "딱 한 번만 울려야 하는 알림('5분 뒤', '내일 1시' 등)을 등록한다. 지정된 시간에 1회 실행 후 자동 삭제된다.",
-  parameters: Type.Object({
-    delayMinutes: Type.Number({
-      description:
-        "현재 시간을 기준으로 몇 분 뒤에 실행할 것인지 지정. (예: '5분 뒤'면 5, '1시간 뒤'면 60, 내일 오후 1시라면 지금부터 내일 오후 1시까지의 시간을 분 단위로 계산해서 입력)",
-    }),
-    prompt: Type.String({ description: "지정된 시간에 LLM이 실행할 프롬프트 (예: '5분이 지났습니다. 사용자에게 알림을 전달해주세요.')" }),
-    label: Type.String({ description: "작업 이름 (짧게, 예: '5분 뒤 타이머')" }),
-  }),
-  execute: async (_toolCallId, params, _signal, _onUpdate) => {
-    const { delayMinutes, prompt, label } = params as { delayMinutes: number; prompt: string; label: string };
-    const { agentId, appId } = resolveExecutionContext();
-
-    const scheduledFor = new Date(Date.now() + delayMinutes * 60000).toISOString();
-
-    logger.info(`📅 Tool[one_off_schedule]: ${label} (${scheduledFor}) [Agent: ${agentId}, App: ${appId}] computed from +${delayMinutes}m`);
-    await registerScheduledTask({ prompt, label, agentId, appId, isOneOff: true, scheduledFor });
-
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: t("tool.schedule.one_off_registered", { label, delayMinutes }),
-        },
-      ],
       details: {},
     };
   },
@@ -165,7 +169,7 @@ export const listSchedulesTool: AgentTool = {
       const enabled = task.enabled === false ? "비활성" : "활성";
       const scheduleDisplay = task.scheduleSpec
         ? scheduleSpecToLabel(task.scheduleSpec)
-        : (task.scheduledFor ? `${new Date(task.scheduledFor).toLocaleString("ko-KR")} (1회성)` : "알 수 없음");
+        : (task.isOneOff ? `${new Date(task.startAt).toLocaleString("ko-KR")} (1회성)` : "알 수 없음");
       return `${index + 1}. [${task.id}] ${task.label} | ${scheduleDisplay} | ${oneOff} | ${enabled}`;
     });
 
@@ -183,7 +187,8 @@ export const listSchedulesTool: AgentTool = {
           taskId: task.id,
           label: task.label,
           scheduleSpec: task.scheduleSpec,
-          scheduledFor: task.scheduledFor,
+          startAt: task.startAt,
+          endAt: task.endAt,
           agentId: task.agentId || "default",
           isOneOff: task.isOneOff === true,
           enabled: task.enabled !== false,
@@ -301,6 +306,5 @@ export const deleteScheduleTool: AgentTool = {
 export const TOOLS = [
   listSchedulesTool,
   registerScheduleTool,
-  registerOneOffScheduleTool,
   deleteScheduleTool,
 ];

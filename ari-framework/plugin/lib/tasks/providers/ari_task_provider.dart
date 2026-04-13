@@ -107,21 +107,23 @@ class AriTaskProvider extends ChangeNotifier {
   Future<AriScheduledTask?> addTask({
     required String prompt,
     Map<String, dynamic>? scheduleSpec,
-    String? scheduledFor,
     String? label,
     String agentId = 'default',
     String? appId,
     bool isOneOff = false,
+    DateTime? startAt,
+    DateTime? endAt,
   }) async {
     try {
       final res = await AriAgent.call('/TASKS.ADD', {
         'prompt': prompt,
         if (scheduleSpec != null) 'scheduleSpec': scheduleSpec,
-        if (scheduledFor != null) 'scheduledFor': scheduledFor,
         'label': label ?? _generateLabel(prompt),
         'agentId': agentId,
         if (appId != null) 'appId': appId,
         'isOneOff': isOneOff,
+        'startAt': (startAt ?? DateTime.now()).toIso8601String(),
+        if (endAt != null) 'endAt': endAt.toIso8601String(),
       });
       debugPrint('[AriTaskProvider] 작업 추가 완료: ${res['task']?['label']}');
       await refresh();

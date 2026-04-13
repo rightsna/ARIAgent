@@ -5,7 +5,6 @@ import { getTasks } from "../../repositories/task_repository.js";
 import { NodeScheduleAdapter } from "./node_schedule_adapter.js";
 import {
   LocalTaskSchedulerOptions,
-  PersistedOneOffTask,
   RestoreResult,
   ScheduleOperationResult,
   ScheduledJobHandle,
@@ -19,8 +18,8 @@ function defaultTaskExecutor(task: Task): Promise<void> {
   return Promise.resolve();
 }
 
-function resolveOneOffDate(task: PersistedOneOffTask): Date | null {
-  const parsed = new Date(task.scheduledFor);
+function resolveOneOffDate(task: Task): Date | null {
+  const parsed = new Date(task.startAt);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -72,25 +71,24 @@ export class LocalTaskScheduler {
       };
     }
 
+    if (task.endAt && new Date(task.endAt) < new Date()) {
+      return {
+        taskId: task.id,
+        status: "skipped_expired",
+        reason: `Task endAt (${task.endAt}) is in the past.`,
+      };
+    }
+
     const onRun = this.createRunHandler(task);
 
     if (task.isOneOff) {
-      if (!task.scheduledFor) {
-        return {
-          taskId: task.id,
-          status: "skipped_missing_date",
-          mode: "date",
-          reason: "scheduledFor is missing on one-off task.",
-        };
-      }
-
-      const runAt = resolveOneOffDate(task as PersistedOneOffTask);
+      const runAt = resolveOneOffDate(task);
       if (!runAt) {
         return {
           taskId: task.id,
           status: "skipped_missing_date",
           mode: "date",
-          reason: "Could not parse scheduledFor as a valid date.",
+          reason: "Could not parse startAt as a valid date.",
         };
       }
 
@@ -189,6 +187,15 @@ export class LocalTaskScheduler {
 
   private createRunHandler(task: Task): () => Promise<void> {
     return async () => {
+      // endAt 지난 반복 태스크 → 크론 취소
+      if (!task.isOneOff && task.endAt && new Date(task.endAt) < new Date()) {
+        logger.info(
+          `[LocalTaskScheduler] Task expired (endAt: ${task.endAt}), cancelling cron: ${task.id}`,
+        );
+        this.cancelTask(task.id);
+        return;
+      }
+
       if (this.runningTaskIds.has(task.id)) {
         logger.warn(
           `[LocalTaskScheduler] Task already running, skipping duplicate trigger: ${task.id}`,
@@ -205,6 +212,7 @@ export class LocalTaskScheduler {
         await this.executeTask(task);
 
         if (task.isOneOff) {
+          // 1회성: DB는 유지, 메모리 잡 핸들만 제거
           this.jobs.delete(task.id);
         }
       } catch (error) {

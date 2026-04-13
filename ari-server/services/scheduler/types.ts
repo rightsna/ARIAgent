@@ -30,6 +30,7 @@ export interface ScheduleOperationResult {
     | "skipped_disabled"
     | "skipped_missing_date"
     | "skipped_past_due"
+    | "skipped_expired"
     | "cancelled"
     | "not_found";
   mode?: "cron" | "date";
@@ -43,7 +44,3 @@ export interface RestoreResult {
 }
 
 import { Task } from "../../models/task.js";
-
-export type PersistedOneOffTask = Task & {
-  scheduledFor: string; // 1회성은 반드시 존재
-};

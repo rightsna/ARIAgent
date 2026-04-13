@@ -54,6 +54,14 @@ export const refreshCrontab = refreshScheduler;
 
 export async function handleAddTaskWs(params: Record<string, unknown>): Promise<{ task: Task }> {
   const id = Date.now().toString();
+  const now = new Date().toISOString();
+  const startAt = (params.startAt as string) || now;
+
+  // 1회성 태스크: endAt = startAt + 59초 (별도 지정이 없으면 자동 설정)
+  const endAt: string | undefined =
+    (params.endAt as string | undefined) ??
+    (params.isOneOff ? new Date(new Date(startAt).getTime() + 59_000).toISOString() : undefined);
+
   const task = new Task({
     id,
     prompt: params.prompt,
@@ -62,9 +70,10 @@ export async function handleAddTaskWs(params: Record<string, unknown>): Promise<
     agentId: params.agentId || "default",
     appId: params.appId,
     isOneOff: params.isOneOff || false,
-    scheduledFor: params.scheduledFor,
     enabled: true,
-    createdAt: new Date().toISOString(),
+    startAt,
+    endAt,
+    createdAt: now,
   });
 
   const tasks = getTasks();
@@ -135,9 +144,10 @@ export async function registerScheduledTask(taskData: {
   agentId?: string;
   appId?: string;
   isOneOff?: boolean;
-  scheduledFor?: string;
+  startAt?: string;
+  endAt?: string;
 }): Promise<void> {
-  const { scheduleSpec, prompt, label, agentId, appId, isOneOff, scheduledFor } = taskData;
+  const { scheduleSpec, prompt, label, agentId, appId, isOneOff, startAt, endAt } = taskData;
   await handleAddTaskWs({
     scheduleSpec,
     prompt,
@@ -145,7 +155,8 @@ export async function registerScheduledTask(taskData: {
     agentId: agentId || "default",
     appId,
     isOneOff: isOneOff || false,
-    scheduledFor,
+    startAt,
+    endAt,
   });
 }
 
@@ -156,8 +167,7 @@ export function cleanupExpiredOneOffTasks(): void {
 
   const expired = tasks.filter((t) => {
     if (!t.isOneOff) return false;
-    if (!t.scheduledFor) return false;
-    const runAt = new Date(t.scheduledFor);
+    const runAt = new Date(t.startAt);
     return !Number.isNaN(runAt.getTime()) && runAt < now;
   });
 

@@ -11,7 +11,8 @@ class AriScheduledTask {
   final String? agentId;
   final String? appId;
   final bool isOneOff;
-  final DateTime? scheduledFor;
+  final DateTime startAt;
+  final DateTime? endAt;
   final String? lastError;
 
   AriScheduledTask({
@@ -26,9 +27,10 @@ class AriScheduledTask {
     this.agentId,
     this.appId,
     this.isOneOff = false,
-    this.scheduledFor,
+    DateTime? startAt,
+    this.endAt,
     this.lastError,
-  });
+  }) : startAt = startAt ?? DateTime.now();
 
   Map<String, dynamic> toMap() => {
         'id': id,
@@ -42,7 +44,8 @@ class AriScheduledTask {
         'agentId': agentId,
         'appId': appId,
         'isOneOff': isOneOff,
-        'scheduledFor': scheduledFor?.toIso8601String(),
+        'startAt': startAt.toIso8601String(),
+        'endAt': endAt?.toIso8601String(),
         'lastError': lastError,
       };
 
@@ -61,9 +64,8 @@ class AriScheduledTask {
         agentId: m['agentId'],
         appId: m['appId'],
         isOneOff: m['isOneOff'] ?? false,
-        scheduledFor: m['scheduledFor'] != null
-            ? DateTime.tryParse(m['scheduledFor'])
-            : null,
+        startAt: m['startAt'] != null ? DateTime.tryParse(m['startAt']) : null,
+        endAt: m['endAt'] != null ? DateTime.tryParse(m['endAt']) : null,
         lastError: m['lastError'],
       );
 
@@ -71,7 +73,8 @@ class AriScheduledTask {
     bool? enabled,
     DateTime? lastRunAt,
     String? lastResult,
-    DateTime? scheduledFor,
+    DateTime? startAt,
+    DateTime? endAt,
     String? lastError,
   }) =>
       AriScheduledTask(
@@ -86,7 +89,8 @@ class AriScheduledTask {
         agentId: agentId,
         appId: appId,
         isOneOff: isOneOff,
-        scheduledFor: scheduledFor,
+        startAt: startAt ?? this.startAt,
+        endAt: endAt ?? this.endAt,
         lastError: lastError,
       );
 
@@ -94,12 +98,9 @@ class AriScheduledTask {
 
   String get scheduleDescription {
     if (isOneOff) {
-      if (scheduledFor != null) {
-        final local = scheduledFor!.toLocal();
-        final mm = local.minute.toString().padLeft(2, '0');
-        return '${local.month}월 ${local.day}일 ${local.hour}:$mm (1회성)';
-      }
-      return '1회성';
+      final local = startAt.toLocal();
+      final mm = local.minute.toString().padLeft(2, '0');
+      return '${local.month}월 ${local.day}일 ${local.hour}:$mm (1회성)';
     }
 
     final spec = scheduleSpec;

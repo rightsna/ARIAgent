@@ -224,8 +224,8 @@ class _ScheduleTabState extends State<ScheduleTab> {
     AriScheduledTask task,
     List<List<AriScheduledTask>> dayLists,
   ) {
-    if (task.isOneOff && task.scheduledFor != null) {
-      final wd = task.scheduledFor!.toLocal().weekday % 7;
+    if (task.isOneOff) {
+      final wd = task.startAt.toLocal().weekday % 7;
       dayLists[wd].add(task);
       return;
     }

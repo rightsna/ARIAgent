@@ -25,14 +25,14 @@ class DayColumn extends StatelessWidget {
   });
 
   static int _hour(AriScheduledTask t) {
-    if (t.isOneOff && t.scheduledFor != null) return t.scheduledFor!.toLocal().hour;
+    if (t.isOneOff) return t.startAt.toLocal().hour;
     final type = t.scheduleSpec?['type'] as String?;
     if (_isIntervalType(type)) return 0;
     return (t.scheduleSpec?['hour'] as num?)?.toInt() ?? 0;
   }
 
   static int _minute(AriScheduledTask t) {
-    if (t.isOneOff && t.scheduledFor != null) return t.scheduledFor!.toLocal().minute;
+    if (t.isOneOff) return t.startAt.toLocal().minute;
     final type = t.scheduleSpec?['type'] as String?;
     if (_isIntervalType(type)) return 0;
     return (t.scheduleSpec?['minute'] as num?)?.toInt() ?? 0;
@@ -40,8 +40,8 @@ class DayColumn extends StatelessWidget {
 
   static List<_Occurrence> _expand(AriScheduledTask t) {
     final type = t.scheduleSpec?['type'] as String?;
-    if (t.isOneOff && t.scheduledFor != null) {
-      final local = t.scheduledFor!.toLocal();
+    if (t.isOneOff) {
+      final local = t.startAt.toLocal();
       return [_Occurrence(t, local.hour, local.minute)];
     }
     if (type == 'every_n_hours') {
