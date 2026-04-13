@@ -243,13 +243,13 @@ export class AgentSession {
         const noticeId = `notice-task-response-${pending.requestId}`;
         appendChatLog(pending.agentId, {
           type: "notice",
-          message: "스케줄 알림",
+          message: "스케줄 작업 시작 알림",
           noticeId,
         });
         UserSocketHandler.broadcast("/APP.NOTICE", {
           noticeId,
           agentId: pending.agentId,
-          message: "스케줄 알림",
+          message: "스케줄 작업 시작 알림",
         });
       }
 

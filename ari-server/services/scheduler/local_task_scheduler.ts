@@ -1,5 +1,6 @@
 import { logger } from "../../infra/logger.js";
 import { Task } from "../../models/task.js";
+import { scheduleSpecToCron } from "../../models/schedule_spec.js";
 import { getTasks } from "../../repositories/task_repository.js";
 import { NodeScheduleAdapter } from "./node_schedule_adapter.js";
 import {
@@ -18,39 +19,9 @@ function defaultTaskExecutor(task: Task): Promise<void> {
   return Promise.resolve();
 }
 
-function resolveOneOffDate(
-  task: PersistedOneOffTask,
-  now: Date = new Date(),
-): Date | null {
-  const scheduledFor = task.scheduledFor?.trim();
-  if (scheduledFor) {
-    const parsed = new Date(scheduledFor);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  const parts = task.cron.split(" ");
-  if (parts.length < 5) {
-    return null;
-  }
-
-  const minute = Number(parts[0]);
-  const hour = Number(parts[1]);
-  const day = Number(parts[2]);
-  const month = Number(parts[3]);
-
-  if (
-    [minute, hour, day, month].some((value) => Number.isNaN(value))
-  ) {
-    return null;
-  }
-
-  const currentYear = now.getFullYear();
-  let candidate = new Date(currentYear, month - 1, day, hour, minute, 0, 0);
-  if (candidate.getTime() < now.getTime()) {
-    candidate = new Date(currentYear + 1, month - 1, day, hour, minute, 0, 0);
-  }
-
-  return Number.isNaN(candidate.getTime()) ? null : candidate;
+function resolveOneOffDate(task: PersistedOneOffTask): Date | null {
+  const parsed = new Date(task.scheduledFor);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 export class LocalTaskScheduler {
@@ -104,13 +75,22 @@ export class LocalTaskScheduler {
     const onRun = this.createRunHandler(task);
 
     if (task.isOneOff) {
-      const runAt = resolveOneOffDate(task);
+      if (!task.scheduledFor) {
+        return {
+          taskId: task.id,
+          status: "skipped_missing_date",
+          mode: "date",
+          reason: "scheduledFor is missing on one-off task.",
+        };
+      }
+
+      const runAt = resolveOneOffDate(task as PersistedOneOffTask);
       if (!runAt) {
         return {
           taskId: task.id,
           status: "skipped_missing_date",
           mode: "date",
-          reason: "Could not resolve a one-off execution date.",
+          reason: "Could not parse scheduledFor as a valid date.",
         };
       }
 
@@ -124,7 +104,7 @@ export class LocalTaskScheduler {
         };
       }
 
-      const handle = await this.adapter.scheduleDate(task, runAt, onRun);
+      const handle = await this.adapter.scheduleDate(task.id, runAt, onRun);
       this.jobs.set(task.id, handle);
 
       return {
@@ -135,7 +115,17 @@ export class LocalTaskScheduler {
       };
     }
 
-    const handle = await this.adapter.scheduleCron(task, onRun);
+    if (!task.scheduleSpec) {
+      return {
+        taskId: task.id,
+        status: "skipped_missing_date",
+        mode: "cron",
+        reason: "scheduleSpec is missing on recurring task.",
+      };
+    }
+
+    const cronExpr = scheduleSpecToCron(task.scheduleSpec);
+    const handle = await this.adapter.scheduleCron(task.id, cronExpr, onRun);
     this.jobs.set(task.id, handle);
 
     return {

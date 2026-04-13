@@ -1,5 +1,3 @@
-import { Task } from "../../models/task.js";
-
 export interface ScheduledJobHandle {
   cancel(): boolean;
   nextInvocation?(): Date | null;
@@ -8,11 +6,12 @@ export interface ScheduledJobHandle {
 export interface SchedulerAdapter {
   readonly name: string;
   scheduleCron(
-    task: Task,
+    taskId: string,
+    cronExpr: string,
     onRun: () => Promise<void> | void,
   ): Promise<ScheduledJobHandle>;
   scheduleDate(
-    task: Task,
+    taskId: string,
     runAt: Date,
     onRun: () => Promise<void> | void,
   ): Promise<ScheduledJobHandle>;
@@ -43,6 +42,8 @@ export interface RestoreResult {
   failed: Array<{ taskId: string; message: string }>;
 }
 
+import { Task } from "../../models/task.js";
+
 export type PersistedOneOffTask = Task & {
-  scheduledFor?: string;
+  scheduledFor: string; // 1회성은 반드시 존재
 };

@@ -17,6 +17,15 @@ class TaskCard extends StatelessWidget {
     required this.onToggle,
   });
 
+  static String _formatLocalTime(String? isoString) {
+    if (isoString == null) return '';
+    final dt = DateTime.tryParse(isoString);
+    if (dt == null) return '';
+    final local = dt.toLocal();
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} '
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final enabled = task['enabled'] ?? true;
@@ -64,7 +73,7 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  scheduledTask.cronDescription,
+                  scheduledTask.scheduleDescription,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.35),
                     fontSize: 10,
@@ -139,7 +148,7 @@ class TaskCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '마지막 결과 (${task['lastRunAt']?.substring(0, 16) ?? ''}):',
+                        '마지막 결과 (${_formatLocalTime(task['lastRunAt'])}):',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.3),
                           fontSize: 10,

@@ -18,7 +18,7 @@ export '../models/ari_scheduled_task.dart';
 /// await AriTaskProvider().init();
 ///
 /// // 작업 추가
-/// await AriTaskProvider().addTask(prompt: '...', cron: '0 9 * * *', agentId: 'default');
+/// await AriTaskProvider().addTask(prompt: '...', scheduleSpec: {'type': 'daily', 'hour': 9, 'minute': 0}, agentId: 'default');
 /// ```
 class AriTaskProvider extends ChangeNotifier {
   static final AriTaskProvider _instance = AriTaskProvider._internal();
@@ -32,6 +32,7 @@ class AriTaskProvider extends ChangeNotifier {
   final Map<String, List<String>> _progressMessages = {};
 
   StreamSubscription? _taskResultSub;
+  StreamSubscription? _tasksUpdatedSub;
   StreamSubscription? _progressSub;
 
   bool get isInitialized => _initialized;
@@ -65,6 +66,17 @@ class AriTaskProvider extends ChangeNotifier {
       refresh();
     });
 
+    // 스케줄 추가/삭제/토글 시 서버가 브로드캐스트 → 즉시 갱신
+    _tasksUpdatedSub = AriAgent.on('/TASKS.UPDATED', (data) {
+      final raw = data['tasks'] as List?;
+      if (raw != null) {
+        _tasksCache = raw.map((t) => Map<String, dynamic>.from(t)).toList();
+        notifyListeners();
+      } else {
+        refresh();
+      }
+    });
+
     // 진행 메시지를 provider에 저장
     _progressSub = AriAgent.on('/AGENT.PROGRESS', (data) {
       final payload = data['data'] ?? data;
@@ -94,7 +106,8 @@ class AriTaskProvider extends ChangeNotifier {
   /// [agentId]는 호출하는 앱에서 주입해야 합니다.
   Future<AriScheduledTask?> addTask({
     required String prompt,
-    required String cron,
+    Map<String, dynamic>? scheduleSpec,
+    String? scheduledFor,
     String? label,
     String agentId = 'default',
     String? appId,
@@ -103,7 +116,8 @@ class AriTaskProvider extends ChangeNotifier {
     try {
       final res = await AriAgent.call('/TASKS.ADD', {
         'prompt': prompt,
-        'cron': cron,
+        if (scheduleSpec != null) 'scheduleSpec': scheduleSpec,
+        if (scheduledFor != null) 'scheduledFor': scheduledFor,
         'label': label ?? _generateLabel(prompt),
         'agentId': agentId,
         if (appId != null) 'appId': appId,
@@ -178,6 +192,7 @@ class AriTaskProvider extends ChangeNotifier {
   @override
   void dispose() {
     _taskResultSub?.cancel();
+    _tasksUpdatedSub?.cancel();
     _progressSub?.cancel();
     super.dispose();
   }

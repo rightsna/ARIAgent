@@ -18,7 +18,7 @@ const translations: Record<ServerLocale, Record<string, TranslationValue>> = {
     "tool.progress.default": (params) => `${params?.toolName ?? "tool"} 실행 중...`,
 
     "tool.schedule.registered": (params) =>
-      `✅ 반복 스케줄 등록 완료: "${params?.label ?? ""}" (${params?.cron ?? ""})`,
+      `✅ 반복 스케줄 등록 완료: "${params?.label ?? ""}" (${params?.schedule ?? ""})`,
     "tool.schedule.one_off_registered": (params) =>
       `✅ 1회성 스케줄 등록 완료: "${params?.label ?? ""}" (${params?.delayMinutes ?? ""}분 뒤 예정)`,
     "tool.schedule.list.empty": "현재 활성 에이전트에 등록된 스케줄이 없습니다.",
@@ -47,7 +47,7 @@ const translations: Record<ServerLocale, Record<string, TranslationValue>> = {
     "tool.progress.default": (params) => `Running ${params?.toolName ?? "tool"}...`,
 
     "tool.schedule.registered": (params) =>
-      `✅ Recurring schedule registered: "${params?.label ?? ""}" (${params?.cron ?? ""})`,
+      `✅ Recurring schedule registered: "${params?.label ?? ""}" (${params?.schedule ?? ""})`,
     "tool.schedule.one_off_registered": (params) =>
       `✅ One-off schedule registered: "${params?.label ?? ""}" (${params?.delayMinutes ?? ""} minutes later)`,
     "tool.schedule.list.empty": "There are no schedules registered for the active agent.",

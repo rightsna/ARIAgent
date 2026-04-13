@@ -1,4 +1,3 @@
-import { Task } from "../../models/task.js";
 import { SchedulerAdapter, ScheduledJobHandle } from "./types.js";
 
 type NodeScheduleJob = {
@@ -63,11 +62,12 @@ export class NodeScheduleAdapter implements SchedulerAdapter {
   readonly name = "node-schedule";
 
   async scheduleCron(
-    task: Task,
+    _taskId: string,
+    cronExpr: string,
     onRun: () => Promise<void> | void,
   ): Promise<ScheduledJobHandle> {
     const scheduler = await loadNodeScheduleModule();
-    const job = scheduler.scheduleJob(task.cron, onRun);
+    const job = scheduler.scheduleJob(cronExpr, onRun);
 
     return {
       cancel: () => job.cancel(),
@@ -76,7 +76,7 @@ export class NodeScheduleAdapter implements SchedulerAdapter {
   }
 
   async scheduleDate(
-    _task: Task,
+    _taskId: string,
     runAt: Date,
     onRun: () => Promise<void> | void,
   ): Promise<ScheduledJobHandle> {

@@ -1,8 +1,10 @@
 import { Task } from "../models/task.js";
+import type { ScheduleSpec } from "../models/schedule_spec.js";
 import { initTasksFileIfMissing, getTasks, saveTasks } from "../repositories/task_repository.js";
 import { logger } from "../infra/logger.js";
 import { getTaskScheduler } from "./scheduler/runtime.js";
 import { runScheduledTask } from "./jobs/run_task.js";
+import { UserSocketHandler } from "../system/ws.js";
 
 // 초기 다운 방지: tasks.json이 없으면 빈 배열로 자동 생성
 initTasksFileIfMissing();
@@ -23,10 +25,10 @@ export async function handleTasksSyncWs(params: Record<string, unknown>): Promis
   const tasks = params.tasks as Task[];
   saveTasks(tasks);
   logger.info(`📋 tasks.json 동기화: ${tasks.length}개`);
-  await refreshCrontab();
+  await refreshScheduler();
 }
 
-export async function handleTasksCrontabWs(params: Record<string, unknown>): Promise<void> {
+export async function handleTasksCrontabWs(_params: Record<string, unknown>): Promise<void> {
   const scheduler = getTaskScheduler();
   if (!scheduler) {
     logger.warn("[LocalTaskScheduler] Sync requested before scheduler initialization.");
@@ -39,11 +41,14 @@ export async function handleTasksCrontabWs(params: Record<string, unknown>): Pro
   );
 }
 
-// ── 스케줄러 자동 갱신 (모든 변경 후 호출) ──
-export async function refreshCrontab(): Promise<void> {
-  const tasks = getTasks();
-  await handleTasksCrontabWs({ tasks: tasks.filter((t) => t.enabled !== false).map((t) => ({ id: t.id, cron: t.cron, agentId: t.agentId, enabled: t.enabled })) });
+// ── 스케줄러 자동 갱신 + 모든 클라이언트에 변경 알림 ──
+export async function refreshScheduler(): Promise<void> {
+  await handleTasksCrontabWs({});
+  UserSocketHandler.broadcast("/TASKS.UPDATED", { tasks: getTasks() });
 }
+
+/** @deprecated refreshScheduler 사용 권장 */
+export const refreshCrontab = refreshScheduler;
 
 // ── 개별 CRUD API 핸들러 ──
 
@@ -52,7 +57,7 @@ export async function handleAddTaskWs(params: Record<string, unknown>): Promise<
   const task = new Task({
     id,
     prompt: params.prompt,
-    cron: params.cron,
+    scheduleSpec: params.scheduleSpec,
     label: params.label,
     agentId: params.agentId || "default",
     appId: params.appId,
@@ -65,9 +70,9 @@ export async function handleAddTaskWs(params: Record<string, unknown>): Promise<
   const tasks = getTasks();
   tasks.push(task);
   saveTasks(tasks);
-  logger.info(`➕ Task 추가: "${task.label}" (${task.cron}) [${tasks.length}개]`);
+  logger.info(`➕ Task 추가: "${task.label}" [${tasks.length}개]`);
 
-  await refreshCrontab();
+  await refreshScheduler();
   return { task };
 }
 
@@ -84,7 +89,7 @@ export async function handleDeleteTaskWs(params: Record<string, unknown>): Promi
   saveTasks(filtered);
   logger.info(`🗑️ Task 삭제: ${taskId} [${filtered.length}개 남음]`);
 
-  await refreshCrontab();
+  await refreshScheduler();
   return { success: true };
 }
 
@@ -102,7 +107,7 @@ export async function handleToggleTaskWs(params: Record<string, unknown>): Promi
   saveTasks(tasks);
   logger.info(`🔄 Task 토글: "${tasks[idx].label}" → ${tasks[idx].enabled ? "활성" : "비활성"}`);
 
-  await refreshCrontab();
+  await refreshScheduler();
   return { task: tasks[idx] };
 }
 
@@ -121,12 +126,20 @@ export async function handleRunTaskWs(
   return { taskId: task.id, started: true };
 }
 
-// ── Agent Tool용 (기존 호환) ──
+// ── Agent Tool용 ──
 
-export async function registerScheduledTask(taskData: { cron: string; prompt: string; label: string; agentId?: string; appId?: string; isOneOff?: boolean; scheduledFor?: string }): Promise<void> {
-  const { cron, prompt, label, agentId, appId, isOneOff, scheduledFor } = taskData;
+export async function registerScheduledTask(taskData: {
+  scheduleSpec?: ScheduleSpec;
+  prompt: string;
+  label: string;
+  agentId?: string;
+  appId?: string;
+  isOneOff?: boolean;
+  scheduledFor?: string;
+}): Promise<void> {
+  const { scheduleSpec, prompt, label, agentId, appId, isOneOff, scheduledFor } = taskData;
   await handleAddTaskWs({
-    cron,
+    scheduleSpec,
     prompt,
     label,
     agentId: agentId || "default",
@@ -143,9 +156,9 @@ export function cleanupExpiredOneOffTasks(): void {
 
   const expired = tasks.filter((t) => {
     if (!t.isOneOff) return false;
-    const runAt = parseOneOffRunAt(t, now);
-    if (!runAt) return false;
-    return runAt < now;
+    if (!t.scheduledFor) return false;
+    const runAt = new Date(t.scheduledFor);
+    return !Number.isNaN(runAt.getTime()) && runAt < now;
   });
 
   if (expired.length === 0) return;
@@ -153,19 +166,4 @@ export function cleanupExpiredOneOffTasks(): void {
   const remaining = tasks.filter((t) => !expired.find((e) => e.id === t.id));
   saveTasks(remaining);
   logger.info(`🧹 만료된 1회성 태스크 ${expired.length}개 정리: ${expired.map((t) => t.label).join(", ")}`);
-}
-
-function parseOneOffRunAt(task: Task, now: Date): Date | null {
-  const scheduledFor = task.scheduledFor?.trim();
-  if (scheduledFor) {
-    const parsed = new Date(scheduledFor);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  const parts = task.cron.split(" ");
-  if (parts.length < 5) return null;
-  const [minute, hour, day, month] = parts;
-  const year = now.getFullYear();
-  const runAt = new Date(year, Number(month) - 1, Number(day), Number(hour), Number(minute));
-  return Number.isNaN(runAt.getTime()) ? null : runAt;
 }

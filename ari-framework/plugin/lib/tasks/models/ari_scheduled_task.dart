@@ -2,7 +2,7 @@
 class AriScheduledTask {
   final String id;
   final String prompt;
-  final String cron;
+  final Map<String, dynamic>? scheduleSpec;
   final String label;
   final bool enabled;
   final DateTime createdAt;
@@ -17,7 +17,7 @@ class AriScheduledTask {
   AriScheduledTask({
     required this.id,
     required this.prompt,
-    required this.cron,
+    this.scheduleSpec,
     required this.label,
     required this.enabled,
     required this.createdAt,
@@ -33,7 +33,7 @@ class AriScheduledTask {
   Map<String, dynamic> toMap() => {
         'id': id,
         'prompt': prompt,
-        'cron': cron,
+        'scheduleSpec': scheduleSpec,
         'label': label,
         'enabled': enabled,
         'createdAt': createdAt.toIso8601String(),
@@ -49,7 +49,9 @@ class AriScheduledTask {
   factory AriScheduledTask.fromMap(Map<String, dynamic> m) => AriScheduledTask(
         id: m['id'] ?? '',
         prompt: m['prompt'] ?? '',
-        cron: m['cron'] ?? '',
+        scheduleSpec: m['scheduleSpec'] is Map<String, dynamic>
+            ? m['scheduleSpec'] as Map<String, dynamic>
+            : null,
         label: m['label'] ?? '',
         enabled: m['enabled'] ?? true,
         createdAt: DateTime.tryParse(m['createdAt'] ?? '') ?? DateTime.now(),
@@ -75,7 +77,7 @@ class AriScheduledTask {
       AriScheduledTask(
         id: id,
         prompt: prompt,
-        cron: cron,
+        scheduleSpec: scheduleSpec,
         label: label,
         enabled: enabled ?? this.enabled,
         createdAt: createdAt,
@@ -88,35 +90,62 @@ class AriScheduledTask {
         lastError: lastError,
       );
 
-  String get cronDescription {
-    final parts = cron.split(' ');
-    if (parts.length < 5) return cron;
+  static const _dayNamesKo = ['일', '월', '화', '수', '목', '금', '토'];
 
-    final minute = parts[0];
-    final hour = parts[1];
-    final dom = parts[2];
-    final month = parts[3];
-    final dow = parts[4];
-
+  String get scheduleDescription {
     if (isOneOff) {
       if (scheduledFor != null) {
-        final mm = scheduledFor!.minute.toString().padLeft(2, '0');
-        return '${scheduledFor!.month}월 ${scheduledFor!.day}일 ${scheduledFor!.hour}:$mm (1회성)';
+        final local = scheduledFor!.toLocal();
+        final mm = local.minute.toString().padLeft(2, '0');
+        return '${local.month}월 ${local.day}일 ${local.hour}:$mm (1회성)';
       }
-      if (dom != '*' && month != '*') {
-        return '$month월 $dom일 $hour:${minute.padLeft(2, '0')} (1회성)';
-      }
-      return '1회성 알림 ($cron)';
+      return '1회성';
     }
 
-    if (dom == '*' && dow == '*') return '매일 $hour:${minute.padLeft(2, '0')}';
-    if (dow != '*') {
-      const days = ['일', '월', '화', '수', '목', '금', '토'];
-      final dayIdx = int.tryParse(dow);
-      if (dayIdx != null && dayIdx < 7) {
-        return '매주 ${days[dayIdx]} $hour:${minute.padLeft(2, '0')}';
-      }
+    final spec = scheduleSpec;
+    if (spec == null) return '알 수 없음';
+    return _describeSpec(spec);
+  }
+
+  static String _pad(int n) => n.toString().padLeft(2, '0');
+
+  static String _describeSpec(Map<String, dynamic> spec) {
+    final type = spec['type'] as String?;
+    switch (type) {
+      case 'every_n_minutes':
+        final every = (spec['every'] as num?)?.toInt() ?? 1;
+        return every == 1 ? '매분' : '$every분마다';
+      case 'every_n_hours':
+        final every = (spec['every'] as num?)?.toInt() ?? 1;
+        return every == 1 ? '매시간' : '$every시간마다';
+      case 'daily':
+        final h = (spec['hour'] as num?)?.toInt() ?? 0;
+        final m = (spec['minute'] as num?)?.toInt() ?? 0;
+        return '매일 $h:${_pad(m)}';
+      case 'weekly':
+        final h = (spec['hour'] as num?)?.toInt() ?? 0;
+        final m = (spec['minute'] as num?)?.toInt() ?? 0;
+        final rawDays = spec['days'];
+        final days = rawDays is List
+            ? rawDays
+                .map((d) => (d as num).toInt())
+                .map((d) => d < _dayNamesKo.length ? _dayNamesKo[d] : '$d')
+                .join('·')
+            : '';
+        return '매주 $days $h:${_pad(m)}';
+      case 'monthly':
+        final h = (spec['hour'] as num?)?.toInt() ?? 0;
+        final m = (spec['minute'] as num?)?.toInt() ?? 0;
+        final day = (spec['day'] as num?)?.toInt() ?? 1;
+        return '매월 ${day}일 $h:${_pad(m)}';
+      case 'yearly':
+        final yh = (spec['hour'] as num?)?.toInt() ?? 0;
+        final ym = (spec['minute'] as num?)?.toInt() ?? 0;
+        final yday = (spec['day'] as num?)?.toInt() ?? 1;
+        final ymonth = (spec['month'] as num?)?.toInt() ?? 1;
+        return '매년 ${ymonth}월 ${yday}일 $yh:${_pad(ym)}';
+      default:
+        return type ?? '알 수 없음';
     }
-    return cron;
   }
 }
