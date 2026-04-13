@@ -41,8 +41,8 @@ class _AvatarTabState extends State<AvatarTab> {
 
     final List<Widget> tabs = [
       const Tab(text: 'Profile'),
-      const Tab(text: 'Memory'),
       const Tab(text: 'Schedule'),
+      const Tab(text: 'Memory'),
       const Tab(text: 'Apps'),
       if (showAdvanced) const Tab(text: 'Skills'),
       if (showAdvanced) const Tab(text: 'Tools'),
@@ -52,8 +52,8 @@ class _AvatarTabState extends State<AvatarTab> {
 
     final List<Widget> views = [
       ProfileTab(),
-      const MemoryTab(),
       const ScheduleTab(),
+      const MemoryTab(),
       const AppsTab(),
       if (showAdvanced) SkillsTab(),
       if (showAdvanced) ToolsTab(),

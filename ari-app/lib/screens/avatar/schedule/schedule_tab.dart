@@ -26,8 +26,9 @@ class ScheduleTab extends StatefulWidget {
 
 class _ScheduleTabState extends State<ScheduleTab> {
   bool _isLoading = false;
-  String? _selectedTaskId;
+  List<AriScheduledTask> _selectedTasks = [];
   _ViewMode _viewMode = _ViewMode.day;
+  DateTime _viewDate = DateTime.now(); // 하루보기 기준 날짜
   final _scrollController = ScrollController();
 
   @override
@@ -60,8 +61,12 @@ class _ScheduleTabState extends State<ScheduleTab> {
     if (_scrollController.hasClients) _scrollController.jumpTo(targetPx);
   }
 
-  void _onTaskSelected(String id) {
-    setState(() => _selectedTaskId = _selectedTaskId == id ? null : id);
+  void _onSlotSelected(List<AriScheduledTask> tasks) {
+    setState(() {
+      final newIds = tasks.map((t) => t.id).toSet();
+      final curIds = _selectedTasks.map((t) => t.id).toSet();
+      _selectedTasks = newIds == curIds ? [] : tasks;
+    });
   }
 
   @override
@@ -75,13 +80,7 @@ class _ScheduleTabState extends State<ScheduleTab> {
       _assignToDays(task, dayTaskLists);
     }
 
-    AriScheduledTask? selectedTask;
-    if (_selectedTaskId != null) {
-      for (final t in allTasks) {
-        if (t.id == _selectedTaskId) { selectedTask = t; break; }
-      }
-    }
-
+    final selectedIds = _selectedTasks.map((t) => t.id).toList();
     final today = DateTime.now().weekday % 7;
 
     return Column(
@@ -155,6 +154,8 @@ class _ScheduleTabState extends State<ScheduleTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                _WeekHeader(width: _kWeekViewW),
+                                const SizedBox(height: 4),
                                 _DayHeader(today: today, leftWidth: _kWeekLabelW),
                                 Container(
                                   height: 1, width: _kWeekViewW,
@@ -162,8 +163,14 @@ class _ScheduleTabState extends State<ScheduleTab> {
                                 ),
                                 WeekOverview(
                                   dayTaskLists: dayTaskLists,
-                                  selectedTaskId: _selectedTaskId,
-                                  onTaskSelected: _onTaskSelected,
+                                  selectedTaskId: selectedIds.firstOrNull,
+                                  onTaskSelected: (id) {
+                                    final t = allTasks.firstWhere(
+                                      (t) => t.id == id,
+                                      orElse: () => allTasks.first,
+                                    );
+                                    _onSlotSelected([t]);
+                                  },
                                   today: today,
                                 ),
                               ],
@@ -172,7 +179,6 @@ class _ScheduleTabState extends State<ScheduleTab> {
                         ),
                       ),
                     )
-                  // ── 하루보기: 전체 너비 사용 ──────────────
                   : LayoutBuilder(
                       builder: (context, constraints) {
                         final colW = constraints.maxWidth - 32 - _kTimeColW;
@@ -183,17 +189,35 @@ class _ScheduleTabState extends State<ScheduleTab> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _TodayHeader(today: today, colWidth: colW),
+                                _DayViewHeader(
+                                  viewDate: _viewDate,
+                                  colWidth: colW,
+                                  onPrev: () => setState(() {
+                                    _viewDate = _viewDate.subtract(const Duration(days: 1));
+                                    _selectedTasks = [];
+                                  }),
+                                  onNext: () => setState(() {
+                                    _viewDate = _viewDate.add(const Duration(days: 1));
+                                    _selectedTasks = [];
+                                  }),
+                                  onToday: () => setState(() {
+                                    _viewDate = DateTime.now();
+                                    _selectedTasks = [];
+                                    WidgetsBinding.instance
+                                        .addPostFrameCallback((_) => _scrollToNow());
+                                  }),
+                                ),
                                 Container(
                                   height: 1,
                                   width: _kTimeColW + colW,
                                   color: Colors.white.withValues(alpha: 0.07),
                                 ),
                                 _DayViewGrid(
-                                  tasks: dayTaskLists[today],
-                                  selectedTaskId: _selectedTaskId,
-                                  onTaskSelected: _onTaskSelected,
+                                  tasks: allTasks,
+                                  selectedTaskIds: selectedIds,
+                                  onSlotSelected: _onSlotSelected,
                                   colWidth: colW,
+                                  displayDate: _viewDate,
                                 ),
                               ],
                             ),
@@ -204,16 +228,17 @@ class _ScheduleTabState extends State<ScheduleTab> {
         ),
 
         // ── 선택 상세 ─────────────────────────────────────
-        if (selectedTask != null)
+        if (_selectedTasks.isNotEmpty)
           _TaskDetailBar(
-            task: selectedTask,
-            onClose: () => setState(() => _selectedTaskId = null),
-            onDelete: () async {
-              await taskProvider.deleteTask(selectedTask!.id);
-              setState(() => _selectedTaskId = null);
+            tasks: _selectedTasks,
+            onClose: () => setState(() => _selectedTasks = []),
+            onDelete: (task) async {
+              await taskProvider.deleteTask(task.id);
+              setState(() => _selectedTasks =
+                  _selectedTasks.where((t) => t.id != task.id).toList());
             },
-            onToggle: () async {
-              await taskProvider.toggleTask(selectedTask!.id);
+            onToggle: (task) async {
+              await taskProvider.toggleTask(task.id);
             },
           ),
       ],
@@ -288,6 +313,77 @@ class _DayHeader extends StatelessWidget {
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+}
+
+// ── 주간 헤더 ─────────────────────────────────────────────
+
+class _WeekHeader extends StatelessWidget {
+  final double width;
+  const _WeekHeader({required this.width});
+
+  static const _ordinals = ['첫째', '둘째', '셋째', '넷째', '다섯째'];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+
+    // 이번 주 일요일 ~ 토요일
+    final weekday = now.weekday % 7; // 0=일, 1=월, ..., 6=토
+    final sunday = now.subtract(Duration(days: weekday));
+    final saturday = sunday.add(const Duration(days: 6));
+
+    // 몇째 주 (일요일 기준)
+    final weekOfMonth = ((sunday.day - 1) ~/ 7).clamp(0, 4);
+    final ordinal = _ordinals[weekOfMonth];
+
+    // 날짜 범위 표시
+    final sameMonth = sunday.month == saturday.month;
+    final range = sameMonth
+        ? '${sunday.month}월 ${sunday.day}일 - ${saturday.day}일'
+        : '${sunday.month}월 ${sunday.day}일 - ${saturday.month}월 ${saturday.day}일';
+
+    return SizedBox(
+      width: width,
+      height: 28,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _kAccent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '이번주',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${sunday.month}월 $ordinal 주',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            range,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.35),
+              fontSize: 11,
+            ),
+          ),
         ],
       ),
     );

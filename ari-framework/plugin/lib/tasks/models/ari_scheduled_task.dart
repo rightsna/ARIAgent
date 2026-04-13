@@ -64,7 +64,10 @@ class AriScheduledTask {
         agentId: m['agentId'],
         appId: m['appId'],
         isOneOff: m['isOneOff'] ?? false,
-        startAt: m['startAt'] != null ? DateTime.tryParse(m['startAt']) : null,
+        // startAt 없으면 createdAt으로 폴백 (구 데이터 호환)
+        startAt: m['startAt'] != null
+            ? DateTime.tryParse(m['startAt'])
+            : DateTime.tryParse(m['createdAt'] ?? ''),
         endAt: m['endAt'] != null ? DateTime.tryParse(m['endAt']) : null,
         lastError: m['lastError'],
       );

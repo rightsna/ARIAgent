@@ -2,43 +2,103 @@ part of '../schedule_tab.dart';
 
 // ── 하루보기 헤더 ─────────────────────────────────────────
 
-class _TodayHeader extends StatelessWidget {
-  final int today;
+class _DayViewHeader extends StatelessWidget {
+  final DateTime viewDate;
   final double colWidth;
-  const _TodayHeader({required this.today, required this.colWidth});
+  final VoidCallback onPrev;
+  final VoidCallback onNext;
+  final VoidCallback onToday;
+
+  const _DayViewHeader({
+    required this.viewDate,
+    required this.colWidth,
+    required this.onPrev,
+    required this.onNext,
+    required this.onToday,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final today = DateTime.now();
+    final isToday = viewDate.year == today.year &&
+        viewDate.month == today.month &&
+        viewDate.day == today.day;
+    final isTomorrow = viewDate.difference(DateTime(today.year, today.month, today.day)).inDays == 1;
+    final dayIdx = viewDate.weekday % 7; // 0=일, 1=월, ..., 6=토
+    final dayColor = dayIdx == 0
+        ? const Color(0xFFFF6B6B)
+        : dayIdx == 6
+            ? const Color(0xFF6B9EFF)
+            : Colors.white;
+
+    String label;
+    if (isToday) {
+      label = '오늘';
+    } else if (isTomorrow) {
+      label = '내일';
+    } else {
+      label = '${viewDate.month}월 ${viewDate.day}일';
+    }
+
     return SizedBox(
-      height: 32,
+      height: 36,
       child: Row(
         children: [
           SizedBox(width: _kTimeColW),
-          SizedBox(
-            width: colWidth,
+          // 이전 날
+          GestureDetector(
+            onTap: onPrev,
+            child: Icon(Icons.chevron_left,
+                size: 20, color: Colors.white.withValues(alpha: 0.4)),
+          ),
+          const SizedBox(width: 4),
+          // 날짜 표시
+          GestureDetector(
+            onTap: isToday ? null : onToday,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
                   width: 22, height: 22,
-                  decoration: const BoxDecoration(color: _kAccent, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: isToday ? _kAccent : Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
                   alignment: Alignment.center,
                   child: Text(
-                    _kDayNames[today],
-                    style: const TextStyle(
-                      color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                    _kDayNames[dayIdx],
+                    style: TextStyle(
+                      color: isToday ? Colors.white : dayColor,
+                      fontSize: 11, fontWeight: FontWeight.w800),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Text(
-                  '${now.month}월 ${now.day}일',
+                  label,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11, fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: isToday ? 0.85 : 0.5),
+                    fontSize: 12, fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (!isToday) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    '(탭하면 오늘)',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
               ],
             ),
+          ),
+          const SizedBox(width: 4),
+          // 다음 날
+          GestureDetector(
+            onTap: onNext,
+            child: Icon(Icons.chevron_right,
+                size: 20, color: Colors.white.withValues(alpha: 0.4)),
           ),
         ],
       ),
@@ -50,21 +110,27 @@ class _TodayHeader extends StatelessWidget {
 
 class _DayViewGrid extends StatelessWidget {
   final List<AriScheduledTask> tasks;
-  final String? selectedTaskId;
-  final ValueChanged<String> onTaskSelected;
+  final List<String> selectedTaskIds;
+  final void Function(List<AriScheduledTask>) onSlotSelected;
   final double colWidth;
+  final DateTime displayDate;
 
   const _DayViewGrid({
     required this.tasks,
-    required this.selectedTaskId,
-    required this.onTaskSelected,
+    required this.selectedTaskIds,
+    required this.onSlotSelected,
     required this.colWidth,
+    required this.displayDate,
   });
 
   @override
   Widget build(BuildContext context) {
     final now = TimeOfDay.now();
     final nowPx = now.hour * _kHourH + now.minute * _kHourH / 60;
+    final today = DateTime.now();
+    final isToday = displayDate.year == today.year &&
+        displayDate.month == today.month &&
+        displayDate.day == today.day;
 
     return SizedBox(
       width: _kTimeColW + colWidth,
@@ -83,14 +149,16 @@ class _DayViewGrid extends StatelessWidget {
                 width: colWidth,
                 child: DayColumn(
                   tasks: tasks,
-                  selectedTaskId: selectedTaskId,
-                  onTaskSelected: onTaskSelected,
-                  isToday: true,
+                  selectedTaskIds: selectedTaskIds,
+                  onSlotSelected: onSlotSelected,
+                  displayDate: displayDate,
+                  isToday: isToday,
                 ),
               ),
             ],
           ),
-          Positioned(
+          // 현재 시간선 (오늘만 표시)
+          if (isToday) Positioned(
             top: nowPx, left: _kTimeColW, width: colWidth,
             child: Row(
               children: [
