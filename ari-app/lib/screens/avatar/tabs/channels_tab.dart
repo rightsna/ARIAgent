@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/channel_provider.dart';
+import '../widgets/tab_section_header.dart';
 
 class ChannelsTab extends StatefulWidget {
   const ChannelsTab({super.key});
@@ -27,8 +28,11 @@ class _ChannelsTabState extends State<ChannelsTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('메세지 채널'),
-          const SizedBox(height: 16),
+          const TabSectionHeader(
+            icon: Icons.send_rounded,
+            title: '채널',
+            description: '에이전트가 외부와 소통하는 메시지 채널이에요.',
+          ),
           if (provider.isLoading)
             const Center(
               child: Padding(
@@ -46,17 +50,6 @@ class _ChannelsTabState extends State<ChannelsTab> {
     );
   }
 
-  Widget _sectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        color: Color(0xFF6C63FF),
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

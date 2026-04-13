@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/ari_app_provider.dart';
+import '../widgets/tab_section_header.dart';
 
 class ToolsTab extends StatefulWidget {
   const ToolsTab({super.key});
@@ -51,8 +52,17 @@ class _ToolsTabState extends State<ToolsTab> {
           backgroundColor: const Color(0xFF1A1A2E),
           child: ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: tools.length,
-            itemBuilder: (context, index) => _ToolCard(tool: tools[index]),
+            itemCount: tools.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return const TabSectionHeader(
+                  icon: Icons.terminal_rounded,
+                  title: '도구',
+                  description: '에이전트가 작업할 때 꺼내 쓰는 도구들이에요.',
+                );
+              }
+              return _ToolCard(tool: tools[index - 1]);
+            },
           ),
         );
       },

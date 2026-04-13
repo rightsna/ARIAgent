@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import '../widgets/tab_section_header.dart';
 
 class StandardMemorySection extends StatefulWidget {
   final VoidCallback onRefresh;
@@ -105,61 +106,24 @@ class _StandardMemorySectionState extends State<StandardMemorySection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeaderSection(
-          'Core Memory',
-          '에이전트의 핵심 가치관과 장기 기억입니다.',
+        TabSectionHeader(
           icon: Icons.psychology_rounded,
-          action: _buildCoreMemoryAction(),
+          title: 'Core Memory',
+          description: '에이전트의 가치관과 장기적으로 기억해야 할 것들이에요.',
+          trailing: _buildCoreMemoryAction(),
         ),
-        const SizedBox(height: 16),
         _buildCoreMemoryCard(),
         const SizedBox(height: 32),
-        _buildHeaderSection(
-          'Recent Daily Logs',
-          '최근 활동 내역 및 대화에서 생성된 일일 로그입니다.',
+        const TabSectionHeader(
           icon: Icons.history_rounded,
+          title: 'Recent Daily Logs',
+          description: '에이전트가 최근에 무얼 했는지 기록이에요.',
         ),
-        const SizedBox(height: 16),
         _buildDailyLogsCard(),
       ],
     );
   }
 
-  Widget _buildHeaderSection(String title, String subtitle,
-      {required IconData icon, Widget? action}) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: const Color(0xFF6C63FF), size: 20),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  )),
-              Text(subtitle,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
-                    fontSize: 11,
-                  )),
-            ],
-          ),
-        ),
-        if (action != null) action,
-      ],
-    );
-  }
 
   Widget _buildCoreMemoryAction() {
     if (_isEditing) {

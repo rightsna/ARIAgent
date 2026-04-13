@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/ari_app_provider.dart';
+import '../widgets/tab_section_header.dart';
 
 class AppsTab extends StatefulWidget {
   const AppsTab({super.key});
@@ -55,9 +56,16 @@ class _AppsTabState extends State<AppsTab> {
           backgroundColor: const Color(0xFF1A1A2E),
           child: ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: apps.length,
+            itemCount: apps.length + 1,
             itemBuilder: (context, index) {
-              final app = apps[index];
+              if (index == 0) {
+                return const TabSectionHeader(
+                  icon: Icons.apps_rounded,
+                  title: '앱',
+                  description: '에이전트가 연동해서 활용하는 앱들이에요.',
+                );
+              }
+              final app = apps[index - 1];
               final isConnected = connectedIds.contains(app['name']);
               return _AppCard(
                 app: app,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import 'widgets/task_card.dart';
+import '../widgets/tab_section_header.dart';
 
 /// 스케줄 탭 - 서버에 등록된 작업 목록
 class ScheduleTab extends StatefulWidget {
@@ -44,38 +45,29 @@ class _ScheduleTabState extends State<ScheduleTab> {
 
     // 헤더
     items.add(
-      Row(
-        children: [
-          Text(
-            '📅 ${avatar.name}의 스케줄 (${filteredTasks.length})',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: _refreshTasks,
-            child: _isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.5,
-                      color: Color(0xFF6C63FF),
-                    ),
-                  )
-                : Icon(
-                    Icons.refresh,
-                    size: 16,
-                    color: Colors.white.withValues(alpha: 0.3),
+      TabSectionHeader(
+        icon: Icons.calendar_month_outlined,
+        title: '${avatar.name}의 스케줄 (${filteredTasks.length})',
+        description: '에이전트가 정해진 시간에 알아서 처리하는 일들이에요.',
+        trailing: GestureDetector(
+          onTap: _refreshTasks,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.5,
+                    color: Color(0xFF6C63FF),
                   ),
-          ),
-        ],
+                )
+              : Icon(
+                  Icons.refresh,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.3),
+                ),
+        ),
       ),
     );
-    items.add(const SizedBox(height: 8));
 
     // 안내
     items.add(

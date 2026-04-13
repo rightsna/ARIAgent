@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ari_plugin/ari_plugin.dart';
 import 'token_management_screen.dart';
+import '../widgets/tab_section_header.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -31,8 +32,11 @@ class _SettingsTabContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader('데이터 관리'),
-          const SizedBox(height: 16),
+          TabSectionHeader(
+            icon: Icons.folder_outlined,
+            title: '데이터 관리',
+            description: '에이전트의 기억과 대화 기록, 토큰을 관리해요.',
+          ),
           _buildNavigationButton(
             context,
             icon: Icons.token_outlined,
@@ -76,8 +80,11 @@ class _SettingsTabContent extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _buildSectionHeader('위험 구역'),
-          const SizedBox(height: 16),
+          const TabSectionHeader(
+            icon: Icons.warning_amber_outlined,
+            title: '위험 구역',
+            description: '한 번 실행하면 되돌릴 수 없어요. 신중하게 눌러주세요.',
+          ),
           _buildSettingsButton(
             context,
             icon: Icons.delete_forever_outlined,
@@ -202,17 +209,6 @@ class _SettingsTabContent extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        color: Color(0xFF6C63FF),
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        letterSpacing: 1.2,
-      ),
-    );
-  }
 
   Widget _buildSettingsButton(
     BuildContext context, {

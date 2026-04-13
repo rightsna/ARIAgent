@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/ari_app_provider.dart';
+import '../widgets/tab_section_header.dart';
 
 class SkillsTab extends StatefulWidget {
   const SkillsTab({super.key});
@@ -51,9 +52,16 @@ class _SkillsTabState extends State<SkillsTab> {
           backgroundColor: const Color(0xFF1A1A2E),
           child: ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: skills.length,
+            itemCount: skills.length + 1,
             itemBuilder: (context, index) {
-              return _SkillCard(skill: skills[index], onRefresh: _refresh);
+              if (index == 0) {
+                return const TabSectionHeader(
+                  icon: Icons.auto_fix_high_rounded,
+                  title: '스킬',
+                  description: '에이전트가 할 수 있는 능력들이에요.',
+                );
+              }
+              return _SkillCard(skill: skills[index - 1], onRefresh: _refresh);
             },
           ),
         );
