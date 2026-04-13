@@ -426,6 +426,9 @@ export const installAppTool: AgentTool = {
       // 8. 스킬 리로드
       await loadAllApps();
 
+      // 9. 클라이언트에 설치된 앱 목록 변경 알림
+      UserSocketHandler.broadcast("/INSTALLED_APPS_CHANGED", { appId });
+
       return {
         content: [
           {

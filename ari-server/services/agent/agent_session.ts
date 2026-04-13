@@ -239,20 +239,6 @@ export class AgentSession {
         });
       }
 
-      if (pending.source === "task") {
-        const noticeId = `notice-task-response-${pending.requestId}`;
-        appendChatLog(pending.agentId, {
-          type: "notice",
-          message: "스케줄 작업 시간입니다!",
-          noticeId,
-        });
-        UserSocketHandler.broadcast("/APP.NOTICE", {
-          noticeId,
-          agentId: pending.agentId,
-          message: "스케줄 작업 시간입니다!",
-        });
-      }
-
       UserSocketHandler.broadcast("/APP.PUSH", {
         ok: true,
         data: {

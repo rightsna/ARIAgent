@@ -14,6 +14,7 @@ class AppsTab extends StatefulWidget {
 
 class _AppsTabState extends State<AppsTab> {
   Future<List<Map<String, dynamic>>>? _appsFuture;
+  int _lastAppsVersion = -1;
 
   @override
   void initState() {
@@ -29,7 +30,17 @@ class _AppsTabState extends State<AppsTab> {
 
   @override
   Widget build(BuildContext context) {
-    final connectedIds = context.watch<AriAppProvider>().connectedAppIds;
+    final provider = context.watch<AriAppProvider>();
+    final connectedIds = provider.connectedAppIds;
+
+    // 앱 설치/삭제 시 자동 리프레시
+    if (provider.installedAppsVersion != _lastAppsVersion) {
+      _lastAppsVersion = provider.installedAppsVersion;
+      if (_appsFuture != null) {
+        // initState 이후 변경분만 리프레시
+        _appsFuture = provider.getApps();
+      }
+    }
 
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _appsFuture,

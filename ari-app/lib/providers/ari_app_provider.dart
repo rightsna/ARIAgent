@@ -12,6 +12,9 @@ class AriAppProvider extends ChangeNotifier {
   List<String> _connectedAppIds = [];
   List<String> get connectedAppIds => _connectedAppIds;
 
+  int _installedAppsVersion = 0;
+  int get installedAppsVersion => _installedAppsVersion;
+
   Future<void> init() async {
     // 실시간 연결된 앱 목록 수신
     AriAgent.on('/CONNECTED_APPS_CHANGED', (data) {
@@ -21,6 +24,13 @@ class AriAppProvider extends ChangeNotifier {
         debugPrint('[AriAppProvider] Connected Apps Changed: $_connectedAppIds');
         notifyListeners();
       }
+    });
+
+    // 앱 설치/삭제 후 목록 갱신 수신
+    AriAgent.on('/INSTALLED_APPS_CHANGED', (data) {
+      debugPrint('[AriAppProvider] Installed Apps Changed: $data');
+      _installedAppsVersion++;
+      notifyListeners();
     });
   }
 
