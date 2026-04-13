@@ -113,11 +113,11 @@ class DayColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     // task별 시간당 1개 dedup 후 → hour 기준으로 슬롯 묶기
     final slotMap = <int, _HourSlotBuilder>{};
+    final seen = <String>{}; // 'taskId-hour' 글로벌 중복 방지
 
     for (final task in tasks) {
-      final seen = <int>{};
       for (final (t, h, m) in _expandTask(task, displayDate)) {
-        if (seen.add(h)) {
+        if (seen.add('${t.id}-$h')) {
           slotMap.putIfAbsent(h, () => _HourSlotBuilder(h)).add(t, m);
         }
       }
