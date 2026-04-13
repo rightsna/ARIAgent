@@ -270,6 +270,7 @@ router.on("/DELETE_APP", async (ws, params) => {
       await initAgent();
       logger.info(`[Apps] App ${name} deleted and agent re-initialized`);
       ws.send("/DELETE_APP", { ok: true, data: { success: true } });
+      UserSocketHandler.broadcast("/INSTALLED_APPS_CHANGED", { appId: name });
     } else {
       logger.warn(`[Apps] App ${name} not found`);
       ws.send("/DELETE_APP", { ok: false, error: "App not found" });

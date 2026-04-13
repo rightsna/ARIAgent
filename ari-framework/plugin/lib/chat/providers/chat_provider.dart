@@ -25,6 +25,12 @@ class AriChatProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _activeRequestId;
   bool showTaskMessages = true;
+  String? _filterAgentId; // 현재 표시 중인 에이전트 ID 필터
+
+  /// 아바타 전환 시 호출 — 이 ID와 다른 에이전트 메시지는 무시
+  void setFilterAgentId(String agentId) {
+    _filterAgentId = agentId;
+  }
 
   bool get isLoading => _isLoading;
   String? get activeRequestId => _activeRequestId;
@@ -78,8 +84,10 @@ class AriChatProvider extends ChangeNotifier {
       final requestId = data['requestId']?.toString() ?? '';
       final message = data['message']?.toString() ?? '';
       final source = data['source']?.toString() ?? 'user';
+      final msgAgent = data['agentId']?.toString() ?? 'default';
 
       if (message.isEmpty) return;
+      if (_filterAgentId != null && msgAgent != _filterAgentId) return;
       if (source == 'task') {
         _taskRequestIds.add(requestId);
         return; // 스케줄 작업 프롬프트는 UI에 표시하지 않음 (APP.NOTICE로 대체)
@@ -101,8 +109,10 @@ class AriChatProvider extends ChangeNotifier {
       final response = payload['response']?.toString() ?? '';
       final requestId = payload['requestId']?.toString() ?? '';
       final source = payload['source']?.toString() ?? 'user';
+      final msgAgent = payload['agentId']?.toString() ?? 'default';
 
       if (response.isEmpty) return;
+      if (_filterAgentId != null && msgAgent != _filterAgentId) return;
 
       if (source == 'task') {
         _taskRequestIds.add(requestId);
@@ -134,8 +144,10 @@ class AriChatProvider extends ChangeNotifier {
       final progressMessage = payload['message']?.toString() ?? '';
       final requestId = payload['requestId']?.toString() ?? '';
       final source = payload['source']?.toString() ?? '';
+      final msgAgent = payload['agentId']?.toString() ?? 'default';
 
       if (progressMessage.isEmpty) return;
+      if (_filterAgentId != null && msgAgent != _filterAgentId) return;
 
       if (requestId.isNotEmpty) {
         _inFlightRequestIds.add(requestId);
@@ -192,8 +204,12 @@ class AriChatProvider extends ChangeNotifier {
       final payload = data['data'] is Map ? data['data'] as Map : data;
       final message = payload['message']?.toString() ?? '';
       final noticeId = payload['noticeId']?.toString();
+      final agentId = payload['agentId']?.toString();
 
       if (message.isEmpty) return;
+      if (_filterAgentId != null &&
+          agentId != null &&
+          agentId != _filterAgentId) return;
       if (noticeId != null &&
           _messages.any((m) => m.isNotice && m.requestId == noticeId)) return;
 

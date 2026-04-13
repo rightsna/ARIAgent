@@ -64,6 +64,7 @@ class _ChatTabState extends State<ChatTab> {
     if (avatarId != _lastAgentId || (isConnected && !_lastConnected)) {
       _lastAgentId = avatarId;
       _lastConnected = isConnected;
+      chatProvider.setFilterAgentId(avatarId);
       if (isConnected) {
         Future.microtask(() => chatProvider.loadServerHistory(avatarId));
       }
