@@ -15,6 +15,7 @@ class ConfigRepository {
   bool _isNotificationEnabled = true;
   bool _showTaskMessages = true;
   bool _isExperimentalEnabled = false;
+  bool _showAdvancedDeveloperUI = false;
   String _avatarSize = 'medium';
   String _backgroundTheme = 'dark';
   double? _windowWidth;
@@ -76,6 +77,10 @@ class ConfigRepository {
           _isExperimentalEnabled =
               _fullConfig['IS_EXPERIMENTAL_ENABLED'] == true;
         }
+        if (_fullConfig['SHOW_ADVANCED_DEVELOPER_UI'] != null) {
+          _showAdvancedDeveloperUI =
+              _fullConfig['SHOW_ADVANCED_DEVELOPER_UI'] == true;
+        }
         if (_fullConfig['AVATAR_SIZE'] != null) {
           _avatarSize = _fullConfig['AVATAR_SIZE'].toString();
         }
@@ -116,6 +121,7 @@ class ConfigRepository {
     _fullConfig['IS_NOTIFICATION_ENABLED'] = _isNotificationEnabled;
     _fullConfig['SHOW_TASK_MESSAGES'] = _showTaskMessages;
     _fullConfig['IS_EXPERIMENTAL_ENABLED'] = _isExperimentalEnabled;
+    _fullConfig['SHOW_ADVANCED_DEVELOPER_UI'] = _showAdvancedDeveloperUI;
     _fullConfig['AVATAR_SIZE'] = _avatarSize;
     _fullConfig['BACKGROUND_THEME'] = _backgroundTheme;
     _fullConfig['WINDOW_WIDTH'] = _windowWidth;
@@ -184,6 +190,15 @@ class ConfigRepository {
 
   Future<void> updateIsExperimentalEnabled(bool value) async {
     _isExperimentalEnabled = value;
+    await _saveConfig();
+  }
+
+  bool getShowAdvancedDeveloperUI() {
+    return _showAdvancedDeveloperUI;
+  }
+
+  Future<void> updateShowAdvancedDeveloperUI(bool value) async {
+    _showAdvancedDeveloperUI = value;
     await _saveConfig();
   }
 

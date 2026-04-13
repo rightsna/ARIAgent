@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ari_plugin/ari_plugin.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 class StandardMemorySection extends StatefulWidget {
   final VoidCallback onRefresh;
@@ -203,6 +204,7 @@ class _StandardMemorySectionState extends State<StandardMemorySection> {
 
   Widget _buildCoreMemoryCard() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A2E),
@@ -231,19 +233,30 @@ class _StandardMemorySectionState extends State<StandardMemorySection> {
               ),
               cursorColor: const Color(0xFF6C63FF),
             )
-          : Text(
-              _coreMemoryController.text.isEmpty
-                  ? '아직 저장된 장기 기억이 없습니다.'
-                  : _coreMemoryController.text,
-              style: TextStyle(
-                color: _coreMemoryController.text.isEmpty
-                    ? Colors.white24
-                    : Colors.white70,
-                fontSize: 14,
-                height: 1.6,
-                fontFamily: 'Courier',
-              ),
-            ),
+          : _coreMemoryController.text.isEmpty
+              ? const Text(
+                  '아직 저장된 장기 기억이 없습니다.',
+                  style: TextStyle(color: Colors.white24, fontSize: 14),
+                )
+              : MarkdownBody(
+                  data: _coreMemoryController.text,
+                  styleSheet: MarkdownStyleSheet(
+                    p: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      height: 1.6,
+                    ),
+                    code: TextStyle(
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      color: const Color(0xFF4ADE80),
+                      fontFamily: 'Courier',
+                    ),
+                    codeblockDecoration: BoxDecoration(
+                      color: Colors.black26,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
     );
   }
 
@@ -264,13 +277,25 @@ class _StandardMemorySectionState extends State<StandardMemorySection> {
                     style: TextStyle(color: Colors.white24, fontSize: 13)),
               ),
             )
-          : Text(_dailyLogs,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-                height: 1.5,
-                fontFamily: 'Courier',
-              )),
+          : MarkdownBody(
+              data: _dailyLogs,
+              styleSheet: MarkdownStyleSheet(
+                p: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  height: 1.5,
+                ),
+                code: TextStyle(
+                  backgroundColor: Colors.white.withValues(alpha: 0.05),
+                  color: const Color(0xFF4ADE80),
+                  fontFamily: 'Courier',
+                ),
+                codeblockDecoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
     );
   }
 }

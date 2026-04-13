@@ -78,11 +78,11 @@ class _SettingsCategoryList extends StatelessWidget {
               context,
               Icons.science_outlined,
               isServerRunning
-                  ? '실험 중인 기능을 미리 켜고 확인하는 메뉴'
-                  : '실험 중인 기능을 미리 켜고 확인하는 메뉴 (에이전트 실행 필요)',
+                  ? '고급 도구 및 실험적인 기능을 설정하는 메뉴'
+                  : '고급 도구 및 실험적인 기능을 설정하는 메뉴 (에이전트 실행 필요)',
               isEnabled: isServerRunning,
               page: const ExperimentalSettings(),
-              title: 'Experimental',
+              title: 'Advanced & Labs',
             ),
             _buildCategoryItem(
               context,

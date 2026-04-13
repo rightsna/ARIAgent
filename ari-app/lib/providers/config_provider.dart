@@ -19,6 +19,7 @@ class ConfigProvider extends ChangeNotifier {
   bool get isNotificationEnabled => _repository.getIsNotificationEnabled();
   bool get showTaskMessages => _repository.getShowTaskMessages();
   bool get isExperimentalEnabled => _repository.getIsExperimentalEnabled();
+  bool get showAdvancedDeveloperUI => _repository.getShowAdvancedDeveloperUI();
   String get backgroundTheme => _repository.getBackgroundTheme();
   double? get windowWidth => _repository.windowWidth;
   double? get windowHeight => _repository.windowHeight;
@@ -103,6 +104,11 @@ class ConfigProvider extends ChangeNotifier {
 
   Future<void> updateIsExperimentalEnabled(bool value) async {
     await _repository.updateIsExperimentalEnabled(value);
+    notifyListeners();
+  }
+
+  Future<void> updateShowAdvancedDeveloperUI(bool value) async {
+    await _repository.updateShowAdvancedDeveloperUI(value);
     notifyListeners();
   }
 

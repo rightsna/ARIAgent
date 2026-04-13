@@ -12,6 +12,7 @@ import 'tabs/tools_tab.dart';
 import 'tabs/channels_tab.dart';
 import 'tabs/settings_tab.dart';
 import 'package:flutter/gestures.dart';
+import '../../providers/config_provider.dart';
 
 /// 마우스 드래그로 스크롤 가능하게 하는 커스텀 ScrollBehavior
 class AppScrollBehavior extends MaterialScrollBehavior {
@@ -30,91 +31,85 @@ class AvatarTab extends StatefulWidget {
   State<AvatarTab> createState() => _AvatarTabState();
 }
 
-class _AvatarTabState extends State<AvatarTab>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 8, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _AvatarTabState extends State<AvatarTab> {
   @override
   Widget build(BuildContext context) {
     final avatar = context.watch<AvatarProvider>();
-    return Column(
-      children: [
-        Container(
-          height: 40,
-          margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-            ),
-          ),
-          child: TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            controller: _tabController,
-            indicator: const UnderlineTabIndicator(
-              borderSide: BorderSide(color: Color(0xFF6C63FF), width: 2),
-            ),
-            indicatorSize: TabBarIndicatorSize.label,
-            dividerColor: Colors.transparent,
-            labelColor: const Color(0xFF6C63FF),
-            unselectedLabelColor: Colors.white.withValues(alpha: 0.4),
-            overlayColor: WidgetStateProperty.resolveWith<Color?>((
-              Set<WidgetState> states,
-            ) {
-              if (states.contains(WidgetState.hovered)) {
-                return Colors.white.withValues(alpha: 0.05);
-              }
-              return Colors.transparent;
-            }),
-            labelStyle: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-            tabs: const [
-              Tab(text: 'Profile'),
-              Tab(text: 'Memory'),
-              Tab(text: 'Schedule'),
-              Tab(text: 'Apps'),
-              Tab(text: 'Skills'),
-              Tab(text: 'Tools'),
-              Tab(text: 'Channels'),
-              Tab(text: 'Settings'),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ScrollConfiguration(
-            behavior: AppScrollBehavior(),
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                ProfileTab(),
-                const MemoryTab(),
-                const ScheduleTab(),
-                const AppsTab(),
-                SkillsTab(),
-                ToolsTab(),
-                ChannelsTab(),
-                SettingsTab(),
-              ],
-            ),
-          ),
-        ),
+    final config = context.watch<ConfigProvider>();
+    final showAdvanced = config.showAdvancedDeveloperUI;
+    final isExperimental = config.isExperimentalEnabled;
 
-        _buildBottomSelector(context, avatar),
-      ],
+    final List<Widget> tabs = [
+      const Tab(text: 'Profile'),
+      const Tab(text: 'Memory'),
+      const Tab(text: 'Schedule'),
+      const Tab(text: 'Apps'),
+      if (showAdvanced) const Tab(text: 'Skills'),
+      if (showAdvanced) const Tab(text: 'Tools'),
+      const Tab(text: 'Channels'),
+      const Tab(text: 'Settings'),
+    ];
+
+    final List<Widget> views = [
+      ProfileTab(),
+      const MemoryTab(),
+      const ScheduleTab(),
+      const AppsTab(),
+      if (showAdvanced) SkillsTab(),
+      if (showAdvanced) ToolsTab(),
+      ChannelsTab(),
+      SettingsTab(),
+    ];
+
+    return DefaultTabController(
+      key: ValueKey(showAdvanced), // 고급 기능 표시 상태가 바뀔 때 컨트롤러 초기화
+      length: tabs.length,
+      child: Column(
+        children: [
+          Container(
+            height: 40,
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+            ),
+            child: TabBar(
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              indicatorSize: TabBarIndicatorSize.label,
+              dividerColor: Colors.transparent,
+              labelColor: const Color(0xFF6C63FF),
+              unselectedLabelColor: Colors.white.withValues(alpha: 0.4),
+              overlayColor: WidgetStateProperty.resolveWith<Color?>((
+                Set<WidgetState> states,
+              ) {
+                if (states.contains(WidgetState.hovered)) {
+                  return Colors.white.withValues(alpha: 0.05);
+                }
+                return Colors.transparent;
+              }),
+              labelStyle: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: tabs,
+            ),
+          ),
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: AppScrollBehavior(),
+              child: TabBarView(
+                children: views,
+              ),
+            ),
+          ),
+          _buildBottomSelector(context, avatar),
+        ],
+      ),
     );
   }
 
