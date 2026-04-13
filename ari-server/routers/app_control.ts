@@ -8,6 +8,7 @@ import { router } from "../system/router.js";
 import { UserSocketHandler } from "../system/ws.js";
 import { logger } from "../infra/logger.js";
 import { initAgent } from "../services/agent/index.js";
+import { execPromise } from "../tools/bash.js";
 
 /**
  * /LAUNCH_APP
@@ -93,6 +94,133 @@ router.on("/LAUNCH_APP", async (ws, params) => {
       ok: false,
       error: error.message,
     });
+  }
+});
+
+/**
+ * /APP.UPDATE
+ * 호스트 앱(ARIAgent 등)을 직접 다운로드·교체·재실행합니다.
+ * AI 없이 Flutter 클라이언트가 직접 호출합니다.
+ *
+ * params:
+ *   url              - 새 버전 .zip 다운로드 주소
+ *   appName          - 앱 이름 (로그용)
+ *   appExecutablePath - 현재 실행 중인 앱의 실행 파일 경로 (Platform.resolvedExecutable)
+ */
+router.on("/APP.UPDATE", async (ws, params) => {
+  const { url, appName = "app", appExecutablePath } = params as {
+    url: string;
+    appName: string;
+    appExecutablePath: string;
+  };
+
+  logger.info(`[AppUpdate] Received update request for '${appName}' from ${url}`);
+
+  if (!url || !appExecutablePath) {
+    return ws.send("/APP.UPDATE", { ok: false, error: "url and appExecutablePath are required" });
+  }
+
+  const tempDir = path.join(os.tmpdir(), `ari-host-update-${Date.now()}`);
+
+  try {
+    // 1. 임시 디렉토리 준비
+    fs.mkdirSync(tempDir, { recursive: true });
+    const zipPath = path.join(tempDir, "update.zip");
+    const extractDir = path.join(tempDir, "extracted");
+    fs.mkdirSync(extractDir, { recursive: true });
+
+    // 2. 다운로드
+    ws.send("/APP.UPDATE.PROGRESS", { stage: "downloading", message: "새 버전 다운로드 중..." });
+    logger.info(`[AppUpdate] Downloading to ${zipPath}`);
+    await execPromise(`curl -L "${url}" -o "${zipPath}"`);
+
+    // 3. 압축 해제
+    ws.send("/APP.UPDATE.PROGRESS", { stage: "extracting", message: "압축 해제 중..." });
+    logger.info(`[AppUpdate] Extracting to ${extractDir}`);
+    if (process.platform === "win32") {
+      await execPromise(`powershell -Command "Expand-Archive -Path '${zipPath}' -DestinationPath '${extractDir}' -Force"`);
+    } else {
+      await execPromise(`unzip -o "${zipPath}" -d "${extractDir}"`);
+    }
+
+    // 4. 압축 해제 결과에서 앱 번들 찾기
+    const findAppBundle = (dir: string): string | null => {
+      const items = fs.readdirSync(dir).filter(f => !f.startsWith(".") && f !== "__MACOSX");
+      for (const item of items) {
+        const itemPath = path.join(dir, item);
+        const stat = fs.statSync(itemPath);
+        if (process.platform === "darwin" && item.endsWith(".app") && stat.isDirectory()) {
+          return itemPath;
+        }
+        if (process.platform === "win32" && item.endsWith(".exe") && stat.isFile()) {
+          return itemPath;
+        }
+        if (stat.isDirectory()) {
+          const found = findAppBundle(itemPath);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const newAppBundle = findAppBundle(extractDir);
+    if (!newAppBundle) {
+      throw new Error("압축 파일에서 앱 번들(.app / .exe)을 찾을 수 없습니다.");
+    }
+    logger.info(`[AppUpdate] Found new bundle: ${newAppBundle}`);
+
+    // 5. 현재 앱 번들 경로 계산
+    let currentAppBundle: string;
+    if (process.platform === "darwin") {
+      // e.g. /Applications/ARIAgent.app/Contents/MacOS/ARIAgent → /Applications/ARIAgent.app
+      const parts = appExecutablePath.split("/Contents/MacOS/");
+      if (parts.length < 2) throw new Error(`올바르지 않은 실행 파일 경로: ${appExecutablePath}`);
+      currentAppBundle = parts[0];
+    } else {
+      currentAppBundle = path.dirname(appExecutablePath);
+    }
+    logger.info(`[AppUpdate] Current bundle: ${currentAppBundle}`);
+
+    // 6. 교체 스크립트 생성 후 detached 실행 (서버·앱이 종료돼도 안전)
+    ws.send("/APP.UPDATE.PROGRESS", { stage: "installing", message: "업데이트 설치 중..." });
+
+    if (process.platform === "darwin") {
+      const scriptPath = path.join(tempDir, "apply_update.sh");
+      const script = [
+        "#!/bin/bash",
+        "sleep 2",
+        `rm -rf "${currentAppBundle}"`,
+        `mv "${newAppBundle}" "${currentAppBundle}"`,
+        `open "${currentAppBundle}"`,
+        `rm -rf "${tempDir}"`,
+      ].join("\n");
+      fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+      const child = spawn("bash", [scriptPath], { detached: true, stdio: "ignore" });
+      child.unref();
+
+    } else if (process.platform === "win32") {
+      const scriptPath = path.join(tempDir, "apply_update.bat");
+      const newExe = newAppBundle; // .exe path
+      const script = [
+        "@echo off",
+        "timeout /t 2 /nobreak >nul",
+        `del /f /q "${currentAppBundle}"`,
+        `move "${newExe}" "${currentAppBundle}"`,
+        `start "" "${currentAppBundle}"`,
+      ].join("\r\n");
+      fs.writeFileSync(scriptPath, script);
+      const child = spawn("cmd", ["/c", scriptPath], { detached: true, stdio: "ignore", windowsHide: true });
+      child.unref();
+    }
+
+    // 7. 클라이언트에 완료 알림 → 클라이언트가 exit(0) 호출
+    ws.send("/APP.UPDATE", { ok: true, data: { message: "업데이트 준비 완료. 앱을 재시작합니다." } });
+    logger.info(`[AppUpdate] Update script launched. Waiting for client to close.`);
+
+  } catch (error: any) {
+    logger.error(`[AppUpdate] Failed: ${error.message}`);
+    if (fs.existsSync(tempDir)) fs.rmSync(tempDir, { recursive: true, force: true });
+    ws.send("/APP.UPDATE", { ok: false, error: error.message });
   }
 });
 

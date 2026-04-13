@@ -22,9 +22,7 @@ export async function buildSystemPrompt(
     providers.availableProviders.every((p) => p.provider === ARI_CLOUD_PROVIDER);
 
   if (isSetupMode) {
-    const setupPrompt = await Prompt.load("setup_system_prompt.hbs", {
-      now_str: new Date().toISOString(),
-    });
+    const setupPrompt = await Prompt.load("setup_system_prompt.hbs", {});
     return setupPrompt;
   }
 

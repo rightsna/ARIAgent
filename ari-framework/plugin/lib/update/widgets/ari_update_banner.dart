@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../app_update_service.dart';
 import '../../bridge/ws/AriAgent.dart';
-import '../../chat/providers/chat_provider.dart';
 
 /// ARI 프레임워크 통합 업데이트 배너 위젯.
 ///
@@ -146,29 +144,20 @@ class _AriUpdateBannerState extends State<AriUpdateBanner> {
   }
 
   Future<void> _sendUpdateCommand(AppUpdateInfo info) async {
+    final url = info.downloadUrlForCurrentPlatform();
+    if (url == null) return;
+
     try {
-      final chatProvider = context.read<AriChatProvider?>();
-      final url = info.downloadUrlForCurrentPlatform();
-      if (url == null) return;
+      await AriAgent.call('/APP.UPDATE', {
+        'url': url,
+        'appName': widget.appName ?? 'app',
+        'appExecutablePath': Platform.resolvedExecutable,
+      });
 
-      final name = widget.appName ?? '애플리케이션';
-      final message = "Install $url ${Platform.isMacOS ? '--mac' : '--windows'}\n"
-          "설치가 완료되면 현재 실행 중인 $name 앱을 종료하고 새 버전으로 다시 시작해.";
-
-      if (chatProvider != null) {
-        await chatProvider.sendAgentMessage(
-          message,
-          platform: widget.appId ?? 'client',
-        );
-      } else {
-        await AriAgent.call('/AGENT', {
-          'message': message,
-          'platform': widget.appId ?? 'client',
-          'requestId': 'update-${DateTime.now().millisecondsSinceEpoch}',
-        });
-      }
+      // 서버가 교체 스크립트를 띄운 후 ok 응답 → 앱 종료
+      exit(0);
     } catch (e) {
-      debugPrint('[AriUpdateBanner] Background update command failed: $e');
+      debugPrint('[AriUpdateBanner] Direct update failed: $e');
     }
   }
 
